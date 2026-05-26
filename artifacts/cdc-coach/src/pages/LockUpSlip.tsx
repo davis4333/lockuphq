@@ -320,11 +320,13 @@ function generateNarrative(fields: typeof defaultFields) {
   const isProtection = fields.reason === "Protection Evaluation";
   const pendingText = isProtection ? "Protection Evaluation" : fields.reason;
 
-  const last = fields.lastName.trim() || "[Last Name]";
-  const first = fields.firstName.trim() || "[First Name]";
+  const last = (fields.lastName.trim() || "[LAST NAME]").toUpperCase();
+  const first = fields.firstName.trim()
+    ? fields.firstName.trim().charAt(0).toUpperCase() + fields.firstName.trim().slice(1).toLowerCase()
+    : "[First Name]";
   const nameDisplay = `${last}, ${first}`;
-  const dcNum = fields.dcNumber.trim() || "[DC#]";
-  const captain = fields.captain.trim().replace(/^captain\s+/i, "") || "[Captain]";
+  const dcNum = (fields.dcNumber.trim() || "[DC#]").toUpperCase();
+  const captain = fields.captain.trim().replace(/^captain\s+/i, "").trim() || "[Captain Name]";
   const confinement = fields.confinementType || "Administrative Confinement (AC)";
   const pronoun = fields.pronoun === "she" ? "she" : "he";
   const bunk = fields.bunkAssignment.trim()
@@ -335,17 +337,7 @@ function generateNarrative(fields: typeof defaultFields) {
     ? `Inmate ${last} declined the opportunity to make three phone calls to advise a visitor that ${pronoun} would be unavailable for visitation.`
     : `Inmate ${last} was afforded the opportunity to make three phone calls to advise a visitor that ${pronoun} would be unavailable for visitation.`;
 
-  return `On ${formatDate(fields.date)}, at approximately ${formatTime(fields.time)} hours, Inmate ${nameDisplay}, DC# ${dcNum}, was advised of placement in ${confinement} pending ${pendingText}.
-
-Per Captain ${captain}, Inmate ${last} was placed in restraints and escorted to medical where a pre-confinement physical was completed.
-
-${callLine}
-
-Inmate ${last} was escorted to confinement where ${pronoun} was searched, secured, and issued health and comfort items.${bunk}
-
-Inmate ${last}'s cashless ID card was deactivated.
-
-Inmate ${last}'s property was collected, searched, inventoried, and delivered/stored by respective dormitory staff.`;
+  return `On ${formatDate(fields.date)}, at approximately ${formatTime(fields.time)} hours, Inmate ${nameDisplay}, DC# ${dcNum}, was advised of placement in ${confinement} pending ${pendingText}. Per Captain ${captain}, Inmate ${last} was placed in restraints and escorted to medical where a pre-confinement physical was completed. ${callLine} Inmate ${last} was escorted to confinement where ${pronoun} was searched, secured, and issued health and comfort items.${bunk} Inmate ${last}'s cashless ID card was deactivated. Inmate ${last}'s property was collected, searched, inventoried, and delivered/stored by respective dormitory staff.`;
 }
 
 const defaultFields = {
@@ -524,9 +516,10 @@ export default function LockUpSlip() {
               name="captain"
               value={fields.captain}
               onChange={handleChange}
-              placeholder="e.g. R. Holmes (name only, no title)"
+              placeholder="e.g. R. Holmes"
               className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
             />
+            <p className="mt-1 text-[11px] text-muted-foreground">Name only — output will read: Per Captain R. Holmes</p>
           </div>
 
           <div>

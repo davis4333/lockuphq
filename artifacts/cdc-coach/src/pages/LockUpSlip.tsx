@@ -315,22 +315,30 @@ function formatDate(val: string) {
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-function getLastName(fullName: string): string {
-  if (!fullName.trim()) return "[Last Name]";
-  const parts = fullName.trim().split(/\s+/);
-  return parts[parts.length - 1];
+function parseName(fullName: string): { display: string; last: string } {
+  const trimmed = fullName.trim();
+  if (!trimmed) return { display: "[Inmate Name]", last: "[Last Name]" };
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) {
+    return { display: parts[0], last: parts[0] };
+  }
+  const last = parts[parts.length - 1];
+  const first = parts.slice(0, parts.length - 1).join(" ");
+  return { display: `${last}, ${first}`, last };
+}
+
+function stripCaptainTitle(val: string): string {
+  return val.replace(/^captain\s+/i, "").trim();
 }
 
 function generateNarrative(fields: typeof defaultFields) {
   const isProtection = fields.reason === "Protection Evaluation";
-  const pendingText = isProtection
-    ? "Protection Evaluation"
-    : fields.reason;
+  const pendingText = isProtection ? "Protection Evaluation" : fields.reason;
 
-  const name = fields.inmateName || "[Inmate Name]";
-  const lastName = getLastName(fields.inmateName);
+  const { display: nameDisplay, last: lastName } = parseName(fields.inmateName);
   const dcNum = fields.dcNumber || "[DC#]";
-  const captain = fields.captain || "[Captain]";
+  const captainRaw = fields.captain || "[Captain]";
+  const captain = stripCaptainTitle(captainRaw);
   const confinement = fields.confinementType || "Administrative Confinement (AC)";
   const pronoun = fields.pronoun === "she" ? "she" : "he";
   const bunk = fields.bunkAssignment ? ` Inmate ${lastName} was assigned to bunk ${fields.bunkAssignment}.` : "";
@@ -339,7 +347,7 @@ function generateNarrative(fields: typeof defaultFields) {
     ? `Inmate ${lastName} declined the opportunity to make three phone calls to advise a visitor that ${pronoun} would be unavailable for visitation.`
     : `Inmate ${lastName} was afforded the opportunity to make three phone calls to advise a visitor that ${pronoun} would be unavailable for visitation.`;
 
-  return `On ${formatDate(fields.date)}, at approximately ${formatTime(fields.time)} hours, Inmate ${name}, DC# ${dcNum}, was advised of placement in ${confinement} pending ${pendingText}.
+  return `On ${formatDate(fields.date)}, at approximately ${formatTime(fields.time)} hours, Inmate ${nameDisplay}, DC# ${dcNum}, was advised of placement in ${confinement} pending ${pendingText}.
 
 Per Captain ${captain}, Inmate ${lastName} was placed in restraints and escorted to medical where a pre-confinement physical was completed.
 
@@ -513,7 +521,7 @@ export default function LockUpSlip() {
               name="captain"
               value={fields.captain}
               onChange={handleChange}
-              placeholder="e.g. Captain Smith"
+              placeholder="e.g. R. Holmes (name only, no title)"
               className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>

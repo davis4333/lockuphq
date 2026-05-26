@@ -315,23 +315,41 @@ function formatDate(val: string) {
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
+function getLastName(fullName: string): string {
+  if (!fullName.trim()) return "[Last Name]";
+  const parts = fullName.trim().split(/\s+/);
+  return parts[parts.length - 1];
+}
+
 function generateNarrative(fields: typeof defaultFields) {
   const isProtection = fields.reason === "Protection Evaluation";
-  const reasonText = isProtection
-    ? "pending a protection evaluation"
-    : `pending disciplinary review for charge ${fields.reason}`;
+  const pendingText = isProtection
+    ? "Protection Evaluation"
+    : fields.reason;
 
-  return `On ${formatDate(fields.date)}, at approximately ${formatTime(fields.time)} hours, I, Officer ${fields.officerName || "[Officer Name]"}, escorted inmate ${fields.inmateName || "[Inmate Name]"}, DC# ${fields.dcNumber || "[DC#]"}, to ${fields.confinementType || "Administrative Confinement"}, ${reasonText}.
+  const name = fields.inmateName || "[Inmate Name]";
+  const lastName = getLastName(fields.inmateName);
+  const dcNum = fields.dcNumber || "[DC#]";
+  const captain = fields.captain || "[Captain]";
+  const confinement = fields.confinementType || "Administrative Confinement (AC)";
+  const pronoun = fields.pronoun === "she" ? "she" : "he";
+  const bunk = fields.bunkAssignment ? ` Inmate ${lastName} was assigned to bunk ${fields.bunkAssignment}.` : "";
 
-Prior to placement, inmate ${fields.inmateName || "[Inmate Name]"} was restrained in accordance with established security procedures. A medical staff member conducted a pre-confinement physical to assess the inmate's health status and document any existing injuries or medical conditions prior to placement.
+  const callLine = fields.callsOffered === "declined"
+    ? `Inmate ${lastName} declined the opportunity to make three phone calls to advise a visitor that ${pronoun} would be unavailable for visitation.`
+    : `Inmate ${lastName} was afforded the opportunity to make three phone calls to advise a visitor that ${pronoun} would be unavailable for visitation.`;
 
-Inmate ${fields.inmateName || "[Inmate Name]"} was afforded the opportunity to make three (3) phone calls in accordance with Florida Administrative Code. The inmate ${fields.callsOffered === "declined" ? "declined" : "was offered"} all three (3) calls.
+  return `On ${formatDate(fields.date)}, at approximately ${formatTime(fields.time)} hours, Inmate ${name}, DC# ${dcNum}, was advised of placement in ${confinement} pending ${pendingText}.
 
-The inmate was then escorted to confinement. Upon arrival, the assigned bunk is ${fields.bunkAssignment || "[Bunk Assignment]"}. The cell and the inmate's person were searched. Health and comfort items were provided as required.
+Per Captain ${captain}, Inmate ${lastName} was placed in restraints and escorted to medical where a pre-confinement physical was completed.
 
-The inmate's cashless canteen identification was deactivated pending review. All personal property belonging to inmate ${fields.inmateName || "[Inmate Name]"} was collected, searched, inventoried, and stored in accordance with departmental policy.
+${callLine}
 
-This placement was authorized by ${fields.captain || "[Captain / Approving Authority]"}, who served as the approving authority.`;
+Inmate ${lastName} was escorted to confinement where ${pronoun} was searched, secured, and issued health and comfort items.${bunk}
+
+Inmate ${lastName}'s cashless ID card was deactivated.
+
+Inmate ${lastName}'s property was collected, searched, inventoried, and delivered/stored by respective dormitory staff.`;
 }
 
 const defaultFields = {
@@ -343,7 +361,7 @@ const defaultFields = {
   captain: "",
   confinementType: "Administrative Confinement (AC)",
   bunkAssignment: "",
-  officerName: "",
+  pronoun: "he",
   callsOffered: "offered",
 };
 
@@ -386,8 +404,7 @@ export default function LockUpSlip() {
     fields.dcNumber &&
     fields.date &&
     fields.time &&
-    fields.captain &&
-    fields.officerName;
+    fields.captain;
 
   return (
     <div className="min-h-screen bg-background">
@@ -440,9 +457,10 @@ export default function LockUpSlip() {
                 name="inmateName"
                 value={fields.inmateName}
                 onChange={handleChange}
-                placeholder="e.g. John Doe"
+                placeholder="First Last — e.g. John Doe"
                 className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
               />
+              <p className="mt-1 text-[11px] text-muted-foreground">Last name used in narrative body</p>
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
@@ -453,7 +471,7 @@ export default function LockUpSlip() {
                 name="dcNumber"
                 value={fields.dcNumber}
                 onChange={handleChange}
-                placeholder="e.g. A12345"
+                placeholder="e.g. X00000"
                 className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
@@ -529,19 +547,36 @@ export default function LockUpSlip() {
                 placeholder="e.g. D2-101-L"
                 className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
               />
+              <p className="mt-1 text-[11px] text-muted-foreground">Optional — added to narrative if entered</p>
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Officer Name <span className="text-destructive">*</span>
+                Inmate Pronoun
               </label>
-              <input
-                type="text"
-                name="officerName"
-                value={fields.officerName}
-                onChange={handleChange}
-                placeholder="e.g. Officer Johnson"
-                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+              <div className="flex gap-4 mt-1">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="pronoun"
+                    value="he"
+                    checked={fields.pronoun === "he"}
+                    onChange={handleChange}
+                    className="accent-primary"
+                  />
+                  <span className="text-foreground">He / Him</span>
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="pronoun"
+                    value="she"
+                    checked={fields.pronoun === "she"}
+                    onChange={handleChange}
+                    className="accent-primary"
+                  />
+                  <span className="text-foreground">She / Her</span>
+                </label>
+              </div>
             </div>
           </div>
 

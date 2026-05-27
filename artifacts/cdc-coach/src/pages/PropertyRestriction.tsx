@@ -1,13 +1,35 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, ShieldAlert, Copy, Check, AlertTriangle, Printer, FileDown } from "lucide-react";
+import { ArrowLeft, ShieldAlert, Copy, Check, AlertTriangle, Printer, FileDown, Download } from "lucide-react";
 
 const SHIFTS = ["Day Shift (6a–2p)", "Evening Shift (2p–10p)", "Night Shift (10p–6a)"];
 const SHIFT_SHORT: Record<string, string> = {
-  "Day Shift (6a–2p)": "Day Shift",
-  "Evening Shift (2p–10p)": "Evening Shift",
-  "Night Shift (10p–6a)": "Night Shift",
+  "Day Shift (6a–2p)": "1st",
+  "Evening Shift (2p–10p)": "2nd",
+  "Night Shift (10p–6a)": "3rd",
 };
+
+const RANK_DISPLAY: Record<string, string> = {
+  sergeant: "Sergeant", sgt: "Sergeant",
+  lieutenant: "Lieutenant", lt: "Lieutenant",
+  captain: "Captain", cpt: "Captain", caption: "Captain",
+  officer: "Officer", ofc: "Officer",
+  colonel: "Colonel", col: "Colonel",
+  corporal: "Corporal", cpl: "Corporal",
+  major: "Major",
+};
+
+const REASON_TEMPLATE =
+  "I {supervisorFull} was conducting a random cell search of B1-202 at approximately 1:00 pm. " +
+  "Inmate {lastName}, {firstName} DC# {dcNumber} was in possession of multiple torn state clothing items " +
+  "as well as a piece of cardboard with string tied around it used for fishing. " +
+  "Per FAC Chapter 33-602.220 and FAC chapter 33-602.222, If items of clothing, bedding or property are " +
+  "removed in order to prevent the inmate from inflicting injury to him or herself or others, to prevent " +
+  "destruction of property or equipment, or to prevent the inmate from impeding security staff from " +
+  "accomplishing functions essential to the unit and institutional security, staff shall re-assess the " +
+  "need for continued restriction every 72 hours thereafter. The warden, based on this assessment, will " +
+  "make the final determination on the continued denial or return of the items. The items will be returned " +
+  "to the inmate when no further behavior or threat of behavior of the type leading to the restriction has occurred.";
 
 function formatDate(val: string) {
   if (!val) return "";
@@ -22,7 +44,7 @@ function titleCase(s: string) {
 
 function formatSupervisorName(raw: string): string {
   if (!raw.trim()) return "";
-  let name = raw.trim().replace(/^(sergeant|sgt\.?|lieutenant|lt\.?|captain|cpt\.?|caption|officer|ofc\.?|sso\.?)\s*/i, "").trim();
+  let name = raw.trim().replace(/^(sergeant|sgt\.?|lieutenant|lt\.?|captain|cpt\.?|caption|officer|ofc\.?|sso\.?|colonel|col\.?|major|corporal|cpl\.?)\s*/i, "").trim();
   name = name.replace(/\.(?=\S)/g, ". ");
   const parts = name.split(/\s+/).filter(Boolean);
   const formatted = parts.map((part) => {
@@ -32,6 +54,65 @@ function formatSupervisorName(raw: string): string {
     return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
   }).filter(Boolean);
   return formatted.join(" ") || "";
+}
+
+function formatSupervisorNameFull(raw: string): string {
+  if (!raw.trim()) return "";
+  const m = raw.trim().match(/^(sergeant|sgt\.?|lieutenant|lt\.?|captain|cpt\.?|caption|officer|ofc\.?|colonel|col\.?|corporal|cpl\.?|major)\s*/i);
+  if (m) {
+    const key = m[1].toLowerCase().replace(/\.$/, "");
+    const rank = RANK_DISPLAY[key] || m[1];
+    return `${rank} ${formatSupervisorName(raw)}`;
+  }
+  return formatSupervisorName(raw);
+}
+
+function buildReasonText(fields: {
+  supervisorName: string; lastName: string; firstName: string; dcNumber: string;
+}): string {
+  const supervisorFull = formatSupervisorNameFull(fields.supervisorName) || "[STAFF RANK AND NAME]";
+  const last  = fields.lastName.trim().toUpperCase()  || "[INMATE LAST NAME]";
+  const first = fields.firstName.trim().toUpperCase() || "[INMATE FIRST NAME]";
+  const dc    = fields.dcNumber.trim().toUpperCase()  || "[DC NUMBER]";
+  return REASON_TEMPLATE
+    .replace("{supervisorFull}", supervisorFull)
+    .replace("{lastName}",      last)
+    .replace("{firstName}",     first)
+    .replace("{dcNumber}",      dc);
+}
+
+function buildTemplateData(fields: typeof defaultFields) {
+  const last  = fields.lastName.trim().toUpperCase();
+  const first = fields.firstName.trim().toUpperCase();
+  const dcNum = fields.dcNumber.trim().toUpperCase();
+  const supervisor      = formatSupervisorName(fields.supervisorName);
+  const chief           = formatSupervisorName(fields.chiefName);
+  const dateRestricted  = formatDate(fields.dateRestricted);
+  const restrictionUntil = formatDate(fields.restrictionUntil);
+  const shift           = SHIFT_SHORT[fields.shift] || fields.shift;
+  const mattressYes     = fields.mattress === "yes";
+  const beddingYes      = fields.bedding  === "yes";
+  return {
+    inmateFullName:       last && first ? `${last}, ${first}` : "",
+    dcNumber:             dcNum,
+    dateRestricted,
+    shift,
+    dormAssignment:       fields.dormAssignment.trim(),
+    reasonForRestriction: fields.reasonForRestriction.trim(),
+    restrictions:         fields.itemsRestricted.trim(),
+    supervisorName:       supervisor,
+    supervisorDate:       dateRestricted,
+    chiefName:            chief,
+    chiefDate:            dateRestricted,
+    approvalX:            fields.approvalStatus === "approved" ? "X" : "",
+    comments:             fields.comments.trim(),
+    restrictionUntil,
+    retDate:  fields.itemsReturnedDate  ? formatDate(fields.itemsReturnedDate) : "",
+    retShift: fields.itemsReturnedShift ? (SHIFT_SHORT[fields.itemsReturnedShift] || fields.itemsReturnedShift) : "",
+    retOIC:   fields.oic ? formatSupervisorName(fields.oic) : "",
+    mattressLine: mattressYes ? "Yes____X_____   No___________" : "Yes_________   No____X_______",
+    beddingLine:  beddingYes  ? "Yes____X_____   No____________" : "Yes________   No_____X______",
+  };
 }
 
 function generateTextOutput(fields: typeof defaultFields) {
@@ -389,11 +470,17 @@ function PrintableForm({ fields }: { fields: typeof defaultFields }) {
 
 export default function PropertyRestriction() {
   const [, navigate] = useLocation();
-  const [fields, setFields] = useState(defaultFields);
+  const [fields, setFields] = useState(() => ({
+    ...defaultFields,
+    reasonForRestriction: buildReasonText(defaultFields),
+  }));
   const [generated, setGenerated] = useState(false);
   const [textOutput, setTextOutput] = useState("");
   const [copied, setCopied] = useState(false);
   const [showText, setShowText] = useState(false);
+  const [reasonEdited, setReasonEdited] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
   const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -416,24 +503,35 @@ export default function PropertyRestriction() {
           font-family: 'Times New Roman', Times, serif !important;
           font-size: 12pt !important;
         }
-        @page {
-          size: letter portrait;
-          margin: 0;
-        }
+        @page { size: letter portrait; margin: 0; }
       }
     `;
     document.head.appendChild(style);
-    return () => {
-      document.getElementById("prop-restriction-print-css")?.remove();
-    };
+    return () => { document.getElementById("prop-restriction-print-css")?.remove(); };
   }, []);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
-    setFields((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    setGenerated(false);
-    setTextOutput("");
+    const { name, value } = e.target;
+    setFields((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === "reasonForRestriction") {
+        setReasonEdited(true);
+      } else {
+        if (!reasonEdited) {
+          next.reasonForRestriction = buildReasonText(next);
+        }
+        setGenerated(false);
+        setTextOutput("");
+      }
+      return next;
+    });
+  }
+
+  function resetReason() {
+    setReasonEdited(false);
+    setFields((prev) => ({ ...prev, reasonForRestriction: buildReasonText(prev) }));
   }
 
   function handleGenerate() {
@@ -454,6 +552,42 @@ export default function PropertyRestriction() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  async function handleDownloadWord() {
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      const [{ default: PizZip }, { default: Docxtemplater }] = await Promise.all([
+        import("pizzip"),
+        import("docxtemplater"),
+      ]);
+      const resp = await fetch(`${import.meta.env.BASE_URL}property-restriction-template.docx`);
+      if (!resp.ok) throw new Error(`Template not found (${resp.status})`);
+      const buf = await resp.arrayBuffer();
+      const zip = new PizZip(buf);
+      const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+      doc.render(buildTemplateData(fields));
+      const blob = doc.getZip().generate({
+        type: "blob",
+        mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const last  = fields.lastName.trim().toUpperCase()  || "INMATE";
+      const dcNum = fields.dcNumber.trim().toUpperCase() || "DC";
+      a.download = `Property_Restriction_${last}_${dcNum}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Word download error:", err);
+      setDownloadError(String(err));
+    } finally {
+      setDownloading(false);
+    }
   }
 
   const canGenerate =
@@ -552,10 +686,28 @@ export default function PropertyRestriction() {
           </div>
 
           <div>
-            <label className={labelClass}>Reason for Restriction <span className="text-destructive">*</span></label>
-            <textarea name="reasonForRestriction" value={fields.reasonForRestriction} onChange={handleChange} rows={3}
-              placeholder="e.g. Inmate refused to comply with housing rules and posed a threat to security of the institution."
-              className={inputClass} />
+            <div className="flex items-center justify-between mb-1">
+              <label className={labelClass}>Reason for Restriction <span className="text-destructive">*</span></label>
+              {reasonEdited && (
+                <button
+                  type="button"
+                  onClick={resetReason}
+                  className="text-[10px] text-primary/70 hover:text-primary underline"
+                >
+                  Reset to default template
+                </button>
+              )}
+            </div>
+            <textarea
+              name="reasonForRestriction"
+              value={fields.reasonForRestriction}
+              onChange={handleChange}
+              rows={6}
+              className={inputClass}
+            />
+            <p className="mt-1 text-[10px] text-muted-foreground/60 leading-relaxed">
+              Auto-fills from supervisor name, inmate name, and DC#. You can edit it manually.
+            </p>
           </div>
 
           <div>
@@ -593,13 +745,14 @@ export default function PropertyRestriction() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Shift Supervisor Name <span className="text-destructive">*</span></label>
-              <input name="supervisorName" value={fields.supervisorName} onChange={handleChange} placeholder="e.g. R. Holmes" className={inputClass} />
-              <p className="mt-1 text-[11px] text-amber-400/80">Enter name only, no title. Example: R. Holmes</p>
+              <input name="supervisorName" value={fields.supervisorName} onChange={handleChange}
+                placeholder="e.g. Sergeant S. Wildman" className={inputClass} />
+              <p className="mt-1 text-[11px] text-amber-400/80">Include rank — auto-fills the reason paragraph. Example: Sergeant S. Wildman</p>
             </div>
             <div>
               <label className={labelClass}>Chief / Colonel Approval Name <span className="text-destructive">*</span></label>
-              <input name="chiefName" value={fields.chiefName} onChange={handleChange} placeholder="e.g. T. Davis" className={inputClass} />
-              <p className="mt-1 text-[11px] text-amber-400/80">Enter name only, no title. Example: T. Davis</p>
+              <input name="chiefName" value={fields.chiefName} onChange={handleChange} placeholder="e.g. T. Hawkins" className={inputClass} />
+              <p className="mt-1 text-[11px] text-amber-400/80">Name only. Example: T. Hawkins</p>
             </div>
           </div>
 
@@ -654,23 +807,43 @@ export default function PropertyRestriction() {
 
         </div>
 
-        <button
-          onClick={handleGenerate}
-          disabled={!canGenerate}
-          className={[
-            "mt-6 w-full rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-150",
-            canGenerate
-              ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-              : "bg-muted text-muted-foreground cursor-not-allowed",
-          ].join(" ")}
-        >
-          Generate Property Restriction Form
-        </button>
-        {!canGenerate && (
-          <p className="mt-2 text-center text-xs text-muted-foreground/60">
-            Fill in all required fields (*) to generate.
-          </p>
-        )}
+        <div className="mt-6 flex flex-col gap-3">
+          <button
+            onClick={handleGenerate}
+            disabled={!canGenerate}
+            className={[
+              "w-full rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-150",
+              canGenerate
+                ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                : "bg-muted text-muted-foreground cursor-not-allowed",
+            ].join(" ")}
+          >
+            Generate Property Restriction Form
+          </button>
+
+          <button
+            onClick={handleDownloadWord}
+            disabled={!canGenerate || downloading}
+            className={[
+              "w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-150",
+              canGenerate && !downloading
+                ? "bg-emerald-700 text-white hover:bg-emerald-600 cursor-pointer"
+                : "bg-muted text-muted-foreground cursor-not-allowed",
+            ].join(" ")}
+          >
+            <Download className="h-4 w-4" />
+            {downloading ? "Preparing Download…" : "Download Completed Word Form"}
+          </button>
+
+          {downloadError && (
+            <p className="text-xs text-red-400 text-center">Error: {downloadError}</p>
+          )}
+          {!canGenerate && (
+            <p className="text-center text-xs text-muted-foreground/60">
+              Fill in all required fields (*) to generate or download.
+            </p>
+          )}
+        </div>
 
         {generated && (
           <div ref={formRef} className="mt-8">
@@ -729,21 +902,34 @@ export default function PropertyRestriction() {
               </div>
             )}
 
-            <div className="mt-4 flex gap-3">
+            <div className="mt-4 flex flex-col gap-2">
               <button
-                onClick={handlePrint}
-                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                onClick={handleDownloadWord}
+                disabled={downloading}
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Printer className="h-4 w-4" />
-                Print / Save as PDF
+                <Download className="h-4 w-4" />
+                {downloading ? "Preparing Download…" : "Download Completed Word Form"}
               </button>
-              <button
-                onClick={() => navigate("/")}
-                className="flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Dashboard
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePrint}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  <Printer className="h-4 w-4" />
+                  Print / Save as PDF
+                </button>
+                <button
+                  onClick={() => navigate("/")}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Dashboard
+                </button>
+              </div>
+              {downloadError && (
+                <p className="text-xs text-red-400 text-center">{downloadError}</p>
+              )}
             </div>
           </div>
         )}

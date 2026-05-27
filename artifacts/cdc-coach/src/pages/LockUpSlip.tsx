@@ -316,6 +316,20 @@ function formatDate(val: string) {
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
+function formatCaptainName(raw: string): string {
+  if (!raw.trim()) return "[Captain Name]";
+  let name = raw.trim().replace(/^(captain|caption)\s*/i, "").trim();
+  name = name.replace(/\.(?=\S)/g, ". ");
+  const parts = name.split(/\s+/).filter(Boolean);
+  const formatted = parts.map((part) => {
+    const clean = part.replace(/\./g, "");
+    if (!clean) return "";
+    if (clean.length === 1) return clean.toUpperCase() + ".";
+    return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+  }).filter(Boolean);
+  return formatted.join(" ") || "[Captain Name]";
+}
+
 function generateNarrative(fields: typeof defaultFields) {
   const isProtection = fields.reason === "Protection Evaluation";
   const pendingText = isProtection ? "Protection Evaluation" : fields.reason;
@@ -326,7 +340,7 @@ function generateNarrative(fields: typeof defaultFields) {
   const first = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1).toLowerCase();
   const nameDisplay = `${last}, ${first}`;
   const dcNum = (fields.dcNumber.trim() || "[DC#]").toUpperCase();
-  const captain = fields.captain.trim().replace(/^(captain|caption)\s*/i, "").trim() || "[Captain Name]";
+  const captain = formatCaptainName(fields.captain);
   const confinement = fields.confinementType || "Administrative Confinement (AC)";
   const pronoun = fields.pronoun === "she" ? "she" : "he";
   const bunk = fields.bunkAssignment.trim()

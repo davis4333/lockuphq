@@ -326,7 +326,7 @@ function generateNarrative(fields: typeof defaultFields) {
   const first = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1).toLowerCase();
   const nameDisplay = `${last}, ${first}`;
   const dcNum = (fields.dcNumber.trim() || "[DC#]").toUpperCase();
-  const captain = fields.captain.trim().replace(/^captain\s+/i, "").trim() || "[Captain Name]";
+  const captain = fields.captain.trim().replace(/^(captain|caption)\s*/i, "").trim() || "[Captain Name]";
   const confinement = fields.confinementType || "Administrative Confinement (AC)";
   const pronoun = fields.pronoun === "she" ? "she" : "he";
   const bunk = fields.bunkAssignment.trim()
@@ -519,7 +519,7 @@ export default function LockUpSlip() {
               placeholder="e.g. R. Holmes"
               className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <p className="mt-1 text-[11px] text-muted-foreground">Name only — output will read: Per Captain R. Holmes</p>
+            <p className="mt-1 text-[11px] text-amber-400/80">Enter name only, no title. Example: R. Holmes — output will read: Per Captain R. Holmes</p>
           </div>
 
           <div>

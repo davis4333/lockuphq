@@ -55,47 +55,51 @@ function generateOutput(fields: typeof defaultFields) {
   const dorm = fields.dormAssignment.trim() || "[Dorm/Assignment]";
   const reason = fields.reasonForRestriction.trim() || "[Reason for Restriction]";
   const items = fields.itemsRestricted.trim() || "[Items Restricted]";
-  const approval = fields.approvalStatus === "denied" ? "DENIED" : "APPROVED";
-  const mattress = fields.mattress === "yes" ? "Yes" : "No";
-  const bedding = fields.bedding === "yes" ? "Yes" : "No";
+  const approved = fields.approvalStatus !== "denied";
+  const mattressYes = fields.mattress === "yes";
+  const beddingYes = fields.bedding === "yes";
 
-  let output = `STATE OF FLORIDA — DEPARTMENT OF CORRECTIONS\nOkeechobee Correctional Institution\nPROPERTY RESTRICTION FORM\n`;
-  output += `\n`;
-  output += `INMATE: ${last}, ${first}          DC#: ${dcNum}\n`;
-  output += `DATE RESTRICTED: ${dateRestricted}          SHIFT: ${shift}\n`;
-  output += `DORM / ASSIGNMENT: ${dorm}\n`;
-  output += `\n`;
-  output += `REASON FOR RESTRICTION:\n${reason}\n`;
-  output += `\n`;
-  output += `ITEMS / RESTRICTIONS:\n${items}\n`;
-  output += `\n`;
-  output += `MATTRESS RESTRICTED: ${mattress}          BEDDING / LINENS RESTRICTED: ${bedding}\n`;
-  output += `\n`;
-  output += `SHIFT SUPERVISOR: ${supervisor}          STATUS: ${approval}\n`;
-  output += `CHIEF / COLONEL APPROVAL: ${chief}\n`;
-  output += `\n`;
-  output += `MINIMUM RESTRICTION UNTIL: ${restrictionUntil}\n`;
-  output += `\n`;
+  const retDate = fields.itemsReturnedDate.trim() ? formatDate(fields.itemsReturnedDate) : "_______________";
+  const retShift = fields.itemsReturnedShift.trim()
+    ? (SHIFT_SHORT[fields.itemsReturnedShift] || fields.itemsReturnedShift)
+    : "_______________";
+  const oic = fields.oic.trim() ? formatSupervisorName(fields.oic) : "_______________";
+  const comments = fields.comments.trim() || "";
 
-  if (fields.comments.trim()) {
-    output += `COMMENTS / NARRATIVE:\n${fields.comments.trim()}\n`;
-    output += `\n`;
-  }
-
-  const hasReturn =
-    fields.itemsReturnedDate.trim() || fields.itemsReturnedShift.trim() || fields.oic.trim();
-  if (hasReturn) {
-    const retDate = formatDate(fields.itemsReturnedDate);
-    const retShift = SHIFT_SHORT[fields.itemsReturnedShift] || fields.itemsReturnedShift || "[Shift]";
-    const oic = formatSupervisorName(fields.oic);
-    output += `ITEMS RETURNED: ${retDate}          SHIFT: ${retShift}          OIC: ${oic}\n`;
-    output += `\n`;
-  }
-
-  output += `─────────────────────────────────────────────────────────────\n`;
-  output += `NOTE: This form is attached to the incident report. Property restricted for security reasons. Property will be returned when the behavior or threat necessitating the restriction has ceased. A 72-hour review will be conducted. All property has been inventoried and is being stored in compliance with institutional policy.`;
-
-  return output;
+  return [
+    `State of Florida`,
+    `Department of Corrections`,
+    `Okeechobee Correctional Institution`,
+    `PROPERTY RESTRICTION FORM`,
+    ``,
+    `Inmate Name: ${last}, ${first}`,
+    `DC#: ${dcNum}`,
+    `Date Restricted: ${dateRestricted}    Shift: ${shift}    Dorm/Assignment: ${dorm}`,
+    ``,
+    `Reason for Restriction: ${reason}`,
+    ``,
+    `Restrictions: ${items}`,
+    ``,
+    `${supervisor}    ${dateRestricted}`,
+    `Shift Supervisor                                          Date`,
+    ``,
+    `${chief}    ${dateRestricted}    ${approved ? "[X] Approved  [ ] Denied" : "[ ] Approved  [X] Denied"}`,
+    `Correctional Officer Chief                    Date              Approved    Denied`,
+    ``,
+    `Comments:`,
+    comments || ``,
+    ``,
+    `Items will be restricted at a minimum until: ${restrictionUntil}`,
+    ``,
+    `Items Returned:  Date ${retDate}    Shift ${retShift}    OIC ${oic}`,
+    ``,
+    `This form is to be completed and attached to an incident report on all inmates that are placed on property restriction for security reasons. This form does not apply to items or property restricted by Mental Health or Medical Personnel for suicide watch or Alternative Housing. All property restricted and returned must also be documented on the inmate DC6-229. Items will be returned to the inmate when no further behavior or threat of behavior occurs that led to the restriction. If the inmate behavior or threat of behavior continues after 72 hours the Warden must approve for the continuation of the property restriction, this review will be conducted within 72 hours of the restriction. At no time will an inmate be left without the means to cover himself. All property being taken will be inventoried and properly stored in compliance of F.A.C. 33-602.201 Inmate Property.`,
+    ``,
+    `All state issued clothing and all his personal property. Inmate will be allowed to retain the following items`,
+    ``,
+    `Mattress:  Yes __${mattressYes ? "X" : "_"}__  No __${mattressYes ? "_" : "X"}__`,
+    `Bedding/Linens  Yes __${beddingYes ? "X" : "_"}__  No __${beddingYes ? "_" : "X"}__`,
+  ].join("\n");
 }
 
 const defaultFields = {

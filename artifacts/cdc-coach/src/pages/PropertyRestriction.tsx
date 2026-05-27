@@ -147,8 +147,9 @@ function Field({ value, width = 180, minWidth }: { value: string; width?: number
 }
 
 function PrintableForm({ fields }: { fields: typeof defaultFields }) {
-  const last = titleCase(fields.lastName) || "";
-  const first = titleCase(fields.firstName) || "";
+  // ALL CAPS for the printed form — matches actual document (BANKS, MASON)
+  const last = (fields.lastName.trim() || "").toUpperCase();
+  const first = (fields.firstName.trim() || "").toUpperCase();
   const dcNum = (fields.dcNumber.trim() || "").toUpperCase();
   const supervisor = formatSupervisorName(fields.supervisorName);
   const chief = formatSupervisorName(fields.chiefName);
@@ -162,37 +163,37 @@ function PrintableForm({ fields }: { fields: typeof defaultFields }) {
   const mattressYes = fields.mattress === "yes";
   const beddingYes = fields.bedding === "yes";
   const retDate = fields.itemsReturnedDate.trim() ? formatDate(fields.itemsReturnedDate) : "";
-  const retShift = fields.itemsReturnedShift.trim() ? (SHIFT_SHORT[fields.itemsReturnedShift] || fields.itemsReturnedShift) : "";
+  const retShift = fields.itemsReturnedShift.trim()
+    ? (SHIFT_SHORT[fields.itemsReturnedShift] || fields.itemsReturnedShift)
+    : "";
   const oic = fields.oic.trim() ? formatSupervisorName(fields.oic) : "";
   const comments = fields.comments.trim();
 
-  const s: React.CSSProperties = {
-    fontFamily: "Times New Roman, Times, serif",
+  const font: React.CSSProperties = {
+    fontFamily: "'Times New Roman', Times, serif",
     fontSize: 12,
     color: "#000",
-    lineHeight: 1.55,
   };
-
-  const hrStyle: React.CSSProperties = {
-    border: "none",
+  const bold: React.CSSProperties = { fontWeight: "bold" };
+  const cell: React.CSSProperties = {
+    border: "1px solid #000",
+    padding: "4px 6px",
+    verticalAlign: "top",
+  };
+  const labelCell: React.CSSProperties = {
+    ...cell,
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+    width: 1,
+    background: "#f5f5f5",
+  };
+  const valueCell: React.CSSProperties = { ...cell };
+  const sigLabel: React.CSSProperties = {
+    fontSize: 10,
     borderTop: "1px solid #000",
-    margin: "6px 0",
-  };
-
-  const sigLineStyle: React.CSSProperties = {
-    display: "inline-block",
-    borderBottom: "1px solid #000",
-    minWidth: 200,
-    marginRight: 30,
-  };
-
-  const labelSmall: React.CSSProperties = {
-    fontSize: 9,
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-    color: "#333",
+    paddingTop: 2,
+    marginTop: 4,
     display: "block",
-    marginTop: 1,
   };
 
   return (
@@ -204,181 +205,183 @@ function PrintableForm({ fields }: { fields: typeof defaultFields }) {
         width: "7.5in",
         minHeight: "10in",
         margin: "0 auto",
-        padding: "0.55in 0.65in",
+        padding: "0.5in 0.6in",
         boxSizing: "border-box",
-        ...s,
+        ...font,
       }}
     >
-      <div style={{ textAlign: "center", marginBottom: 10 }}>
-        <div style={{ fontSize: 13 }}>State of Florida</div>
-        <div style={{ fontSize: 13 }}>Department of Corrections</div>
-        <div style={{ fontSize: 13 }}>Okeechobee Correctional Institution</div>
-        <div style={{ fontSize: 16, fontWeight: "bold", marginTop: 4, textDecoration: "underline" }}>
+      {/* ── Header ── */}
+      <div style={{ textAlign: "center", marginBottom: 8, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 12 }}>State of Florida</div>
+        <div style={{ fontSize: 12 }}>Department of Corrections</div>
+        <div style={{ fontSize: 12 }}>Okeechobee Correctional Institution</div>
+        <div style={{ fontSize: 15, fontWeight: "bold", textDecoration: "underline", marginTop: 4 }}>
           PROPERTY RESTRICTION FORM
         </div>
       </div>
 
-      <hr style={hrStyle} />
-
-      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 10 }}>
+      {/* ── Top info table ── */}
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 6 }}>
         <tbody>
           <tr>
-            <td style={{ paddingBottom: 8, width: "55%" }}>
-              <span style={{ fontWeight: "bold" }}>Inmate Name: </span>
-              <Field value={last && first ? `${last}, ${first}` : ""} width={220} />
+            <td style={labelCell}>Inmate Name:</td>
+            <td style={{ ...valueCell, fontWeight: "bold" }}>
+              {last && first ? `${last}, ${first}` : ""}
             </td>
-            <td style={{ paddingBottom: 8 }}>
-              <span style={{ fontWeight: "bold" }}>DC#: </span>
-              <Field value={dcNum} width={120} />
+            <td style={labelCell}>DC#:</td>
+            <td style={{ ...valueCell, fontWeight: "bold" }}>{dcNum}</td>
+          </tr>
+          <tr>
+            <td style={labelCell}>Date Restricted:</td>
+            <td style={valueCell}>{dateRestricted}</td>
+            <td style={labelCell}>Shift:</td>
+            <td style={valueCell}>{shift}</td>
+          </tr>
+          <tr>
+            <td style={labelCell}>Dorm/Assignment:</td>
+            <td style={{ ...valueCell }} colSpan={3}>{dorm}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* ── Reason for Restriction ── */}
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 6 }}>
+        <tbody>
+          <tr>
+            <td style={{ ...cell, fontWeight: "bold", width: "30%" }}>
+              Reason for Restriction:
+            </td>
+            <td style={{ ...cell, minHeight: 72, whiteSpace: "pre-wrap" }}>{reason}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* ── Restrictions ── */}
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 6 }}>
+        <tbody>
+          <tr>
+            <td style={{ ...cell, fontWeight: "bold", width: "30%" }}>Restrictions:</td>
+            <td style={{ ...cell, minHeight: 48, whiteSpace: "pre-wrap" }}>{items}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* ── Retained items / Mattress / Bedding ── */}
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 6 }}>
+        <tbody>
+          <tr>
+            <td style={{ ...cell }} colSpan={4}>
+              All state issued clothing and all his personal property. Inmate will be allowed to retain the following items
             </td>
           </tr>
           <tr>
-            <td style={{ paddingBottom: 8 }}>
-              <span style={{ fontWeight: "bold" }}>Date Restricted: </span>
-              <Field value={dateRestricted} width={110} />
+            <td style={{ ...cell, width: "20%", fontWeight: "bold" }}>Mattress:</td>
+            <td style={{ ...cell, width: "30%" }}>
+              Yes{"_".repeat(9)}&nbsp;
+              {mattressYes ? <strong>X</strong> : ""}&nbsp;
+              {"_".repeat(3)}
+              &nbsp;&nbsp;&nbsp;
+              No{"_".repeat(4)}&nbsp;
+              {!mattressYes ? <strong>X</strong> : ""}&nbsp;
+              {"_".repeat(7)}
             </td>
-            <td style={{ paddingBottom: 8 }}>
-              <span style={{ fontWeight: "bold" }}>Shift: </span>
-              <Field value={shift} width={100} />
-            </td>
-          </tr>
-          <tr>
-            <td colSpan={2} style={{ paddingBottom: 8 }}>
-              <span style={{ fontWeight: "bold" }}>Dorm/Assignment: </span>
-              <Field value={dorm} width={300} />
+            <td style={{ ...cell, width: "20%", fontWeight: "bold" }}>Bedding/Linens</td>
+            <td style={{ ...cell }}>
+              Yes{"_".repeat(8)}&nbsp;
+              {beddingYes ? <strong>X</strong> : ""}&nbsp;
+              {"_".repeat(3)}
+              &nbsp;&nbsp;&nbsp;
+              No{"_".repeat(5)}&nbsp;
+              {!beddingYes ? <strong>X</strong> : ""}&nbsp;
+              {"_".repeat(6)}
             </td>
           </tr>
         </tbody>
       </table>
 
-      <hr style={hrStyle} />
+      {/* ── Signatures ── */}
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 6 }}>
+        <tbody>
+          <tr>
+            {/* Shift Supervisor */}
+            <td style={{ ...cell, width: "50%", verticalAlign: "bottom" }}>
+              <div style={{ minHeight: 28, fontWeight: "bold", fontSize: 12 }}>{supervisor}</div>
+              <div style={{ minHeight: 18, marginTop: 4 }}>{dateRestricted}</div>
+              <div style={{ display: "flex", gap: 0 }}>
+                <span style={{ ...sigLabel, flex: 2 }}>Shift Supervisor</span>
+                <span style={{ ...sigLabel, flex: 1, marginLeft: 16 }}>Date</span>
+              </div>
+            </td>
+            {/* Chief */}
+            <td style={{ ...cell, verticalAlign: "bottom" }}>
+              <div style={{ minHeight: 28, fontWeight: "bold", fontSize: 12 }}>{chief}</div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 16, marginTop: 4 }}>
+                <span style={{ minWidth: 80 }}>{dateRestricted}</span>
+                <span style={{ minWidth: 24, textAlign: "center", fontWeight: "bold", fontSize: 14 }}>
+                  {approved ? "X" : ""}
+                </span>
+                <span style={{ minWidth: 24, textAlign: "center", fontWeight: "bold", fontSize: 14 }}>
+                  {!approved ? "X" : ""}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 0 }}>
+                <span style={{ ...sigLabel, flex: 2 }}>Correctional Officer Chief</span>
+                <span style={{ ...sigLabel, flex: 1, marginLeft: 8 }}>Date</span>
+                <span style={{ ...sigLabel, flex: 1, textAlign: "center" }}>Approved</span>
+                <span style={{ ...sigLabel, flex: 1, textAlign: "center" }}>Denied</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      <div style={{ marginTop: 8, marginBottom: 6 }}>
-        <div style={{ fontWeight: "bold", marginBottom: 3 }}>Reason for Restriction:</div>
-        <div style={{
-          border: "1px solid #000",
-          minHeight: 50,
-          padding: "4px 6px",
-          fontSize: 12,
-        }}>
-          {reason}
-        </div>
-      </div>
+      {/* ── Comments ── */}
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 6 }}>
+        <tbody>
+          <tr>
+            <td style={{ ...cell, fontWeight: "bold", width: "18%", verticalAlign: "top" }}>
+              Comments:
+            </td>
+            <td style={{ ...cell, minHeight: 60, whiteSpace: "pre-wrap" }}>{comments}</td>
+          </tr>
+        </tbody>
+      </table>
 
-      <div style={{ marginTop: 8, marginBottom: 6 }}>
-        <div style={{ fontWeight: "bold", marginBottom: 3 }}>Restrictions:</div>
-        <div style={{
-          border: "1px solid #000",
-          minHeight: 50,
-          padding: "4px 6px",
-          fontSize: 12,
-        }}>
-          {items}
-        </div>
-      </div>
+      {/* ── Minimum until / Items returned ── */}
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 6 }}>
+        <tbody>
+          <tr>
+            <td style={{ ...cell }}>
+              <span style={bold}>Items will be restricted at a minimum until: </span>
+              <span style={{ borderBottom: "1px solid #000", display: "inline-block", minWidth: 120, paddingLeft: 4 }}>
+                {restrictionUntil}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td style={{ ...cell }}>
+              <span style={bold}>Items Returned:</span>
+              {"  "}
+              <span style={bold}>Date </span>
+              <span style={{ borderBottom: "1px solid #000", display: "inline-block", minWidth: 100, paddingLeft: 4, marginRight: 16 }}>
+                {retDate}
+              </span>
+              <span style={bold}>Shift </span>
+              <span style={{ borderBottom: "1px solid #000", display: "inline-block", minWidth: 90, paddingLeft: 4, marginRight: 16 }}>
+                {retShift}
+              </span>
+              <span style={bold}>OIC </span>
+              <span style={{ borderBottom: "1px solid #000", display: "inline-block", minWidth: 120, paddingLeft: 4 }}>
+                {oic}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      <hr style={{ ...hrStyle, marginTop: 12 }} />
-
-      <div style={{ marginTop: 10, display: "flex", gap: 40 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ borderBottom: "1px solid #000", minHeight: 24, fontWeight: 600 }}>
-            {supervisor}
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={labelSmall}>Shift Supervisor</span>
-            <span style={labelSmall}>Date</span>
-          </div>
-          <div style={{ marginTop: 2 }}>
-            <Field value={dateRestricted} width={130} />
-          </div>
-        </div>
-
-        <div style={{ flex: 1 }}>
-          <div style={{ borderBottom: "1px solid #000", minHeight: 24, fontWeight: 600 }}>
-            {chief}
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={labelSmall}>Correctional Officer Chief</span>
-            <span style={labelSmall}>Date</span>
-          </div>
-          <div style={{ marginTop: 2, display: "flex", alignItems: "center", gap: 20 }}>
-            <Field value={dateRestricted} width={110} />
-            <span>
-              <Checkbox checked={approved} />
-              <span style={{ marginRight: 16 }}>Approved</span>
-              <Checkbox checked={!approved} />
-              <span>Denied</span>
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <hr style={{ ...hrStyle, marginTop: 12 }} />
-
-      <div style={{ marginTop: 8, marginBottom: 6 }}>
-        <div style={{ fontWeight: "bold", marginBottom: 3 }}>Comments:</div>
-        <div style={{
-          border: "1px solid #000",
-          minHeight: 56,
-          padding: "4px 6px",
-          fontSize: 12,
-        }}>
-          {comments}
-        </div>
-      </div>
-
-      <hr style={{ ...hrStyle, marginTop: 10 }} />
-
-      <div style={{ marginTop: 8, marginBottom: 6 }}>
-        <span style={{ fontWeight: "bold" }}>Items will be restricted at a minimum until: </span>
-        <Field value={restrictionUntil} width={160} />
-      </div>
-
-      <div style={{ marginTop: 6, marginBottom: 6 }}>
-        <span style={{ fontWeight: "bold" }}>Items Returned: </span>
-        <span style={{ marginLeft: 6, marginRight: 20 }}>
-          <span style={{ fontWeight: "bold" }}>Date </span>
-          <Field value={retDate} width={110} />
-        </span>
-        <span style={{ marginRight: 20 }}>
-          <span style={{ fontWeight: "bold" }}>Shift </span>
-          <Field value={retShift} width={90} />
-        </span>
-        <span>
-          <span style={{ fontWeight: "bold" }}>OIC </span>
-          <Field value={oic} width={130} />
-        </span>
-      </div>
-
-      <hr style={{ ...hrStyle, marginTop: 10 }} />
-
-      <div style={{ marginTop: 8, fontSize: 10.5, lineHeight: 1.5, textAlign: "justify" }}>
+      {/* ── Fixed policy paragraph ── */}
+      <div style={{ fontSize: 10, lineHeight: 1.45, textAlign: "justify", marginBottom: 4 }}>
         This form is to be completed and attached to an incident report on all inmates that are placed on property restriction for security reasons. This form does not apply to items or property restricted by Mental Health or Medical Personnel for suicide watch or Alternative Housing. All property restricted and returned must also be documented on the inmate DC6-229. Items will be returned to the inmate when no further behavior or threat of behavior occurs that led to the restriction. If the inmate behavior or threat of behavior continues after 72 hours the Warden must approve for the continuation of the property restriction, this review will be conducted within 72 hours of the restriction. At no time will an inmate be left without the means to cover himself. All property being taken will be inventoried and properly stored in compliance of F.A.C. 33-602.201 Inmate Property.
-      </div>
-
-      <div style={{ marginTop: 8, fontSize: 10.5 }}>
-        All state issued clothing and all his personal property. Inmate will be allowed to retain the following items
-      </div>
-
-      <div style={{ marginTop: 10, display: "flex", gap: 48, fontSize: 12 }}>
-        <div>
-          <span style={{ fontWeight: "bold" }}>Mattress: </span>
-          <span style={{ marginLeft: 8, marginRight: 4 }}>
-            <Checkbox checked={mattressYes} /> Yes
-          </span>
-          <span style={{ marginLeft: 20, marginRight: 4 }}>
-            <Checkbox checked={!mattressYes} /> No
-          </span>
-        </div>
-        <div>
-          <span style={{ fontWeight: "bold" }}>Bedding/Linens </span>
-          <span style={{ marginLeft: 8, marginRight: 4 }}>
-            <Checkbox checked={beddingYes} /> Yes
-          </span>
-          <span style={{ marginLeft: 20, marginRight: 4 }}>
-            <Checkbox checked={!beddingYes} /> No
-          </span>
-        </div>
       </div>
     </div>
   );

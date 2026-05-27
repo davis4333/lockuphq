@@ -189,9 +189,16 @@ export default function PropertyRestriction() {
             Strip / Property Restriction
           </h1>
         </div>
-        <p className="text-sm text-muted-foreground mb-6">
-          Fill in the details below to generate a property restriction form.
+        <p className="text-sm text-muted-foreground mb-3">
+          Fill in the details below to generate the completed Property Restriction Form.
         </p>
+        <div className="mb-6 flex items-start gap-2 rounded-md border border-primary/30 bg-primary/8 px-3 py-2.5">
+          <span className="mt-0.5 text-primary text-xs">📋</span>
+          <p className="text-xs text-primary/90 leading-relaxed">
+            <span className="font-semibold">This output is designed to be copied/printed as the door/officer station form.</span>{" "}
+            All entered information is placed directly into the official Property Restriction Form layout — including fixed policy language, signature lines, approval status, and Yes/No markings — exactly as it appears on the physical document.
+          </p>
+        </div>
 
         <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
@@ -501,13 +508,18 @@ export default function PropertyRestriction() {
 
         {output && (
           <div ref={outputRef} className="mt-8">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                Generated Output
-              </h2>
+            <div className="flex items-center justify-between mb-1">
+              <div>
+                <h2 className="text-sm font-bold text-foreground">
+                  Completed Form — Ready to Copy / Print
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Copy this text and paste it into a document to print for the door and officer station.
+                </p>
+              </div>
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/40 transition-colors"
+                className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/40 transition-colors shrink-0 ml-4"
               >
                 {copied ? (
                   <>
@@ -523,10 +535,17 @@ export default function PropertyRestriction() {
               </button>
             </div>
 
-            <div className="rounded-xl border border-card-border bg-card p-5">
-              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-foreground font-mono">
-                {output}
-              </pre>
+            <div className="mt-3 rounded-xl border-2 border-primary/25 bg-card shadow-inner">
+              <div className="flex items-center gap-2 border-b border-border/50 px-5 py-2.5 bg-primary/5 rounded-t-xl">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-primary/70">
+                  Property Restriction Form — Form Preview
+                </span>
+              </div>
+              <div className="p-5">
+                <pre className="whitespace-pre-wrap text-sm leading-relaxed text-foreground font-mono">
+                  {output}
+                </pre>
+              </div>
             </div>
 
             <div className="mt-4 flex gap-3">

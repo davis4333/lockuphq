@@ -15,7 +15,8 @@ const cards = [
     title: "Strip / Property Restriction",
     description: "Document property restriction placements.",
     icon: ShieldAlert,
-    active: false,
+    active: true,
+    route: "/property-restriction",
   },
   {
     id: "meal-restriction",

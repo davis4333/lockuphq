@@ -4,12 +4,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import LockUpSlip from "@/pages/LockUpSlip";
+import PropertyRestriction from "@/pages/PropertyRestriction";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/lock-up-slip" component={LockUpSlip} />
+      <Route path="/property-restriction" component={PropertyRestriction} />
       <Route component={NotFound} />
     </Switch>
   );

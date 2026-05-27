@@ -85,13 +85,18 @@ function buildTemplateData(fields: typeof defaultFields) {
   const last  = fields.lastName.trim().toUpperCase();
   const first = fields.firstName.trim().toUpperCase();
   const dcNum = fields.dcNumber.trim().toUpperCase();
-  const supervisor      = formatSupervisorName(fields.supervisorName);
-  const chief           = formatSupervisorName(fields.chiefName);
+  // supervisorName in the Word form replaces "Captain A. Zavelghorba" — full rank+name
+  const supervisorFull  = formatSupervisorNameFull(fields.supervisorName);
+  const chiefFull       = fields.chiefName.trim();
   const dateRestricted  = formatDate(fields.dateRestricted);
   const restrictionUntil = formatDate(fields.restrictionUntil);
   const shift           = SHIFT_SHORT[fields.shift] || fields.shift;
   const mattressYes     = fields.mattress === "yes";
   const beddingYes      = fields.bedding  === "yes";
+  const retDate  = fields.itemsReturnedDate  ? formatDate(fields.itemsReturnedDate)  : "";
+  const retShift = fields.itemsReturnedShift
+    ? (SHIFT_SHORT[fields.itemsReturnedShift] || fields.itemsReturnedShift) : "";
+  const retOIC   = fields.oic.trim() ? formatSupervisorName(fields.oic) : "";
   return {
     inmateFullName:       last && first ? `${last}, ${first}` : "",
     dcNumber:             dcNum,
@@ -100,16 +105,19 @@ function buildTemplateData(fields: typeof defaultFields) {
     dormAssignment:       fields.dormAssignment.trim(),
     reasonForRestriction: fields.reasonForRestriction.trim(),
     restrictions:         fields.itemsRestricted.trim(),
-    supervisorName:       supervisor,
+    restrictionsDetail:   "All state issued clothing and all his personal property. " +
+                          "Inmate will be allowed to retain the following items",
+    supervisorName:       supervisorFull,
     supervisorDate:       dateRestricted,
-    chiefName:            chief,
+    chiefName:            chiefFull,
     chiefDate:            dateRestricted,
     approvalX:            fields.approvalStatus === "approved" ? "X" : "",
     comments:             fields.comments.trim(),
     restrictionUntil,
-    retDate:  fields.itemsReturnedDate  ? formatDate(fields.itemsReturnedDate) : "",
-    retShift: fields.itemsReturnedShift ? (SHIFT_SHORT[fields.itemsReturnedShift] || fields.itemsReturnedShift) : "",
-    retOIC:   fields.oic ? formatSupervisorName(fields.oic) : "",
+    // Items returned table: 3 cells
+    retSignature: "",        // left cell — blank signature line
+    retDate,
+    retShiftOIC: [retShift, retOIC].filter(Boolean).join("  "),
     mattressLine: mattressYes ? "Yes____X_____   No___________" : "Yes_________   No____X_______",
     beddingLine:  beddingYes  ? "Yes____X_____   No____________" : "Yes________   No_____X______",
   };

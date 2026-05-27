@@ -20,7 +20,7 @@ const RANK_DISPLAY: Record<string, string> = {
 };
 
 const REASON_TEMPLATE =
-  "I {supervisorFull} was conducting a random cell search of B1-202 at approximately 1:00 pm. " +
+  "I {supervisorFull} was conducting a random cell search of {location} at approximately {time}. " +
   "Inmate {lastName}, {firstName} DC# {dcNumber} was in possession of multiple torn state clothing items " +
   "as well as a piece of cardboard with string tied around it used for fishing. " +
   "Per FAC Chapter 33-602.220 and FAC chapter 33-602.222, If items of clothing, bedding or property are " +
@@ -69,57 +69,63 @@ function formatSupervisorNameFull(raw: string): string {
 
 function buildReasonText(fields: {
   supervisorName: string; lastName: string; firstName: string; dcNumber: string;
+  searchLocation: string; searchTime: string;
 }): string {
   const supervisorFull = formatSupervisorNameFull(fields.supervisorName) || "[STAFF RANK AND NAME]";
-  const last  = fields.lastName.trim().toUpperCase()  || "[INMATE LAST NAME]";
-  const first = fields.firstName.trim().toUpperCase() || "[INMATE FIRST NAME]";
-  const dc    = fields.dcNumber.trim().toUpperCase()  || "[DC NUMBER]";
+  const last     = fields.lastName.trim().toUpperCase()  || "[INMATE LAST NAME]";
+  const first    = fields.firstName.trim().toUpperCase() || "[INMATE FIRST NAME]";
+  const dc       = fields.dcNumber.trim().toUpperCase()  || "[DC NUMBER]";
+  const location = fields.searchLocation.trim() || "[LOCATION]";
+  const time     = fields.searchTime.trim()     || "[TIME]";
   return REASON_TEMPLATE
     .replace("{supervisorFull}", supervisorFull)
-    .replace("{lastName}",      last)
-    .replace("{firstName}",     first)
-    .replace("{dcNumber}",      dc);
+    .replace("{location}",       location)
+    .replace("{time}",           time)
+    .replace("{lastName}",       last)
+    .replace("{firstName}",      first)
+    .replace("{dcNumber}",       dc);
 }
 
 function buildTemplateData(fields: typeof defaultFields) {
-  const last  = fields.lastName.trim().toUpperCase();
-  const first = fields.firstName.trim().toUpperCase();
-  const dcNum = fields.dcNumber.trim().toUpperCase();
-  // supervisorName in the Word form replaces "Captain A. Zavelghorba" — full rank+name
-  const supervisorFull  = formatSupervisorNameFull(fields.supervisorName);
-  const chiefFull       = fields.chiefName.trim();
+  const last         = fields.lastName.trim().toUpperCase();
+  const first        = fields.firstName.trim().toUpperCase();
+  const dcNum        = fields.dcNumber.trim().toUpperCase();
+  const supervisorFull = formatSupervisorNameFull(fields.supervisorName);
   const dateRestricted  = formatDate(fields.dateRestricted);
   const restrictionUntil = formatDate(fields.restrictionUntil);
-  const shift           = SHIFT_SHORT[fields.shift] || fields.shift;
-  const mattressYes     = fields.mattress === "yes";
-  const beddingYes      = fields.bedding  === "yes";
+  const shift        = SHIFT_SHORT[fields.shift] || fields.shift;
+  const mattressYes  = fields.mattress === "yes";
+  const beddingYes   = fields.bedding  === "yes";
   const retDate  = fields.itemsReturnedDate  ? formatDate(fields.itemsReturnedDate)  : "";
   const retShift = fields.itemsReturnedShift
     ? (SHIFT_SHORT[fields.itemsReturnedShift] || fields.itemsReturnedShift) : "";
   const retOIC   = fields.oic.trim() ? formatSupervisorName(fields.oic) : "";
   return {
-    inmateFullName:       last && first ? `${last}, ${first}` : "",
-    dcNumber:             dcNum,
-    dateRestricted,
-    shift,
-    dormAssignment:       fields.dormAssignment.trim(),
-    reasonForRestriction: fields.reasonForRestriction.trim(),
-    restrictions:         fields.itemsRestricted.trim(),
-    restrictionsDetail:   "All state issued clothing and all his personal property. " +
-                          "Inmate will be allowed to retain the following items",
-    supervisorName:       supervisorFull,
-    supervisorDate:       dateRestricted,
-    chiefName:            chiefFull,
-    chiefDate:            dateRestricted,
-    approvalX:            fields.approvalStatus === "approved" ? "X" : "",
-    comments:             fields.comments.trim(),
-    restrictionUntil,
-    // Items returned table: 3 cells
-    retSignature: "",        // left cell — blank signature line
-    retDate,
-    retShiftOIC: [retShift, retOIC].filter(Boolean).join("  "),
-    mattressLine: mattressYes ? "Yes____X_____   No___________" : "Yes_________   No____X_______",
-    beddingLine:  beddingYes  ? "Yes____X_____   No____________" : "Yes________   No_____X______",
+    L:      last,
+    F:      first,
+    DC:     dcNum,
+    DATE:   dateRestricted,
+    SHIFT:  shift,
+    DORM:   fields.dormAssignment.trim(),
+    STAFF:  supervisorFull,
+    LOC:    fields.searchLocation.trim(),
+    TIME:   fields.searchTime.trim(),
+    REST:   fields.itemsRestricted.trim(),
+    SUP:    supervisorFull,
+    SDATE:  dateRestricted,
+    CHIEF:  fields.chiefName.trim(),
+    ADATE:  dateRestricted,
+    A:      fields.approvalStatus === "approved" ? "X" : "",
+    D:      fields.approvalStatus === "denied"   ? "X" : "",
+    UNTIL:  restrictionUntil,
+    MY:     mattressYes ? "X" : "",
+    MN:     mattressYes ? "" : "X",
+    BY:     beddingYes  ? "X" : "",
+    BN:     beddingYes  ? "" : "X",
+    RID:    retDate,
+    RSHIFT: retShift,
+    ROIC:   retOIC,
+    COM:    fields.comments.trim(),
   };
 }
 
@@ -186,6 +192,8 @@ const defaultFields = {
   dateRestricted: "",
   shift: "",
   dormAssignment: "",
+  searchLocation: "",
+  searchTime: "",
   reasonForRestriction: "",
   itemsRestricted: "",
   supervisorName: "",
@@ -566,30 +574,38 @@ export default function PropertyRestriction() {
     setDownloading(true);
     setDownloadError("");
     try {
-      const [{ default: PizZip }, { default: Docxtemplater }] = await Promise.all([
-        import("pizzip"),
-        import("docxtemplater"),
-      ]);
-      const resp = await fetch(`${import.meta.env.BASE_URL}property-restriction-template.docx`);
+      const { default: PizZip } = await import("pizzip");
+      const url = `${import.meta.env.BASE_URL}property-restriction-template.docx?v=${Date.now()}`;
+      const resp = await fetch(url);
       if (!resp.ok) throw new Error(`Template not found (${resp.status})`);
       const buf = await resp.arrayBuffer();
       const zip = new PizZip(buf);
-      const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
-      doc.render(buildTemplateData(fields));
-      const blob = doc.getZip().generate({
+      const data = buildTemplateData(fields);
+
+      function escXml(s: string) {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+
+      let xml = zip.files["word/document.xml"].asText();
+      for (const [key, val] of Object.entries(data)) {
+        xml = xml.split(`{{${key}}}`).join(escXml(val));
+      }
+      zip.file("word/document.xml", xml);
+
+      const blob = zip.generate({
         type: "blob",
         mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       });
-      const url = URL.createObjectURL(blob);
+      const dlUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
+      a.href = dlUrl;
       const last  = fields.lastName.trim().toUpperCase()  || "INMATE";
       const dcNum = fields.dcNumber.trim().toUpperCase() || "DC";
       a.download = `Property_Restriction_${last}_${dcNum}.docx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(dlUrl);
     } catch (err) {
       console.error("Word download error:", err);
       setDownloadError(String(err));
@@ -605,6 +621,8 @@ export default function PropertyRestriction() {
     fields.dateRestricted &&
     fields.shift &&
     fields.dormAssignment &&
+    fields.searchLocation &&
+    fields.searchTime &&
     fields.reasonForRestriction &&
     fields.itemsRestricted &&
     fields.supervisorName &&
@@ -691,6 +709,21 @@ export default function PropertyRestriction() {
           <div>
             <label className={labelClass}>Dorm / Assignment <span className="text-destructive">*</span></label>
             <input name="dormAssignment" value={fields.dormAssignment} onChange={handleChange} placeholder="e.g. D2, CM-I, G-Dorm" className={inputClass} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Search Location <span className="text-destructive">*</span></label>
+              <input name="searchLocation" value={fields.searchLocation} onChange={handleChange}
+                placeholder="e.g. B1-202" className={inputClass} />
+              <p className="mt-1 text-[10px] text-muted-foreground/60">Cell/dorm area searched — goes in reason text.</p>
+            </div>
+            <div>
+              <label className={labelClass}>Search Time <span className="text-destructive">*</span></label>
+              <input name="searchTime" value={fields.searchTime} onChange={handleChange}
+                placeholder="e.g. 1:00 pm" className={inputClass} />
+              <p className="mt-1 text-[10px] text-muted-foreground/60">Time of search — goes in reason text.</p>
+            </div>
           </div>
 
           <div>

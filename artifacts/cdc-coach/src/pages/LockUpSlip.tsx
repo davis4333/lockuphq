@@ -320,10 +320,10 @@ function generateNarrative(fields: typeof defaultFields) {
   const isProtection = fields.reason === "Protection Evaluation";
   const pendingText = isProtection ? "Protection Evaluation" : fields.reason;
 
-  const last = (fields.lastName.trim() || "[LAST NAME]").toUpperCase();
-  const first = fields.firstName.trim()
-    ? fields.firstName.trim().charAt(0).toUpperCase() + fields.firstName.trim().slice(1).toLowerCase()
-    : "[First Name]";
+  const rawLast = fields.lastName.trim() || "[Last Name]";
+  const last = rawLast.charAt(0).toUpperCase() + rawLast.slice(1).toLowerCase();
+  const rawFirst = fields.firstName.trim() || "[First Name]";
+  const first = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1).toLowerCase();
   const nameDisplay = `${last}, ${first}`;
   const dcNum = (fields.dcNumber.trim() || "[DC#]").toUpperCase();
   const captain = fields.captain.trim().replace(/^captain\s+/i, "").trim() || "[Captain Name]";

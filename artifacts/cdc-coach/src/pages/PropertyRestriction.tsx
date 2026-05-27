@@ -608,81 +608,89 @@ export default function PropertyRestriction() {
         }
       }
 
-      // 1. Inmate name — original: "CASSIDY, NICHOLAS" split across runs
+      // 1. Inmate name — paraId verified from original XML
       replacePara("4F24B371", `${last}, ${first}`, '<w:rPr><w:color w:val="000000"/></w:rPr>');
 
-      // 2. DC# — original: "X89985" split across runs
+      // 2. DC#
       replacePara("2B2969A3", dc, '<w:rPr><w:color w:val="000000"/></w:rPr>');
 
-      // 3. Date restricted — original: "04/4/2026" split across bold runs
+      // 3. Date restricted
       replacePara("01336E63", date, '<w:rPr><w:b/></w:rPr>');
 
-      // 4. Shift — original: "2nd" bold
+      // 4. Shift
       replacePara("04E990CA", shift, '<w:rPr><w:b/></w:rPr>');
 
-      // 5. Dorm — original: "B1-202L" split across bold runs
+      // 5. Dorm
       replacePara("1616987B", dorm, '<w:rPr><w:b/></w:rPr>');
 
-      // 6. Narrative paragraph — original: "I Sergeant S. Wildman…fishing." (appears in
-      //    both mc:Choice and mc:Fallback, so replacePara hits it twice — correct behaviour)
-      replacePara("14E93747", narrative,
-        '<w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi" w:cstheme="minorHAnsi"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>');
+      // 6. Narrative — two copies in XML (mc:Choice + mc:Fallback), both get replaced
+      replacePara("146AB564", narrative, '<w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>');
+      replacePara("24CCD000", narrative, '<w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>');
 
-      // 7. Restrictions — original: "Restrictions: All state property, State clothing."
+      // 7. Restrictions
       replacePara("752E4696", `Restrictions: ${restr}`, '');
 
-      // 8. Supervisor name — original: "Captain A. Zavelghorba" split across runs
+      // 8. Supervisor name
       replacePara("698FF727", supFull, '');
 
-      // 9. Supervisor date — original: "04/4/2026" split across runs
+      // 9. Supervisor date
       replacePara("2C2071F8", date, '');
 
-      // 10. Chief name — original: two runs "Colonel " + "T. Hawkins"
-      xml = xml.replace(
-        /<w:r><w:t xml:space="preserve">Colonel <\/w:t><\/w:r><w:r[^>]*><w:t>T\. Hawkins<\/w:t><\/w:r>/g,
-        `<w:r><w:t>${esc(chief)}</w:t></w:r>`
-      );
+      // 10. Chief name — paraId 3C84BBBF (verified: single paragraph "Colonel T. Hawkins")
+      replacePara("3C84BBBF", chief, '');
 
-      // 11. Chief date — original: split runs
+      // 11. Chief date
       replacePara("27E3D06F", date, '');
 
-      // 12. Approved checkbox — original: "  X" in this cell
+      // 12. Approved checkbox
       replacePara("05FBCBD1", approved ? "  X" : "   ", '');
 
-      // 13. Denied label cell — original: spaces + "Denied"; prefix X if denied
+      // 13. Denied cell
       replacePara("65B7AC39",
-        (approved ? "    " : "X   ") + "Denied",
+        (approved ? "      " : "  X   ") + "Denied",
         '<w:rPr><w:sz w:val="20"/></w:rPr>');
 
-      // 14. Mattress Yes/No — original runs: "Yes_________   " + underlined X for No
-      xml = xml.replace(/Yes_________   /g,
-        matYes ? "Yes____X____   " : "Yes_________   ");
+      // 14. Mattress — paraId 1086D09D, rebuild keeping exact structure
       xml = xml.replace(
-        /(<w:u w:val="single"\/>)(<\/w:rPr><w:t>)X(<\/w:t>)/g,
-        (_m, u, mid, end) => `${u}${mid}${matYes ? " " : "X"}${end}`
+        /<w:p w14:paraId="1086D09D"[\s\S]*?<\/w:p>/,
+        `<w:p w14:paraId="1086D09D" w14:textId="32E9DC22" w:rsidR="00AA7C71" w:rsidRDefault="00AA7C71" w:rsidP="004E2341"><w:pPr><w:rPr><w:sz w:val="20"/></w:rPr></w:pPr>` +
+        `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>Mattress:</w:t></w:r>` +
+        `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:tab/></w:r>` +
+        (matYes
+          ? `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">Yes</w:t></w:r><w:r><w:rPr><w:sz w:val="20"/><w:u w:val="single"/></w:rPr><w:t>X</w:t></w:r><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">________   No___________</w:t></w:r>`
+          : `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">Yes_________   No____</w:t></w:r><w:r w:rsidR="00E669FA"><w:rPr><w:sz w:val="20"/><w:u w:val="single"/></w:rPr><w:t>X</w:t></w:r><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>_______</w:t></w:r>`) +
+        `</w:p>`
       );
 
-      // 15. Bedding Yes/No — original runs: "Yes________   " + non-underlined X for No
-      xml = xml.replace(/Yes________   /g,
-        bedYes ? "Yes____X___   " : "Yes________   ");
+      // 15. Bedding — paraId 1EFDD1DB, rebuild keeping exact structure
       xml = xml.replace(
-        /(<w:t>No_____<\/w:t><\/w:r>)(<w:r[^>]*><w:rPr><w:sz w:val="20"\/>)(<\/w:rPr><w:t>)X(<\/w:t>)/g,
-        (_m, a, b, c, _x) => `${a}${b}${c}${bedYes ? " " : "X"}</w:t>`
+        /<w:p w14:paraId="1EFDD1DB"[\s\S]*?<\/w:p>/,
+        `<w:p w14:paraId="1EFDD1DB" w14:textId="50AEC5EA" w:rsidR="00AA7C71" w:rsidRDefault="00AA7C71" w:rsidP="004E2341"><w:pPr><w:rPr><w:sz w:val="20"/></w:rPr></w:pPr>` +
+        `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>Bedding/Linens</w:t></w:r>` +
+        (bedYes
+          ? `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:tab/><w:t xml:space="preserve">Yes</w:t></w:r><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">X_______   No___________</w:t></w:r>`
+          : `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:tab/><w:t xml:space="preserve">Yes________   </w:t></w:r><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>No_____</w:t></w:r><w:r w:rsidR="00E669FA"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>X</w:t></w:r><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>______</w:t></w:r>`) +
+        `</w:p>`
       );
 
-      // 16. Minimum until date — original: "__","0","4","/","7","/2026","_" across 7 rsid runs
+      // 16. Until date — paraId 0A9CCA65, collapse the split date runs
       xml = xml.replace(
-        /<w:r w:rsidR="001522F6"><w:t>__<\/w:t><\/w:r><w:r w:rsidR="00F90C48"><w:t>0<\/w:t><\/w:r><w:r w:rsidR="007A7D59"><w:t>4<\/w:t><\/w:r><w:r w:rsidR="00F90C48"><w:t>\/<\/w:t><\/w:r><w:r w:rsidR="00B458E3"><w:t>7<\/w:t><\/w:r><w:r w:rsidR="00F90C48"><w:t>\/2026<\/w:t><\/w:r><w:r w:rsidR="00AA7C71"><w:t>_<\/w:t><\/w:r>/g,
-        `<w:r><w:t>__${esc(until)}_</w:t></w:r>`
+        /<w:p w14:paraId="0A9CCA65"[\s\S]*?<\/w:p>/,
+        `<w:p w14:paraId="0A9CCA65" w14:textId="3001DC52" w:rsidR="00F25625" w:rsidRDefault="00393702" w:rsidP="00274897"><w:pPr><w:ind w:left="-810" w:right="-810"/></w:pPr>` +
+        `<w:r><w:t xml:space="preserve">Items will be restricted at a minimum until: __${esc(until)}_</w:t></w:r>` +
+        `</w:p>`
       );
 
       // 17. Comments text box (paraId 232A2AF3)
       replacePara("232A2AF3", comments, '<w:rPr><w:sz w:val="20"/></w:rPr>');
 
-      // 18. Items returned table — first row cells
-      replacePara("619B2204", retDate, '');
-      replacePara("1774E353", retShift, '');
-      replacePara("7A41A1E5", retOIC, '');
+      // 18. Items returned row — paraId 3C0D3445
+      xml = xml.replace(
+        /<w:p w14:paraId="3C0D3445"[\s\S]*?<\/w:p>/,
+        `<w:p w14:paraId="3C0D3445" w14:textId="77777777" w:rsidR="00F25625" w:rsidRDefault="00393702" w:rsidP="00274897"><w:pPr><w:ind w:left="-810" w:right="-810"/></w:pPr>` +
+        `<w:r><w:t xml:space="preserve">Items Returned:   ${esc(retDate)}   ${esc(retShift)}   ${esc(retOIC)}</w:t></w:r>` +
+        `</w:p>`
+      );
 
       zip.file("word/document.xml", xml);
       const blob = zip.generate({

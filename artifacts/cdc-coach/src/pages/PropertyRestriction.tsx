@@ -122,6 +122,7 @@ function buildTemplateData(fields: typeof defaultFields) {
   const shift              = SHIFT_SHORT[fields.shift] || fields.shift;
   const mattressYes        = fields.mattress === "yes";
   const beddingYes         = fields.bedding  === "yes";
+  const employeeFull = formatSupervisorNameFull(fields.supervisorName);
   return {
     L:      last,
     F:      first,
@@ -129,13 +130,13 @@ function buildTemplateData(fields: typeof defaultFields) {
     DATE:   dateRestricted,
     SHIFT:  shift,
     DORM:   fields.searchLocation.trim(),
-    STAFF:  shiftSupervisorFull,
+    EMPLOYEE_NAME:         employeeFull,
     LOC:    fields.searchLocation.trim(),
     TIME:   fields.searchTime.trim(),
     REST:   fields.itemsRestricted.trim(),
-    SUP:    shiftSupervisorFull,
+    SHIFT_SUPERVISOR_NAME: shiftSupervisorFull,
     SDATE:  dateRestricted,
-    CHIEF:  fields.chiefName.trim(),
+    CHIEF_COLONEL_NAME:    fields.chiefName.trim(),
     ADATE:  dateRestricted,
     A:      fields.approvalStatus === "approved" ? "X" : "",
     D:      fields.approvalStatus === "denied"   ? "X" : "",

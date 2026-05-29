@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, ShieldAlert, AlertTriangle, Download } from "lucide-react";
+import PizZip from "pizzip";
 
 const SHIFTS = [
   "First Shift: 12:00am - 8:30am",
@@ -191,7 +192,6 @@ export default function PropertyRestriction() {
     setDownloading(true);
     setDownloadError("");
     try {
-      const { default: PizZip } = await import("pizzip");
       const url = `${import.meta.env.BASE_URL}property-restriction-template.docx?v=${Date.now()}`;
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`Template not found (${resp.status})`);

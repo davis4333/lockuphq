@@ -1,0 +1,335 @@
+I uploaded the code ZIP and had ChatGPT review it. The issue is now clear:
+
+The Property Restriction feature is still rebuilding the form visually in React instead of using the original uploaded Word document as the source of truth.
+
+Fix this completely.
+
+PROJECT AREA:
+artifacts/cdc-coach/src/pages/PropertyRestriction.tsx
+
+ROOT PROBLEM:
+There is a function named PrintableForm that manually recreates the Property Restriction form using HTML, tables, borders, fonts, spacing, and inline styles.
+
+That is wrong.
+
+The user does not want a rebuilt form.
+The user does not want an HTML preview form.
+The user does not want a browser-generated PDF form.
+The user does not want a recreated Word form.
+
+The user wants the exact uploaded Word document template to be filled with field values and downloaded as a completed .docx.
+
+The final Word document must preserve:
+- original margins
+- original fonts
+- original line spacing
+- original table layout
+- original signature lines
+- original approved/denied location
+- original mattress/bedding lines
+- original paragraph placement
+- original form structure
+
+Only the placeholder text should change.
+
+────────────────────────
+FILES / CODE TO FIX
+────────────────────────
+
+In:
+artifacts/cdc-coach/src/pages/PropertyRestriction.tsx
+
+Remove or stop using:
+
+1. PrintableForm
+2. Field
+3. Checkbox
+4. handlePrint
+5. the print CSS useEffect that targets #prop-restriction-printable
+6. all “Print / Save as PDF” buttons
+7. the HTML form preview that renders:
+   <PrintableForm fields={fields} />
+
+The on-screen HTML form preview is misleading and must not be treated as the official output.
+
+The official output must only be:
+
+Download Completed Word Form
+
+────────────────────────
+CORRECT FLOW
+────────────────────────
+
+The Property Restriction page should work like this:
+
+1. User fills out the form fields in the app.
+2. User clicks Download Completed Word Form.
+3. App loads this file:
+
+public/property-restriction-template.docx
+
+4. App replaces placeholders inside that exact .docx file.
+5. App downloads the completed .docx.
+6. User opens the completed .docx in Word.
+7. The completed .docx should look exactly like the uploaded original template, with only text fields changed.
+
+Do not rebuild the form.
+Do not create a new table layout.
+Do not create a visual clone.
+Do not generate the Word file from HTML.
+Do not use browser print as the final output.
+Do not use the React preview as the final output.
+
+────────────────────────
+TEMPLATE FILE REQUIREMENT
+────────────────────────
+
+Use the latest uploaded exact placeholder Word template as:
+
+public/property-restriction-template.docx
+
+Overwrite the old file if needed.
+
+That file must be the actual original Property Restriction Word document with placeholders inserted into the original text positions.
+
+The app must not generate this document from scratch.
+
+The app must only replace placeholders.
+
+────────────────────────
+PLACEHOLDERS TO SUPPORT
+────────────────────────
+
+The Word template contains placeholders like:
+
+{{L}}
+{{F}}
+{{DC}}
+{{DATE}}
+{{SHIFT}}
+{{DORM}}
+{{STAFF}}
+{{LOC}}
+{{TIME}}
+{{REST}}
+{{SUP}}
+{{SDATE}}
+{{CHIEF}}
+{{ADATE}}
+{{A}}
+{{D}}
+{{UNTIL}}
+{{MY}}
+{{MN}}
+{{BY}}
+{{BN}}
+{{RID}}
+{{RSHIFT}}
+{{ROIC}}
+{{COM}}
+
+Make sure the app replaces all of them.
+
+Placeholder meanings:
+
+{{L}} = inmate last name
+{{F}} = inmate first name
+{{DC}} = DC number
+{{DATE}} = date restricted
+{{SHIFT}} = shift
+{{DORM}} = dorm/assignment
+{{STAFF}} = staff rank/name
+{{LOC}} = search location
+{{TIME}} = search time
+{{REST}} = restrictions/items restricted
+{{SUP}} = shift supervisor
+{{SDATE}} = supervisor date
+{{CHIEF}} = chief/colonel approval name
+{{ADATE}} = approval date
+{{A}} = X if approved
+{{D}} = X if denied
+{{UNTIL}} = minimum restriction-until date
+{{MY}} = X if mattress yes
+{{MN}} = X if mattress no
+{{BY}} = X if bedding/linens yes
+{{BN}} = X if bedding/linens no
+{{RID}} = items returned date
+{{RSHIFT}} = items returned shift
+{{ROIC}} = items returned OIC
+{{COM}} = comments
+
+If any placeholders are left unreplaced in the downloaded Word file, that is a bug.
+
+────────────────────────
+WORD DOWNLOAD LOGIC
+────────────────────────
+
+Keep the basic idea from handleDownloadWord, but make it the only official output.
+
+It should:
+- fetch public/property-restriction-template.docx
+- open it as a binary .docx
+- replace placeholders
+- preserve the original .docx structure
+- download the completed .docx
+
+Use PizZip or docxtemplater.
+
+Preferred approach:
+
+Use docxtemplater if available, because it is better for Word templates.
+
+Suggested behavior:
+
+- load template as arrayBuffer
+- pass it into PizZip
+- render placeholder data
+- generate a docx blob
+- download it
+
+Do not use any code that creates a new Word layout.
+
+Do not use the docx package to build a new Document for this form.
+
+The final file must come from the uploaded template file.
+
+────────────────────────
+PROPERTY RESTRICTION DEFAULT DESCRIPTION
+────────────────────────
+
+Update the default reason/description text to this exact wording:
+
+I, [STAFF RANK AND NAME], was conducting a cell search/security inspection of [LOCATION] at approximately [TIME]. During the search/inspection, Inmate [LAST NAME], [FIRST NAME], DC# [DC NUMBER], was found to be in possession of multiple torn state clothing items, cardboard, string, and/or other items that could be used for fishing, property misuse, or other security concerns. Due to the nature of the items located and the related security concern, property restriction was initiated to prevent injury to the inmate or others, prevent destruction or misuse of property or equipment, and/or prevent the inmate from impeding security staff from performing duties essential to unit and institutional security.
+
+Per FAC Chapter 33-602.220 and FAC Chapter 33-602.222, if items of clothing, bedding, or property are removed for security-related reasons, staff shall reassess the need for continued restriction every 72 hours thereafter. The Warden, based on that assessment, will make the final determination regarding the continued denial or return of the restricted items. The items will be returned when no further behavior, or threat of behavior, of the type that led to the restriction has occurred.
+
+In the app, replace:
+[STAFF RANK AND NAME]
+[LOCATION]
+[TIME]
+[LAST NAME]
+[FIRST NAME]
+[DC NUMBER]
+
+Do not rewrite that paragraph with AI.
+
+────────────────────────
+DATA FORMATTING RULES
+────────────────────────
+
+Inmate name:
+- {{L}} should be uppercase last name
+- {{F}} should be uppercase first name
+- Example: DOE, JOHN
+
+DC number:
+- uppercase
+- Example: X00000
+
+Date:
+- keep simple numeric format if the form uses that
+- Example: 05/29/2026
+
+Shift:
+- use 1st, 2nd, or 3rd if that matches the original form
+
+Approved / Denied:
+- if approved, {{A}} = X and {{D}} = blank
+- if denied, {{D}} = X and {{A}} = blank
+
+Mattress:
+- if yes, {{MY}} = X and {{MN}} = blank
+- if no, {{MN}} = X and {{MY}} = blank
+
+Bedding/Linens:
+- if yes, {{BY}} = X and {{BN}} = blank
+- if no, {{BN}} = X and {{BY}} = blank
+
+────────────────────────
+UI CHANGES
+────────────────────────
+
+On the Property Restriction page:
+
+Keep:
+- input fields
+- sandbox warning
+- back to dashboard
+- Download Completed Word Form button
+
+Remove or downgrade:
+- generated HTML form preview
+- Print / Save as PDF button
+- any text claiming the preview is the exact form
+
+If you keep any preview, label it clearly:
+
+Preview only — not the official Word form.
+
+Better: remove the preview completely for now.
+
+The page should say:
+
+The completed Word document is generated from the uploaded template. Open the downloaded .docx to print or save the official form.
+
+────────────────────────
+ACCEPTANCE TEST
+────────────────────────
+
+After fixing, test this exact fake data:
+
+Last Name: Doe
+First Name: John
+DC Number: X00000
+Date Restricted: 05/29/2026
+Shift: 2nd
+Dorm/Assignment: B1-202L
+Search Location: B1-202
+Search Time: 1:00 pm
+Restrictions: All state property, State clothing.
+Shift Supervisor: Sergeant S. Wildman
+Chief/Colonel: Colonel T. Hawkins
+Approved: yes
+Minimum Restriction Until: 06/01/2026
+Mattress: No
+Bedding/Linens: No
+
+Then click:
+
+Download Completed Word Form
+
+Open the downloaded .docx.
+
+PASS CONDITIONS:
+- The downloaded file must look like the original uploaded Word template.
+- The layout must not look like the React preview.
+- The table structure must not change.
+- The margins must not change.
+- The font/spacing must stay the same.
+- The form must not be rebuilt.
+- Only placeholders/text values should be replaced.
+- No sandbox warning should appear inside the Word document.
+- No HTML preview styling should appear in the Word document.
+- No placeholder text like {{L}} or {{DC}} should remain.
+
+FAIL CONDITIONS:
+- If the form visually looks different from the uploaded template, it failed.
+- If the app creates a new form layout, it failed.
+- If it uses PrintableForm as the official output, it failed.
+- If it prints the browser preview instead of downloading the Word template, it failed.
+
+────────────────────────
+IMPORTANT
+────────────────────────
+
+The user’s exact complaint:
+
+“The form I uploaded is the exact form that needs to be filled out, both the forms look completely different.”
+
+So the fix is not to make the rebuilt form closer.
+
+The fix is to stop rebuilding the form completely.
+
+Use the uploaded Word template.
+Replace placeholders only.
+Download completed .docx.

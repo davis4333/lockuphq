@@ -103,6 +103,7 @@ const defaultFields = {
   reasonForRestriction: "",
   itemsRestricted:      "All state property and state-issued clothing.",
   supervisorName:       "",
+  shiftSupervisorName:  "",
   chiefName:            "",
   approvalStatus:       "approved",
   restrictionUntil:     "",
@@ -112,15 +113,15 @@ const defaultFields = {
 };
 
 function buildTemplateData(fields: typeof defaultFields) {
-  const last           = fields.lastName.trim().toUpperCase();
-  const first          = fields.firstName.trim().toUpperCase();
-  const dcNum          = fields.dcNumber.trim().toUpperCase();
-  const supervisorFull = formatSupervisorNameFull(fields.supervisorName);
-  const dateRestricted = formatDate(fields.dateRestricted);
-  const restrictionUntil = formatDate(fields.restrictionUntil);
-  const shift          = SHIFT_SHORT[fields.shift] || fields.shift;
-  const mattressYes    = fields.mattress === "yes";
-  const beddingYes     = fields.bedding  === "yes";
+  const last               = fields.lastName.trim().toUpperCase();
+  const first              = fields.firstName.trim().toUpperCase();
+  const dcNum              = fields.dcNumber.trim().toUpperCase();
+  const shiftSupervisorFull = formatSupervisorNameFull(fields.shiftSupervisorName);
+  const dateRestricted     = formatDate(fields.dateRestricted);
+  const restrictionUntil   = formatDate(fields.restrictionUntil);
+  const shift              = SHIFT_SHORT[fields.shift] || fields.shift;
+  const mattressYes        = fields.mattress === "yes";
+  const beddingYes         = fields.bedding  === "yes";
   return {
     L:      last,
     F:      first,
@@ -128,11 +129,11 @@ function buildTemplateData(fields: typeof defaultFields) {
     DATE:   dateRestricted,
     SHIFT:  shift,
     DORM:   fields.searchLocation.trim(),
-    STAFF:  supervisorFull,
+    STAFF:  shiftSupervisorFull,
     LOC:    fields.searchLocation.trim(),
     TIME:   fields.searchTime.trim(),
     REST:   fields.itemsRestricted.trim(),
-    SUP:    supervisorFull,
+    SUP:    shiftSupervisorFull,
     SDATE:  dateRestricted,
     CHIEF:  fields.chiefName.trim(),
     ADATE:  dateRestricted,
@@ -240,6 +241,7 @@ export default function PropertyRestriction() {
     fields.searchTime &&
     fields.itemsRestricted &&
     fields.supervisorName &&
+    fields.shiftSupervisorName &&
     fields.chiefName &&
     fields.restrictionUntil;
 
@@ -384,17 +386,24 @@ export default function PropertyRestriction() {
             </div>
           </div>
 
+          <div>
+            <label className={labelClass}>Employee Name <span className="text-destructive">*</span></label>
+            <input name="supervisorName" value={fields.supervisorName} onChange={handleChange}
+              placeholder="e.g. Sergeant S. Wildman" className={inputClass} />
+            <p className="mt-1 text-[10px] text-muted-foreground/60">Fills the Reason for Restriction paragraph only. Include rank. Example: Sergeant S. Wildman</p>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>Employee Name <span className="text-destructive">*</span></label>
-              <input name="supervisorName" value={fields.supervisorName} onChange={handleChange}
-                placeholder="e.g. Sergeant S. Wildman" className={inputClass} />
-              <p className="mt-1 text-[11px] text-amber-400/80">Include rank. Example: Sergeant S. Wildman</p>
+              <label className={labelClass}>Shift Supervisor Name <span className="text-destructive">*</span></label>
+              <input name="shiftSupervisorName" value={fields.shiftSupervisorName} onChange={handleChange}
+                placeholder="e.g. Captain A. Zavelghorba" className={inputClass} />
+              <p className="mt-1 text-[10px] text-muted-foreground/60">Fills the Shift Supervisor signature line. Include rank.</p>
             </div>
             <div>
               <label className={labelClass}>Chief / Colonel Approval Name <span className="text-destructive">*</span></label>
               <input name="chiefName" value={fields.chiefName} onChange={handleChange} placeholder="e.g. T. Hawkins" className={inputClass} />
-              <p className="mt-1 text-[11px] text-amber-400/80">Name only. Example: T. Hawkins</p>
+              <p className="mt-1 text-[10px] text-muted-foreground/60">Fills the Correctional Officer Chief line. Name only.</p>
             </div>
           </div>
 

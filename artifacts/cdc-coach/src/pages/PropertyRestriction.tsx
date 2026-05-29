@@ -86,28 +86,47 @@ function buildReasonText(fields: {
     .replace("{dcNumber}",       dc);
 }
 
-const NARRATIVE_TEMPLATE =
-  "I {supervisorFull} was conducting a random cell search of {location} at approximately {time}. " +
-  "Inmate {lastName}, {firstName} DC# {dcNumber} was in possession of multiple torn state clothing items " +
-  "as well as a piece of cardboard with string tied around it used for fishing.";
-
-function buildNarrativeText(fields: {
-  supervisorName: string; lastName: string; firstName: string; dcNumber: string;
-  searchLocation: string; searchTime: string;
-}): string {
-  const supervisorFull = formatSupervisorNameFull(fields.supervisorName) || "[STAFF RANK AND NAME]";
-  const last     = fields.lastName.trim().toUpperCase()  || "[INMATE LAST NAME]";
-  const first    = fields.firstName.trim().toUpperCase() || "[INMATE FIRST NAME]";
-  const dc       = fields.dcNumber.trim().toUpperCase()  || "[DC NUMBER]";
-  const location = fields.searchLocation.trim() || "[LOCATION]";
-  const time     = fields.searchTime.trim()     || "[TIME]";
-  return NARRATIVE_TEMPLATE
-    .replace("{supervisorFull}", supervisorFull)
-    .replace("{location}",       location)
-    .replace("{time}",           time)
-    .replace("{lastName}",       last)
-    .replace("{firstName}",      first)
-    .replace("{dcNumber}",       dc);
+function buildTemplateData(fields: typeof defaultFields) {
+  const last           = fields.lastName.trim().toUpperCase();
+  const first          = fields.firstName.trim().toUpperCase();
+  const dcNum          = fields.dcNumber.trim().toUpperCase();
+  const supervisorFull = formatSupervisorNameFull(fields.supervisorName);
+  const dateRestricted = formatDate(fields.dateRestricted);
+  const restrictionUntil = formatDate(fields.restrictionUntil);
+  const shift          = SHIFT_SHORT[fields.shift] || fields.shift;
+  const mattressYes    = fields.mattress === "yes";
+  const beddingYes     = fields.bedding  === "yes";
+  const retDate  = fields.itemsReturnedDate  ? formatDate(fields.itemsReturnedDate)  : "";
+  const retShift = fields.itemsReturnedShift
+    ? (SHIFT_SHORT[fields.itemsReturnedShift] || fields.itemsReturnedShift) : "";
+  const retOIC   = fields.oic.trim() ? formatSupervisorName(fields.oic) : "";
+  return {
+    L:      last,
+    F:      first,
+    DC:     dcNum,
+    DATE:   dateRestricted,
+    SHIFT:  shift,
+    DORM:   fields.dormAssignment.trim(),
+    STAFF:  supervisorFull,
+    LOC:    fields.searchLocation.trim(),
+    TIME:   fields.searchTime.trim(),
+    REST:   fields.itemsRestricted.trim(),
+    SUP:    supervisorFull,
+    SDATE:  dateRestricted,
+    CHIEF:  fields.chiefName.trim(),
+    ADATE:  dateRestricted,
+    A:      fields.approvalStatus === "approved" ? "X" : "",
+    D:      fields.approvalStatus === "denied"   ? "X" : "",
+    UNTIL:  restrictionUntil,
+    MY:     mattressYes ? "X" : "",
+    MN:     mattressYes ? "" : "X",
+    BY:     beddingYes  ? "X" : "",
+    BN:     beddingYes  ? "" : "X",
+    RID:    retDate,
+    RSHIFT: retShift,
+    ROIC:   retOIC,
+    COM:    fields.comments.trim(),
+  };
 }
 
 function generateTextOutput(fields: typeof defaultFields) {
@@ -563,134 +582,15 @@ export default function PropertyRestriction() {
       const zip = new PizZip(buf);
       let xml = zip.files["word/document.xml"].asText();
 
-      // Pre-compute all values
-      const last       = fields.lastName.trim().toUpperCase();
-      const first      = fields.firstName.trim().toUpperCase();
-      const dc         = fields.dcNumber.trim().toUpperCase();
-      const date       = formatDate(fields.dateRestricted);
-      const until      = formatDate(fields.restrictionUntil);
-      const shift      = SHIFT_SHORT[fields.shift] || fields.shift;
-      const dorm       = fields.dormAssignment.trim();
-      const supFull    = formatSupervisorNameFull(fields.supervisorName);
-      const chief      = fields.chiefName.trim();
-      const narrative  = buildNarrativeText(fields);
-      const restr      = fields.itemsRestricted.trim();
-      const approved   = fields.approvalStatus !== "denied";
-      const matYes     = fields.mattress === "yes";
-      const bedYes     = fields.bedding  === "yes";
-      const retDate    = fields.itemsReturnedDate  ? formatDate(fields.itemsReturnedDate)  : "";
-      const retShift   = fields.itemsReturnedShift
-        ? (SHIFT_SHORT[fields.itemsReturnedShift] || fields.itemsReturnedShift) : "";
-      const retOIC     = fields.oic.trim() ? formatSupervisorName(fields.oic) : "";
-      const comments   = fields.comments.trim();
+      const data = buildTemplateData(fields);
 
-      function esc(s: string) {
+      function escXml(s: string) {
         return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       }
 
-      // Replace all runs in every paragraph that has the given paraId
-      function replacePara(paraId: string, text: string, rPrXml = "") {
-        let pos = 0;
-        while (true) {
-          const attrIdx = xml.indexOf(`w14:paraId="${paraId}"`, pos);
-          if (attrIdx === -1) break;
-          const pStart  = xml.lastIndexOf("<w:p ", attrIdx);
-          const pEnd    = xml.indexOf("</w:p>", pStart) + 6;
-          const para    = xml.slice(pStart, pEnd);
-          const openTag = para.slice(0, para.indexOf(">") + 1);
-          const pPr     = para.match(/<w:pPr[\s\S]*?<\/w:pPr>/)?.[0] ?? "";
-          const run     = text
-            ? `<w:r>${rPrXml}<w:t xml:space="preserve">${esc(text)}</w:t></w:r>`
-            : "";
-          const newPara = openTag + pPr + run + "</w:p>";
-          xml = xml.slice(0, pStart) + newPara + xml.slice(pEnd);
-          pos = pStart + newPara.length;
-        }
+      for (const [key, val] of Object.entries(data)) {
+        xml = xml.split(`{{${key}}}`).join(escXml(val));
       }
-
-      // 1. Inmate name — paraId verified from original XML
-      replacePara("4F24B371", `${last}, ${first}`, '<w:rPr><w:color w:val="000000"/></w:rPr>');
-
-      // 2. DC#
-      replacePara("2B2969A3", dc, '<w:rPr><w:color w:val="000000"/></w:rPr>');
-
-      // 3. Date restricted
-      replacePara("01336E63", date, '<w:rPr><w:b/></w:rPr>');
-
-      // 4. Shift
-      replacePara("04E990CA", shift, '<w:rPr><w:b/></w:rPr>');
-
-      // 5. Dorm
-      replacePara("1616987B", dorm, '<w:rPr><w:b/></w:rPr>');
-
-      // 6. Narrative — two copies in XML (mc:Choice + mc:Fallback), both get replaced
-      replacePara("146AB564", narrative, '<w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>');
-      replacePara("24CCD000", narrative, '<w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>');
-
-      // 7. Restrictions
-      replacePara("752E4696", `Restrictions: ${restr}`, '');
-
-      // 8. Supervisor name
-      replacePara("698FF727", supFull, '');
-
-      // 9. Supervisor date
-      replacePara("2C2071F8", date, '');
-
-      // 10. Chief name — paraId 3C84BBBF (verified: single paragraph "Colonel T. Hawkins")
-      replacePara("3C84BBBF", chief, '');
-
-      // 11. Chief date
-      replacePara("27E3D06F", date, '');
-
-      // 12. Approved checkbox
-      replacePara("05FBCBD1", approved ? "  X" : "   ", '');
-
-      // 13. Denied cell
-      replacePara("65B7AC39",
-        (approved ? "      " : "  X   ") + "Denied",
-        '<w:rPr><w:sz w:val="20"/></w:rPr>');
-
-      // 14. Mattress — paraId 1086D09D, rebuild keeping exact structure
-      xml = xml.replace(
-        /<w:p w14:paraId="1086D09D"[\s\S]*?<\/w:p>/,
-        `<w:p w14:paraId="1086D09D" w14:textId="32E9DC22" w:rsidR="00AA7C71" w:rsidRDefault="00AA7C71" w:rsidP="004E2341"><w:pPr><w:rPr><w:sz w:val="20"/></w:rPr></w:pPr>` +
-        `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>Mattress:</w:t></w:r>` +
-        `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:tab/></w:r>` +
-        (matYes
-          ? `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">Yes</w:t></w:r><w:r><w:rPr><w:sz w:val="20"/><w:u w:val="single"/></w:rPr><w:t>X</w:t></w:r><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">________   No___________</w:t></w:r>`
-          : `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">Yes_________   No____</w:t></w:r><w:r w:rsidR="00E669FA"><w:rPr><w:sz w:val="20"/><w:u w:val="single"/></w:rPr><w:t>X</w:t></w:r><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>_______</w:t></w:r>`) +
-        `</w:p>`
-      );
-
-      // 15. Bedding — paraId 1EFDD1DB, rebuild keeping exact structure
-      xml = xml.replace(
-        /<w:p w14:paraId="1EFDD1DB"[\s\S]*?<\/w:p>/,
-        `<w:p w14:paraId="1EFDD1DB" w14:textId="50AEC5EA" w:rsidR="00AA7C71" w:rsidRDefault="00AA7C71" w:rsidP="004E2341"><w:pPr><w:rPr><w:sz w:val="20"/></w:rPr></w:pPr>` +
-        `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>Bedding/Linens</w:t></w:r>` +
-        (bedYes
-          ? `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:tab/><w:t xml:space="preserve">Yes</w:t></w:r><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">X_______   No___________</w:t></w:r>`
-          : `<w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:tab/><w:t xml:space="preserve">Yes________   </w:t></w:r><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>No_____</w:t></w:r><w:r w:rsidR="00E669FA"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>X</w:t></w:r><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>______</w:t></w:r>`) +
-        `</w:p>`
-      );
-
-      // 16. Until date — paraId 0A9CCA65, collapse the split date runs
-      xml = xml.replace(
-        /<w:p w14:paraId="0A9CCA65"[\s\S]*?<\/w:p>/,
-        `<w:p w14:paraId="0A9CCA65" w14:textId="3001DC52" w:rsidR="00F25625" w:rsidRDefault="00393702" w:rsidP="00274897"><w:pPr><w:ind w:left="-810" w:right="-810"/></w:pPr>` +
-        `<w:r><w:t xml:space="preserve">Items will be restricted at a minimum until: __${esc(until)}_</w:t></w:r>` +
-        `</w:p>`
-      );
-
-      // 17. Comments text box (paraId 232A2AF3)
-      replacePara("232A2AF3", comments, '<w:rPr><w:sz w:val="20"/></w:rPr>');
-
-      // 18. Items returned row — paraId 3C0D3445
-      xml = xml.replace(
-        /<w:p w14:paraId="3C0D3445"[\s\S]*?<\/w:p>/,
-        `<w:p w14:paraId="3C0D3445" w14:textId="77777777" w:rsidR="00F25625" w:rsidRDefault="00393702" w:rsidP="00274897"><w:pPr><w:ind w:left="-810" w:right="-810"/></w:pPr>` +
-        `<w:r><w:t xml:space="preserve">Items Returned:   ${esc(retDate)}   ${esc(retShift)}   ${esc(retOIC)}</w:t></w:r>` +
-        `</w:p>`
-      );
 
       zip.file("word/document.xml", xml);
       const blob = zip.generate({
@@ -700,7 +600,9 @@ export default function PropertyRestriction() {
       const dlUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = dlUrl;
-      a.download = `Property_Restriction_${last || "INMATE"}_${dc || "DC"}.docx`;
+      const last  = fields.lastName.trim().toUpperCase()  || "INMATE";
+      const dcNum = fields.dcNumber.trim().toUpperCase() || "DC";
+      a.download = `Property_Restriction_${last}_${dcNum}.docx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

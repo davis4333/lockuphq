@@ -2,11 +2,15 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, ShieldAlert, AlertTriangle, Download } from "lucide-react";
 
-const SHIFTS = ["Day Shift (6a–2p)", "Evening Shift (2p–10p)", "Night Shift (10p–6a)"];
+const SHIFTS = [
+  "First Shift: 12:00am - 8:30am",
+  "Second Shift: 8:00am - 4:30pm",
+  "Third Shift: 4:00pm - 12:30am",
+];
 const SHIFT_SHORT: Record<string, string> = {
-  "Day Shift (6a–2p)": "1st",
-  "Evening Shift (2p–10p)": "2nd",
-  "Night Shift (10p–6a)": "3rd",
+  "First Shift: 12:00am - 8:30am":  "1st",
+  "Second Shift: 8:00am - 4:30pm":  "2nd",
+  "Third Shift: 4:00pm - 12:30am":  "3rd",
 };
 
 const RANK_DISPLAY: Record<string, string> = {
@@ -35,6 +39,13 @@ function formatDate(val: string) {
   if (!val) return "";
   const d = new Date(val + "T00:00:00");
   return d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+}
+
+function addOneDayToDateInput(val: string): string {
+  if (!val) return "";
+  const d = new Date(val + "T00:00:00");
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
 }
 
 function formatSupervisorName(raw: string): string {
@@ -66,12 +77,12 @@ function buildReasonText(fields: {
   supervisorName: string; lastName: string; firstName: string; dcNumber: string;
   searchLocation: string; searchTime: string;
 }): string {
-  const supervisorFull = formatSupervisorNameFull(fields.supervisorName) || "[STAFF RANK AND NAME]";
+  const supervisorFull = formatSupervisorNameFull(fields.supervisorName) || "[EMPLOYEE NAME]";
   const last     = fields.lastName.trim().toUpperCase()  || "[INMATE LAST NAME]";
   const first    = fields.firstName.trim().toUpperCase() || "[INMATE FIRST NAME]";
   const dc       = fields.dcNumber.trim().toUpperCase()  || "[DC NUMBER]";
-  const location = fields.searchLocation.trim() || "[LOCATION]";
-  const time     = fields.searchTime.trim()     || "[TIME]";
+  const location = fields.searchLocation.trim() || "[SEARCH LOCATION]";
+  const time     = fields.searchTime.trim()     || "[SEARCH TIME]";
   return REASON_TEMPLATE
     .replace("{supervisorFull}", supervisorFull)
     .replace("{location}",       location)
@@ -82,26 +93,22 @@ function buildReasonText(fields: {
 }
 
 const defaultFields = {
-  lastName: "",
-  firstName: "",
-  dcNumber: "",
-  dateRestricted: "",
-  shift: "",
-  dormAssignment: "",
-  searchLocation: "",
-  searchTime: "",
+  lastName:             "",
+  firstName:            "",
+  dcNumber:             "",
+  dateRestricted:       "",
+  shift:                "",
+  searchLocation:       "",
+  searchTime:           "",
   reasonForRestriction: "",
-  supervisorName: "",
-  chiefName: "",
-  approvalStatus: "approved",
-  restrictionUntil: "",
-  itemsReturnedDate: "",
-  itemsReturnedShift: "",
-  oic: "",
-  comments: "",
-  itemsRestricted: "All state property and state-issued clothing.",
-  mattress: "no",
-  bedding: "no",
+  itemsRestricted:      "All state property and state-issued clothing.",
+  supervisorName:       "",
+  chiefName:            "",
+  approvalStatus:       "approved",
+  restrictionUntil:     "",
+  comments:             "",
+  mattress:             "no",
+  bedding:              "no",
 };
 
 function buildTemplateData(fields: typeof defaultFields) {
@@ -114,17 +121,13 @@ function buildTemplateData(fields: typeof defaultFields) {
   const shift          = SHIFT_SHORT[fields.shift] || fields.shift;
   const mattressYes    = fields.mattress === "yes";
   const beddingYes     = fields.bedding  === "yes";
-  const retDate  = fields.itemsReturnedDate  ? formatDate(fields.itemsReturnedDate)  : "";
-  const retShift = fields.itemsReturnedShift
-    ? (SHIFT_SHORT[fields.itemsReturnedShift] || fields.itemsReturnedShift) : "";
-  const retOIC   = fields.oic.trim() ? formatSupervisorName(fields.oic) : "";
   return {
     L:      last,
     F:      first,
     DC:     dcNum,
     DATE:   dateRestricted,
     SHIFT:  shift,
-    DORM:   fields.dormAssignment.trim(),
+    DORM:   fields.searchLocation.trim(),
     STAFF:  supervisorFull,
     LOC:    fields.searchLocation.trim(),
     TIME:   fields.searchTime.trim(),
@@ -140,9 +143,9 @@ function buildTemplateData(fields: typeof defaultFields) {
     MN:     mattressYes ? "" : "X",
     BY:     beddingYes  ? "X" : "",
     BN:     beddingYes  ? "" : "X",
-    RID:    retDate,
-    RSHIFT: retShift,
-    ROIC:   retOIC,
+    RID:    "",
+    RSHIFT: "",
+    ROIC:   "",
     COM:    fields.comments.trim(),
   };
 }
@@ -163,6 +166,11 @@ export default function PropertyRestriction() {
     const { name, value } = e.target;
     setFields((prev) => {
       const next = { ...prev, [name]: value };
+
+      if (name === "dateRestricted") {
+        next.restrictionUntil = addOneDayToDateInput(value);
+      }
+
       if (name === "reasonForRestriction") {
         setReasonEdited(true);
       } else if (!reasonEdited) {
@@ -207,7 +215,7 @@ export default function PropertyRestriction() {
       const dlUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = dlUrl;
-      const last  = fields.lastName.trim().toUpperCase()  || "INMATE";
+      const last  = fields.lastName.trim().toUpperCase() || "INMATE";
       const dcNum = fields.dcNumber.trim().toUpperCase() || "DC";
       a.download = `Property_Restriction_${last}_${dcNum}.docx`;
       document.body.appendChild(a);
@@ -228,7 +236,6 @@ export default function PropertyRestriction() {
     fields.dcNumber &&
     fields.dateRestricted &&
     fields.shift &&
-    fields.dormAssignment &&
     fields.searchLocation &&
     fields.searchTime &&
     fields.itemsRestricted &&
@@ -306,23 +313,18 @@ export default function PropertyRestriction() {
             </div>
           </div>
 
-          <div>
-            <label className={labelClass}>Dorm / Assignment <span className="text-destructive">*</span></label>
-            <input name="dormAssignment" value={fields.dormAssignment} onChange={handleChange} placeholder="e.g. D2, CM-I, G-Dorm" className={inputClass} />
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Search Location <span className="text-destructive">*</span></label>
               <input name="searchLocation" value={fields.searchLocation} onChange={handleChange}
                 placeholder="e.g. B1-202" className={inputClass} />
-              <p className="mt-1 text-[10px] text-muted-foreground/60">Cell/dorm area searched — goes in reason text.</p>
+              <p className="mt-1 text-[10px] text-muted-foreground/60">Cell/area searched — fills description and dorm/assignment on form.</p>
             </div>
             <div>
               <label className={labelClass}>Search Time <span className="text-destructive">*</span></label>
               <input name="searchTime" value={fields.searchTime} onChange={handleChange}
                 placeholder="e.g. 1:00 pm" className={inputClass} />
-              <p className="mt-1 text-[10px] text-muted-foreground/60">Time of search — goes in reason text.</p>
+              <p className="mt-1 text-[10px] text-muted-foreground/60">Time of search — goes in description.</p>
             </div>
           </div>
 
@@ -347,7 +349,7 @@ export default function PropertyRestriction() {
               className={inputClass}
             />
             <p className="mt-1 text-[10px] text-muted-foreground/60 leading-relaxed">
-              Reference only — auto-fills from supervisor, inmate name, and DC#. You can edit it manually.
+              Reference only — auto-fills from employee name, inmate name, and DC#. You can edit it manually.
             </p>
           </div>
 
@@ -384,7 +386,7 @@ export default function PropertyRestriction() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>Shift Supervisor Name <span className="text-destructive">*</span></label>
+              <label className={labelClass}>Employee Name <span className="text-destructive">*</span></label>
               <input name="supervisorName" value={fields.supervisorName} onChange={handleChange}
                 placeholder="e.g. Sergeant S. Wildman" className={inputClass} />
               <p className="mt-1 text-[11px] text-amber-400/80">Include rank. Example: Sergeant S. Wildman</p>
@@ -411,6 +413,7 @@ export default function PropertyRestriction() {
           <div>
             <label className={labelClass}>Minimum Restriction Until Date <span className="text-destructive">*</span></label>
             <input type="date" name="restrictionUntil" value={fields.restrictionUntil} onChange={handleChange} className={inputClass} />
+            <p className="mt-1 text-[10px] text-muted-foreground/60">Auto-set to 24 hours after Date Restricted. You can change it if needed.</p>
           </div>
 
           <div>
@@ -420,29 +423,6 @@ export default function PropertyRestriction() {
             </label>
             <textarea name="comments" value={fields.comments} onChange={handleChange} rows={3}
               placeholder="Any additional comments..." className={inputClass} />
-          </div>
-
-          <div className="border-t border-border/40 pt-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-              Items Returned <span className="normal-case tracking-normal font-normal">(complete when property is returned)</span>
-            </p>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className={labelClass}>Date Returned</label>
-                <input type="date" name="itemsReturnedDate" value={fields.itemsReturnedDate} onChange={handleChange} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Shift Returned</label>
-                <select name="itemsReturnedShift" value={fields.itemsReturnedShift} onChange={handleChange} className={inputClass}>
-                  <option value="">Select shift...</option>
-                  {SHIFTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>OIC</label>
-                <input name="oic" value={fields.oic} onChange={handleChange} placeholder="e.g. M. Johnson" className={inputClass} />
-              </div>
-            </div>
           </div>
 
         </div>

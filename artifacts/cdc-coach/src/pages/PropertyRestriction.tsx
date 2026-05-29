@@ -91,7 +91,6 @@ const defaultFields = {
   searchLocation: "",
   searchTime: "",
   reasonForRestriction: "",
-  itemsRestricted: "",
   supervisorName: "",
   chiefName: "",
   approvalStatus: "approved",
@@ -100,6 +99,7 @@ const defaultFields = {
   itemsReturnedShift: "",
   oic: "",
   comments: "",
+  itemsRestricted: "All state property and state-issued clothing.",
   mattress: "no",
   bedding: "no",
 };

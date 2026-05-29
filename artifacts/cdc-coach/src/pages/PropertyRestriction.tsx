@@ -354,7 +354,6 @@ export default function PropertyRestriction() {
           <div>
             <label className={labelClass}>Restrictions / Items Restricted <span className="text-destructive">*</span></label>
             <textarea name="itemsRestricted" value={fields.itemsRestricted} onChange={handleChange} rows={3}
-              placeholder="e.g. All personal property, clothing, books, and hygiene items except state-issued items."
               className={inputClass} />
           </div>
 

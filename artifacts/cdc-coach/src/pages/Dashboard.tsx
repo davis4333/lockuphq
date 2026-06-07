@@ -53,6 +53,8 @@ export default function Dashboard() {
 
   const panel = "rounded-lg border border-blue-400/45 bg-[rgba(4,11,34,0.84)] backdrop-blur-lg";
   const micro = "text-[9px] font-bold uppercase tracking-[0.18em]";
+  const ambHead = "text-[8.5px] font-bold uppercase tracking-[0.22em] text-blue-200/55";
+  const ambLine = "text-[8.5px] uppercase tracking-[0.16em] text-blue-300/35 font-mono";
 
   const handleLaunch = (mod: Module) => {
     if (mod.route) {
@@ -132,6 +134,42 @@ export default function Dashboard() {
 
       {/* ── CONTENT ───────────────────────────────────────── */}
       <div className="relative z-10 mx-auto flex h-[100dvh] max-w-[1500px] flex-col overflow-y-auto px-4 sm:px-8 py-3 sm:py-3.5">
+
+        {/* ── AMBIENT CLASSIFIED MICRO-PANELS (decorative HUD readouts) ── */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 hidden xl:block">
+          {/* Left — system integrity */}
+          <div className="absolute left-2 top-[30%] space-y-[3px]">
+            <p className={ambHead}>System Integrity</p>
+            <p className={`${ambLine} text-emerald-300/45`}>Secure</p>
+            <p className={`${ambLine} mt-1.5`}>Encryption: Active</p>
+            <p className={ambLine}>Connection: Secure</p>
+          </div>
+          {/* Left — protocol node */}
+          <div className="absolute left-[14%] top-[30%] space-y-[3px]">
+            <p className={ambHead}>Protocol 61.08</p>
+            <p className={ambLine}>Data Link: Secure</p>
+            <p className={ambLine}>Node: FDC-OCI-01</p>
+            <p className={`${ambLine} text-emerald-300/45`}>Status: Online</p>
+          </div>
+          {/* Right — threat level */}
+          <div className="absolute right-[12%] top-[15%] space-y-[3px] text-right">
+            <p className={ambLine}>Threat Level: <span className="text-emerald-300/55">Minimal</span></p>
+            <p className={`${ambLine} text-emerald-300/45`}>Status: Secure</p>
+          </div>
+          {/* Right — coordinates */}
+          <div className="absolute right-2 top-[24%] space-y-[3px] text-right">
+            <p className={ambHead}>Coordinates</p>
+            <p className={`${ambLine} text-blue-200/45`}>27.6648° N</p>
+            <p className={`${ambLine} text-blue-200/45`}>81.5158° W</p>
+          </div>
+          {/* Right — protocol sync */}
+          <div className="absolute right-2 top-[36%] space-y-[3px] text-right">
+            <p className={ambHead}>Protocol 61.08</p>
+            <p className={ambLine}>Data Sync: Active</p>
+            <p className={`${ambLine} text-emerald-300/45`}>AI Models: Online</p>
+            <p className={`${ambLine} text-emerald-300/45`}>System: Operational</p>
+          </div>
+        </div>
 
         {/* ── TOP HEADER ──────────────────────────────────── */}
         <header className="flex flex-col lg:flex-row lg:items-center gap-3">

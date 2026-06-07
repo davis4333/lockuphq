@@ -70,30 +70,9 @@ export default function Dashboard() {
   return (
     <div className="relative min-h-screen w-full text-white overflow-hidden">
 
-      {/* Hologram bloom — subtle, tight brightening right on the badge (no diffuse fog) */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed left-1/2 top-[26%] z-[1] hidden md:block"
-        style={{
-          width: "min(46vw, 560px)",
-          height: "min(40vw, 480px)",
-          background: "radial-gradient(ellipse at 50% 45%, rgba(70,160,255,0.30) 0%, rgba(45,120,235,0.12) 38%, transparent 60%)",
-          animation: "holo-halo 7s ease-in-out infinite",
-        }}
-      />
-      {/* Hologram bloom — tight, brighter core right on the badge */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed left-1/2 top-[28%] z-[1] hidden md:block"
-        style={{
-          width: "min(28vw, 330px)",
-          height: "min(28vw, 330px)",
-          background: "radial-gradient(circle, rgba(145,210,255,0.50) 0%, rgba(90,170,250,0.15) 46%, transparent 66%)",
-          animation: "holo-pulse 6s ease-in-out infinite",
-        }}
-      />
+      {/* Glow comes from the background image itself — no page-added bloom/aura layers. */}
 
-      {/* Lower scrim — masks baked-in background text behind the working UI */}
+      {/* Lower scrim — keeps the working UI readable over the background */}
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-x-0 bottom-0 z-[2] h-[62%]"

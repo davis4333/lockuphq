@@ -1,0 +1,86 @@
+Replace the current background image with the newly uploaded brighter background image.
+
+Main goal
+
+Use the new uploaded background image as the full-page background, but keep the same background placement/composition that the current version is using.
+
+That means:
+
+keep the FDOC hologram in the same on-screen position it is in now
+keep the overall layout placement the same
+keep the cards, header, warning banner, and right-side panels where they are
+do not redo the layout
+
+I only want the background image swapped out, while preserving the current positioning behavior.
+
+Background replacement
+
+Replace the existing background image with the new uploaded image.
+
+Keep the same display behavior as the old background:
+
+full-page background
+fixed background
+cover
+centered horizontally
+same vertical positioning / same visible crop as the current version
+same placement of the hologram relative to the dashboard
+
+The new background should appear in the same place the old one did — just brighter and more luminous.
+
+Remove the extra glow effects added in the webpage
+
+Important: remove the extra glow/bloom effects that were added on top of the background by the webpage itself.
+
+I want the new image to provide the glow naturally.
+
+Remove or reduce any extra page-added background effects such as:
+
+artificial radial blue glow overlays
+extra blur/bloom layers
+added blue haze behind the cards
+added bright glow patches in the center or right side
+any custom glow effect layered over the background image
+
+The background should now rely mostly on the new image itself, not fake webpage glow effects.
+
+Keep readability
+
+Keep enough dark overlay so that:
+
+title remains readable
+warning banner remains readable
+cards remain readable
+system panels remain readable
+footer remains readable
+
+But do not over-darken the new background.
+
+The new background image is already brighter and more dramatic, so the webpage should not stack heavy extra effects on top of it.
+
+Preserve these elements
+
+Do not change:
+
+header layout
+warning banner position
+card positions
+right-side panel positions
+footer position
+button functionality
+card functionality
+system panels
+general classified command-center styling
+Final result
+
+The final page should look like:
+
+same dashboard layout as now
+same background placement as now
+new brighter uploaded background image
+cleaner, more natural lighting
+no fake webpage glow effects layered on top
+hologram still clearly visible
+cleaner and more premium overall
+
+The result should feel like the bright glow is coming from the background image itself, not from extra effects added by the page.

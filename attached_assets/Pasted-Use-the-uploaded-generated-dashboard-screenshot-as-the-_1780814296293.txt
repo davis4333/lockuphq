@@ -1,0 +1,329 @@
+Use the uploaded generated dashboard screenshot as the primary visual target and refine the current dashboard so it matches that reference as closely as possible.
+
+Do not rebuild the app from scratch. Keep the current working dashboard, the current tools, and the current command-center style. This is a visual/layout polish pass to make the live dashboard look like the uploaded reference image.
+
+Also keep using the new uploaded background image as the actual page background.
+
+Main goal
+
+I want the live dashboard to look as close as possible to the uploaded reference image:
+
+same overall composition
+same futuristic/classified command-center feel
+same visible FDOC hologram
+same spacing and balance
+same card layout
+same right-side system panels
+same premium neon/glass look
+
+The final feeling should be:
+
+restricted FDOC command console
+classified internal system
+high-tech government operations platform
+
+Not a normal web app.
+
+Important: what to keep
+
+Keep these functional modules exactly:
+
+LOCK-UP SLIP
+STRIP / PROPERTY RESTRICTION
+MEAL RESTRICTION / LOAF
+INCIDENT REPORT NARRATIVE
+DR DESCRIPTION
+ASK CDC
+ASK FDC POLICY
+WHAT FORM DO I NEED?
+
+Keep the existing button functionality.
+Keep the current header content.
+Keep the current warning banner content.
+Keep the current System Status and System Information panels.
+
+Do not add a left sidebar.
+Do not add charts.
+Do not add business-dashboard widgets.
+Do not add a Next Up panel.
+Do not add generic analytics.
+
+Overall layout target
+
+The current dashboard is close, but it still needs to visually match the uploaded reference image more tightly.
+
+The desktop layout should look like this:
+
+Top row
+FDOC identity block at far left
+large CONFINEMENT COMMAND CENTER title across the top
+subtitle: OCI • TRAINING SANDBOX • ONLINE
+live clock panel near the upper-right
+operational status panel at far upper-right
+Upper-middle
+amber warning banner under the header, left aligned
+full FDOC hologram centered and clearly visible
+subtle ambient classified-system micro panels around the hologram
+Lower-middle
+8 tool cards in two rows of four
+right-side System Status panel aligned with the top row of cards
+System Information panel below it
+Bottom
+centered training sandbox footer strip
+
+Everything should fit like a clean cinematic control console.
+
+Hologram / background composition
+
+This is the most important visual area.
+
+Use the uploaded new background image and match the reference image composition:
+
+FDOC hologram clearly visible in the upper-middle
+full circular badge visible
+bright blue holographic glow
+visible projection beam/glow underneath
+no cards covering the badge
+keep the hologram as the visual centerpiece
+
+Adjust the background positioning and overlay so it matches the reference image:
+
+background fixed
+background covers full viewport
+centered horizontally
+hologram positioned higher in the frame
+dark overlay for readability, but not so dark that it kills the hologram
+preserve towers, floor glow, and side digital details
+
+Add a subtle radial blue glow behind the hologram so it pops more.
+
+Add the small classified ambient info panels from the reference
+
+The uploaded reference image has subtle supporting micro-panels around the hologram/background that add to the “restricted command system” feel.
+
+Add subtle, low-priority ambient glass info panels like the reference image. These should be decorative/supporting UI elements, not major panels.
+
+Place them around the hologram area similar to the reference:
+
+Left side of hologram area
+
+Small glass panels such as:
+
+SYSTEM INTEGRITY
+SECURE
+ENCRYPTION: ACTIVE
+CONNECTION: SECURE
+PROTOCOL 61.08
+DATA LINK: SECURE
+NODE: FDC-OCI-01
+STATUS: ONLINE
+Right side of hologram area
+
+Small glass panels such as:
+
+THREAT LEVEL: MINIMAL
+STATUS: SECURE
+COORDINATES
+27.6648° N
+81.5158° W
+small protocol/status block like the reference:
+PROTOCOL 61.08
+DATA SYNC: ACTIVE
+AI MODELS: ONLINE
+SYSTEM: OPERATIONAL
+
+These should be subtle, dimmer than the main cards, and placed in the background area without cluttering the page.
+
+They are there to make it feel more classified and advanced.
+
+Header refinement
+
+Refine the header so it matches the uploaded reference more closely.
+
+Left identity block
+
+Keep the FDOC identity block compact and premium:
+
+shield/badge icon
+FLORIDA DEPARTMENT OF CORRECTIONS
+EST. 1868
+Main title
+
+Keep:
+
+CONFINEMENT COMMAND CENTER
+
+Make it:
+
+large
+uppercase
+wide letter spacing
+bold
+crisp
+futuristic/tactical
+
+Add:
+
+thin blue vertical accent bar to the left of the title
+subtle blue HUD line details near/behind the header
+subtitle below:
+OCI • TRAINING SANDBOX • ONLINE
+make ONLINE green and glowing slightly
+Top-right panels
+
+Keep:
+
+live clock panel
+operational system status panel
+
+Refine both to match the reference:
+
+stronger glassmorphism
+clean glowing borders
+crisp typography
+subtle neon glow
+Warning banner refinement
+
+Match the warning banner more closely to the reference image.
+
+Keep the same text, but refine the styling:
+
+TRAINING SANDBOX MODE — ACTIVE
+
+Body:
+Use fake information only. Do not enter real inmate names, DC numbers, medical information, or any restricted work information. This tool is for training and practice purposes only. No data is saved or transmitted.
+
+Style:
+
+amber/yellow border glow
+dark amber/black translucent background
+warning icon on left
+compact and premium
+left aligned under header
+not overly wide
+exact “classified warning” feel
+Tool card layout and styling
+
+The 8 tool cards should visually match the uploaded reference image more closely.
+
+Layout
+two rows of four cards
+cards centered across the lower-middle of the screen
+right system panels beside them
+no overlap with hologram
+cards sit below the hologram and projection area
+Card sizing
+
+Make the cards match the reference more closely:
+
+compact but not tiny
+slightly taller than a plain web card
+equal width and height
+consistent spacing
+enough room for icon, title, description, and button
+Card styling
+
+Each card should have:
+
+dark navy translucent glass background
+stronger neon blue border
+subtle blue outer glow
+soft inner highlight near the top
+glowing icon box
+crisp white title text
+dimmer description text
+bottom-aligned LAUNCH MODULE button
+button with blue outline/glow
+Hover behavior
+
+On hover:
+
+slight lift
+border glow brightens
+button glow brightens
+card looks like an active secure module
+
+These should feel like restricted command modules, not normal website cards.
+
+Right-side panels refinement
+
+Keep the two current right-side panels, but refine them to match the reference more closely.
+
+System Status
+
+Rows:
+
+DOCUMENT ENGINE — ONLINE
+POLICY ENGINE — ONLINE
+TRAINING SANDBOX — ACTIVE
+DATABASE — OPERATIONAL
+AI MODELS — OPERATIONAL
+SECURITY PROTOCOL — ENABLED
+System Information
+
+Rows:
+
+CLEARANCE LEVEL — CONFINEMENT OPS
+ENVIRONMENT — TRAINING
+VERSION — 2.0.0
+LAST SYSTEM CHECK — live current time
+Styling
+
+Make these panels:
+
+slightly brighter
+stronger border glow
+darker glass background
+crisp row spacing
+green status dots more visible
+more premium and legible
+aligned neatly with the card grid
+
+They should look like real secure monitoring panels.
+
+Footer
+
+Keep the footer strip centered at the bottom:
+
+TRAINING SANDBOX MODE • FOR PRACTICE USE ONLY • NO REAL DATA STORED
+
+Style it like the reference:
+
+narrow centered strip
+subtle lock icon
+glass panel
+blue border
+clean and understated
+Screen fit / layout behavior
+
+On desktop, the dashboard should fit like a command console.
+
+Requirements:
+
+no ugly oversized blank space
+no broken stacking
+no accidental overlap
+no weird scroll unless the browser viewport is unusually short
+maintain the one-screen cinematic feel as much as possible
+
+The page should feel intentional and balanced.
+
+Final quality target
+
+The live dashboard should look almost the same as the uploaded generated reference image.
+
+The final reaction should be:
+
+“This looks like a restricted FDOC internal command system.”
+
+Not:
+
+“This looks like a website with cards.”
+
+Prioritize:
+
+visual match to the uploaded reference image
+hologram prominence
+premium classified feel
+clean spacing and layout
+maintaining current functionality

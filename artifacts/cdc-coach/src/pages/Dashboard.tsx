@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
 import {
   Lock, ShieldAlert, UtensilsCrossed, FileText, ClipboardList,
   MessageSquare, BookOpen, HelpCircle, AlertTriangle, ChevronRight,
@@ -36,19 +35,44 @@ const SYS_STATUS = [
   { label: "Security Protocol", value: "Enabled" },
 ];
 
+const CLASSIFICATION = "RESTRICTED ACCESS // COMPARTMENTALIZED TRAINING SYSTEM // DO NOT REPRODUCE";
+const TICKER = "// AUDIT MODE ACTIVE — SESSION TRACE ENABLED — MODULE ACCESS MONITORED — CLEARANCE VERIFIED — SECURE SANDBOX ONLINE — DO NOT TERMINATE CONNECTION ";
+
+const PHONETIC = ["ALPHA", "BRAVO", "DELTA", "ECHO", "FOXTROT", "SIERRA", "TANGO", "OMEGA", "VECTOR", "ZULU"];
+function genSessionId() {
+  const hex = () => Math.floor(Math.random() * 16).toString(16).toUpperCase();
+  const word = PHONETIC[Math.floor(Math.random() * PHONETIC.length)];
+  const num = String(Math.floor(1000 + Math.random() * 9000));
+  return `${hex()}${hex()}${hex()}-${word}-${num}`;
+}
+
+function fmtElapsed(ms: number) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  const h = String(Math.floor(t / 3600)).padStart(2, "0");
+  const m = String(Math.floor((t % 3600) / 60)).padStart(2, "0");
+  const s = String(t % 60).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
 // ─── Main Component ───────────────────────────────────────
 export default function Dashboard() {
   const [, navigate] = useLocation();
-  const { toast } = useToast();
   const [now, setNow] = useState(new Date());
+  const [sessionId] = useState(genSessionId);
+  const startRef = useRef(Date.now());
+  const [denied, setDenied] = useState<{ id: string; n: number } | null>(null);
+  const denyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => () => { if (denyTimer.current) clearTimeout(denyTimer.current); }, []);
+
   const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "America/New_York" });
   const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" }).toUpperCase();
+  const sessionDuration = fmtElapsed(now.getTime() - startRef.current);
 
   const panel = "rounded-lg border border-blue-400/45 bg-[rgba(4,11,34,0.84)] backdrop-blur-lg";
   const micro = "text-[9px] font-bold uppercase tracking-[0.18em]";
@@ -58,12 +82,12 @@ export default function Dashboard() {
   const handleLaunch = (mod: Module) => {
     if (mod.route) {
       navigate(mod.route);
-    } else {
-      toast({
-        title: `${mod.title} — In Development`,
-        description: "This module is coming soon. Use Lock-Up Slip or Strip / Property Restriction in the meantime.",
-      });
+      return;
     }
+    // Locked module: red border flash + temporary "ACCESS DENIED" message
+    setDenied((prev) => ({ id: mod.id, n: (prev?.id === mod.id ? prev.n : 0) + 1 }));
+    if (denyTimer.current) clearTimeout(denyTimer.current);
+    denyTimer.current = setTimeout(() => setDenied(null), 1800);
   };
 
   return (
@@ -88,8 +112,35 @@ export default function Dashboard() {
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[3]"
         style={{ background: "radial-gradient(ellipse at 50% 42%, transparent 56%, rgba(2,6,18,0.34) 90%, rgba(1,4,12,0.55) 100%)" }} />
 
+      {/* Slow red heartbeat behind the FDOC hologram */}
+      <div aria-hidden="true" className="cdc-heartbeat pointer-events-none fixed left-1/2 top-[26%] z-[3] h-[460px] w-[460px]"
+        style={{ background: "radial-gradient(circle, rgba(220,38,38,0.55) 0%, rgba(190,28,28,0.18) 38%, transparent 68%)", mixBlendMode: "screen" }} />
+
+      {/* Faint diagonal classified watermark */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[1] flex items-center justify-center overflow-hidden">
+        <span className="select-none whitespace-nowrap font-black uppercase tracking-[0.25em] text-blue-200/[0.035] text-[6vw] -rotate-[24deg]">
+          Restricted — Do Not Reproduce
+        </span>
+      </div>
+
+      {/* Atmosphere overlays — scanlines, grain, occasional flicker */}
+      <div aria-hidden="true" className="cdc-scanlines pointer-events-none fixed inset-0 z-[45] opacity-60" />
+      <div aria-hidden="true" className="cdc-grain pointer-events-none fixed inset-0 z-[44] opacity-[0.035]" />
+      <div aria-hidden="true" className="cdc-flicker pointer-events-none fixed inset-0 z-[46]"
+        style={{ background: "rgba(130,170,235,0.5)" }} />
+
+      {/* ── TOP / BOTTOM CLASSIFICATION BARS ──────────────── */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-[50] flex items-center justify-center border-b border-red-500/30 bg-[rgba(28,4,4,0.78)] py-[3px] backdrop-blur-sm"
+        style={{ boxShadow: "0 0 14px rgba(220,38,38,0.30)" }}>
+        <span className="text-[8px] font-bold uppercase tracking-[0.34em] text-red-300/80">{CLASSIFICATION}</span>
+      </div>
+      <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 bottom-0 z-[50] flex items-center justify-center border-t border-red-500/30 bg-[rgba(28,4,4,0.78)] py-[3px] backdrop-blur-sm"
+        style={{ boxShadow: "0 0 14px rgba(220,38,38,0.30)" }}>
+        <span className="text-[8px] font-bold uppercase tracking-[0.34em] text-red-300/80">{CLASSIFICATION}</span>
+      </div>
+
       {/* ── CONTENT ───────────────────────────────────────── */}
-      <div className="relative z-10 mx-auto flex h-[100dvh] max-w-[1500px] flex-col overflow-y-auto px-4 sm:px-8 py-3 sm:py-3.5">
+      <div className="relative z-10 mx-auto flex h-[100dvh] max-w-[1500px] flex-col overflow-y-auto px-4 sm:px-8 pt-6 pb-6">
 
         {/* ── AMBIENT CLASSIFIED MICRO-PANELS (decorative HUD readouts) ── */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 hidden xl:block">
@@ -187,25 +238,41 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* ── WARNING BANNER (constrained width) ──────────── */}
-        <div className="mt-3.5 flex items-start gap-3 rounded-lg border border-amber-400/70 bg-[rgba(28,18,2,0.72)] backdrop-blur-md px-4 py-3 w-full max-w-[480px]"
-          style={{ boxShadow: "0 0 26px rgba(245,158,11,0.22)" }}>
-          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded border border-amber-400/60 bg-amber-500/15"
-            style={{ boxShadow: "0 0 10px rgba(245,158,11,0.3)" }}>
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-300" />
+        {/* ── WARNING BANNER + SESSION TELEMETRY ──────────── */}
+        <div className="mt-3.5 flex flex-col lg:flex-row items-stretch gap-3">
+          {/* Warning banner */}
+          <div className="flex items-start gap-3 rounded-lg border border-amber-400/70 bg-[rgba(28,18,2,0.72)] backdrop-blur-md px-4 py-3 w-full max-w-full lg:max-w-[520px]"
+            style={{ boxShadow: "0 0 26px rgba(245,158,11,0.22)" }}>
+            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded border border-amber-400/60 bg-amber-500/15"
+              style={{ boxShadow: "0 0 10px rgba(245,158,11,0.3)" }}>
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-300" />
+            </div>
+            <div>
+              <p className={`${micro} text-amber-400 mb-1`}>Restricted Training System — Audit Mode Active</p>
+              <p className="text-[11px] text-amber-200/80 leading-relaxed">
+                Authorized training use only. Do not enter real inmate names, DC numbers, medical information,
+                or restricted work information. Simulated session activity may be displayed for training atmosphere.
+                No operational data is stored.
+              </p>
+              <p className="mt-1.5 text-[8px] font-mono uppercase tracking-[0.16em] text-amber-300/55">
+                Session Trace: Active // Operator: [Redacted] // System Mode: Secure Sandbox
+              </p>
+            </div>
           </div>
-          <div>
-            <p className={`${micro} text-amber-400 mb-1`}>Training Sandbox Mode — Active</p>
-            <p className="text-[11px] text-amber-200/80 leading-relaxed">
-              Use <strong className="text-amber-300">fake information only.</strong> Do not enter real inmate names, DC numbers,
-              medical information, or any restricted work information. This tool is for training and practice purposes only.
-              No data is saved or transmitted.
-            </p>
+
+          {/* Session telemetry HUD */}
+          <div className={`${panel} border-blue-400/35 flex flex-col justify-center gap-1.5 px-4 py-3 w-full lg:w-[230px] shrink-0`}
+            style={{ boxShadow: "0 0 18px rgba(37,99,235,0.16)" }}>
+            <p className="text-[8px] font-bold uppercase tracking-[0.22em] text-blue-300/55 mb-0.5 pb-1 border-b border-blue-500/20">Session Telemetry</p>
+            <TeleRow label="Session ID" value={sessionId} accent="blue" />
+            <TeleRow label="Terminal Origin" value="27.3°N 80.3°W" accent="dim" />
+            <TeleRow label="Operator" value="[REDACTED]" accent="amber" />
+            <TeleRow label="Duration" value={sessionDuration} accent="emerald" />
           </div>
         </div>
 
         {/* ── DEDICATED HOLOGRAM DISPLAY ZONE (flexible — absorbs all extra height) ── */}
-        <div aria-hidden="true" className="flex-1 min-h-[150px]" />
+        <div aria-hidden="true" className="flex-1 min-h-[70px]" />
 
         {/* ── LOWER CONSOLE: modules + right panels ───────── */}
         <div className="mx-auto w-full max-w-[1340px] flex flex-col xl:flex-row gap-5 items-start">
@@ -227,6 +294,36 @@ export default function Dashboard() {
                   >
                     {/* Inner glass shine */}
                     <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-blue-200/10 to-transparent" />
+
+                    {/* Locked module: brief red flash once on load */}
+                    {!granted && (
+                      <div aria-hidden="true" className="cdc-deny-ring-load pointer-events-none absolute inset-0 z-20 rounded-lg border-2 border-red-500"
+                        style={{ boxShadow: "0 0 18px rgba(239,68,68,0.55), inset 0 0 18px rgba(239,68,68,0.25)" }} />
+                    )}
+
+                    {/* Denied-click red flash + temporary message */}
+                    {!granted && denied?.id === mod.id && (
+                      <div key={denied.n} className="pointer-events-none absolute inset-0 z-30">
+                        <div aria-hidden="true" className="cdc-deny-ring absolute inset-0 rounded-lg border-2 border-red-500"
+                          style={{ boxShadow: "0 0 20px rgba(239,68,68,0.6), inset 0 0 20px rgba(239,68,68,0.28)" }} />
+                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center">
+                          <span className="rounded border border-red-400/70 bg-[rgba(40,4,4,0.9)] px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-red-300"
+                            style={{ boxShadow: "0 0 14px rgba(239,68,68,0.5)" }}>
+                            Access Denied // Module Locked
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Hover tooltip for locked modules */}
+                    {!granted && (
+                      <div className="pointer-events-none absolute left-1/2 top-1.5 z-30 -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                        <span className="whitespace-nowrap rounded border border-red-400/55 bg-[rgba(36,6,6,0.92)] px-1.5 py-[3px] text-[7px] font-bold uppercase tracking-[0.12em] text-red-300/90"
+                          style={{ boxShadow: "0 0 12px rgba(239,68,68,0.35)" }}>
+                          Clearance Insufficient — Attempt Recorded
+                        </span>
+                      </div>
+                    )}
 
                     {/* Classified access badge */}
                     {granted ? (
@@ -311,10 +408,21 @@ export default function Dashboard() {
               <div className="relative space-y-2.5">
                 <InfoRow label="Clearance Level" value="Blacksite Authorized" />
                 <InfoRow label="Environment" value="Secure Sandbox" />
-                <InfoRow label="Version" value="2.0.0" />
+                <InfoRow label="Encryption" value="AES-256 Active" />
+                <InfoRow label="Session Trace" value="Armed" />
+                <InfoRow label="Build" value="Classified" />
                 <InfoRow label="Last System Check" value={`${timeStr} EST`} mono />
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* ── LIVE ACTIVITY TICKER ────────────────────────── */}
+        <div className="mt-3 overflow-hidden rounded-md border border-blue-500/20 bg-[rgba(3,9,28,0.55)] backdrop-blur-sm py-1.5"
+          style={{ boxShadow: "0 0 14px rgba(37,99,235,0.10)" }}>
+          <div className="cdc-ticker flex w-max whitespace-nowrap">
+            <span className="text-[8.5px] font-mono uppercase tracking-[0.22em] text-emerald-300/45 px-2">{TICKER.repeat(2)}</span>
+            <span className="text-[8.5px] font-mono uppercase tracking-[0.22em] text-emerald-300/45 px-2" aria-hidden="true">{TICKER.repeat(2)}</span>
           </div>
         </div>
 
@@ -337,6 +445,20 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
     <div className="flex items-baseline justify-between gap-2.5">
       <span className="text-[9px] uppercase tracking-[0.05em] text-slate-300/80 whitespace-nowrap shrink-0">{label}</span>
       <span className={`text-[10px] font-bold uppercase tracking-tight text-blue-200 text-right whitespace-nowrap ${mono ? "font-mono" : ""}`}>{value}</span>
+    </div>
+  );
+}
+
+function TeleRow({ label, value, accent }: { label: string; value: string; accent: "blue" | "emerald" | "amber" | "dim" }) {
+  const tone =
+    accent === "emerald" ? "text-emerald-300/85"
+      : accent === "amber" ? "text-amber-300/80"
+        : accent === "dim" ? "text-blue-300/55"
+          : "text-blue-200/85";
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-[7.5px] font-bold uppercase tracking-[0.14em] text-blue-300/45 whitespace-nowrap shrink-0">{label}</span>
+      <span className={`text-[9px] font-mono font-bold tracking-tight text-right whitespace-nowrap ${tone}`}>{value}</span>
     </div>
   );
 }

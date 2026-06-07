@@ -131,7 +131,7 @@ export default function Dashboard() {
         style={{ background: "radial-gradient(ellipse at 50% 44%, transparent 52%, rgba(2,6,18,0.45) 88%, rgba(1,4,12,0.65) 100%)" }} />
 
       {/* ── CONTENT ───────────────────────────────────────── */}
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-[1500px] flex-col px-4 sm:px-8 py-3 sm:py-4">
+      <div className="relative z-10 mx-auto flex h-[100dvh] max-w-[1500px] flex-col overflow-y-auto px-4 sm:px-8 py-3 sm:py-3.5">
 
         {/* ── TOP HEADER ──────────────────────────────────── */}
         <header className="flex flex-col lg:flex-row lg:items-center gap-3">
@@ -210,8 +210,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── DEDICATED HOLOGRAM DISPLAY ZONE (reserved, never overlapped) ── */}
-        <div aria-hidden="true" className="shrink-0 h-[clamp(220px,32vh,320px)]" />
+        {/* ── DEDICATED HOLOGRAM DISPLAY ZONE (flexible — absorbs all extra height) ── */}
+        <div aria-hidden="true" className="flex-1 min-h-[150px]" />
 
         {/* ── LOWER CONSOLE: modules + right panels ───────── */}
         <div className="mx-auto w-full max-w-[1340px] flex flex-col xl:flex-row gap-5 items-start">
@@ -261,12 +261,12 @@ export default function Dashboard() {
           </div>
 
           {/* Right panels */}
-          <div className="flex flex-col gap-3.5 w-full xl:w-[248px] shrink-0">
+          <div className="flex flex-col gap-3 w-full xl:w-[248px] shrink-0">
             {/* System Status */}
-            <div className={`relative overflow-hidden ${panel} p-4`} style={{ boxShadow: "0 0 24px rgba(37,99,235,0.22), inset 0 0 24px rgba(37,99,235,0.07)" }}>
+            <div className={`relative overflow-hidden ${panel} p-3.5`} style={{ boxShadow: "0 0 24px rgba(37,99,235,0.22), inset 0 0 24px rgba(37,99,235,0.07)" }}>
               <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-blue-200/8 to-transparent" />
-              <p className={`relative ${micro} text-blue-200 mb-3 pb-2 border-b border-blue-500/25`}>System Status</p>
-              <div className="relative space-y-3">
+              <p className={`relative ${micro} text-blue-200 mb-2.5 pb-2 border-b border-blue-500/25`}>System Status</p>
+              <div className="relative space-y-2.5">
                 {SYS_STATUS.map(({ label, value }) => (
                   <div key={label} className="flex items-center justify-between gap-2">
                     <span className="text-[10px] uppercase tracking-[0.1em] text-slate-200 truncate">{label}</span>
@@ -284,10 +284,10 @@ export default function Dashboard() {
             </div>
 
             {/* System Information */}
-            <div className={`relative overflow-hidden ${panel} p-4`} style={{ boxShadow: "0 0 24px rgba(37,99,235,0.22), inset 0 0 24px rgba(37,99,235,0.07)" }}>
+            <div className={`relative overflow-hidden ${panel} p-3.5`} style={{ boxShadow: "0 0 24px rgba(37,99,235,0.22), inset 0 0 24px rgba(37,99,235,0.07)" }}>
               <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-blue-200/8 to-transparent" />
-              <p className={`relative ${micro} text-blue-200 mb-3 pb-2 border-b border-blue-500/25`}>System Information</p>
-              <div className="relative space-y-3">
+              <p className={`relative ${micro} text-blue-200 mb-2.5 pb-2 border-b border-blue-500/25`}>System Information</p>
+              <div className="relative space-y-2.5">
                 <InfoRow label="Clearance Level" value="Confinement Ops" />
                 <InfoRow label="Environment" value="Training" />
                 <InfoRow label="Version" value="2.0.0" />
@@ -297,11 +297,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── FLEX SPACER — absorbs extra height BELOW cards, keeps footer low ── */}
-        <div aria-hidden="true" className="flex-1 min-h-[16px]" />
-
         {/* ── BOTTOM DISCLAIMER ───────────────────────────── */}
-        <footer className="flex items-center justify-center gap-2.5 rounded-md border border-blue-500/20 bg-[rgba(3,9,28,0.6)] backdrop-blur-sm py-2 px-5 mx-auto"
+        <footer className="mt-3 flex items-center justify-center gap-2.5 rounded-md border border-blue-500/20 bg-[rgba(3,9,28,0.6)] backdrop-blur-sm py-2 px-5 mx-auto"
           style={{ boxShadow: "0 0 16px rgba(37,99,235,0.10)" }}>
           <Lock className="h-3 w-3 text-blue-300/70" />
           <p className={`${micro} text-blue-200/75 text-center`}>

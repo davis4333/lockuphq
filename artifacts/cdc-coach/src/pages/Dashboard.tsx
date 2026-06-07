@@ -38,6 +38,24 @@ const SYS_STATUS = [
 const CLASSIFICATION = "RESTRICTED ACCESS // COMPARTMENTALIZED TRAINING SYSTEM // DO NOT REPRODUCE";
 const TICKER = "// AUDIT MODE ACTIVE — SESSION TRACE ENABLED — MODULE ACCESS MONITORED — CLEARANCE VERIFIED — SECURE SANDBOX ONLINE — DO NOT TERMINATE CONNECTION ";
 
+// Monitored facility nodes — positioned (% within the Florida map overlay box)
+// to approximate FDOC facility distribution; d = delay, t = duration (organic variation)
+const FL_NODES = [
+  { x: 6,  y: 18, d: 0.0, t: 4.6 },  // far western panhandle
+  { x: 20, y: 21, d: 1.5, t: 5.2 },  // central panhandle
+  { x: 33, y: 23, d: 2.4, t: 4.2 },  // Tallahassee region
+  { x: 78, y: 12, d: 0.7, t: 5.0 },  // Jacksonville (NE)
+  { x: 60, y: 22, d: 2.0, t: 4.4 },  // Lake City / Raiford
+  { x: 67, y: 33, d: 0.4, t: 5.4 },  // Gainesville / Ocala
+  { x: 82, y: 40, d: 1.8, t: 4.0 },  // Daytona / east coast
+  { x: 72, y: 48, d: 1.0, t: 4.8 },  // Orlando (central)
+  { x: 60, y: 54, d: 2.6, t: 5.1 },  // Tampa (west coast)
+  { x: 80, y: 60, d: 0.9, t: 4.3 },  // central spine / Sebring
+  { x: 70, y: 72, d: 1.6, t: 5.3 },  // Ft. Myers (SW)
+  { x: 90, y: 78, d: 0.3, t: 4.5 },  // West Palm / Miami (SE)
+  { x: 84, y: 90, d: 2.2, t: 4.9 },  // Homestead / southern tip
+];
+
 const PHONETIC = ["ALPHA", "BRAVO", "DELTA", "ECHO", "FOXTROT", "SIERRA", "TANGO", "OMEGA", "VECTOR", "ZULU"];
 function genSessionId() {
   const hex = () => Math.floor(Math.random() * 16).toString(16).toUpperCase();
@@ -115,6 +133,23 @@ export default function Dashboard() {
       {/* Slow red heartbeat behind the FDOC hologram */}
       <div aria-hidden="true" className="cdc-heartbeat pointer-events-none fixed left-1/2 top-[26%] z-[3] h-[460px] w-[460px]"
         style={{ background: "radial-gradient(circle, rgba(220,38,38,0.55) 0%, rgba(190,28,28,0.18) 38%, transparent 68%)", mixBlendMode: "screen" }} />
+
+      {/* Statewide facility monitoring overlay on the Florida wireframe map */}
+      <div aria-hidden="true" className="pointer-events-none fixed z-[2]"
+        style={{ left: "82%", top: "12.5%", width: "16.5%", height: "23%" }}>
+        {/* Faint dark-red ambient heartbeat behind the state */}
+        <div className="cdc-fl-heartbeat absolute"
+          style={{ left: "52%", top: "50%", width: "160%", height: "150%", borderRadius: "50%", background: "radial-gradient(ellipse at center, rgba(220,38,38,0.55) 0%, rgba(185,28,28,0.18) 42%, transparent 70%)", mixBlendMode: "screen" }} />
+        {/* Live monitored facility nodes */}
+        {FL_NODES.map((n, i) => (
+          <span key={i} className="absolute" style={{ left: `${n.x}%`, top: `${n.y}%` }}>
+            <span className="cdc-node-ring absolute h-[6px] w-[6px] -ml-[3px] -mt-[3px] rounded-full border border-red-500/70"
+              style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s` }} />
+            <span className="cdc-node-dot absolute h-[5px] w-[5px] -ml-[2.5px] -mt-[2.5px] rounded-full bg-red-400"
+              style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s`, boxShadow: "0 0 5px 1px rgba(239,68,68,0.9), 0 0 11px 2px rgba(220,38,38,0.55)" }} />
+          </span>
+        ))}
+      </div>
 
       {/* ── TOP / BOTTOM CLASSIFICATION BARS ──────────────── */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-[50] flex items-center justify-center border-b border-red-500/30 bg-[rgba(28,4,4,0.78)] py-[3px] backdrop-blur-sm"

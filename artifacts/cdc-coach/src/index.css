@@ -218,3 +218,26 @@
   35%  { opacity: 1; }
   100% { opacity: 0; }
 }
+
+/* ─── Statewide facility monitoring (Florida map) ───────── */
+
+/* Faint dark-red ambient heartbeat behind the state outline */
+.cdc-fl-heartbeat { animation: cdc-fl-heartbeat 7s ease-in-out infinite; will-change: opacity, transform; }
+@keyframes cdc-fl-heartbeat {
+  0%, 100% { opacity: 0.10; transform: translate(-50%, -50%) scale(0.9); }
+  50%      { opacity: 0.30; transform: translate(-50%, -50%) scale(1.06); }
+}
+
+/* Monitored facility node — soft glowing red dot */
+.cdc-node-dot { animation: cdc-node-dot 4.5s ease-in-out infinite; will-change: opacity, transform; }
+@keyframes cdc-node-dot {
+  0%, 100% { opacity: 0.4;  transform: scale(0.8); }
+  50%      { opacity: 1;    transform: scale(1.18); }
+}
+
+/* Monitored facility node — slow expanding surveillance ring */
+.cdc-node-ring { animation: cdc-node-ring 4.5s ease-out infinite; will-change: opacity, transform; }
+@keyframes cdc-node-ring {
+  0%        { opacity: 0.55; transform: scale(1); }
+  70%, 100% { opacity: 0;    transform: scale(6.5); }
+}

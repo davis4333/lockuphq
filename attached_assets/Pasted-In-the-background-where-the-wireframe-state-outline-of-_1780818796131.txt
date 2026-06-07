@@ -1,0 +1,100 @@
+In the background, where the wireframe/state outline of Florida appears on the right side of the dashboard, add a subtle animated red pulse effect to make it feel like live prison locations are being monitored across the state.
+
+Main goal
+
+Keep the Florida state graphic, but make it feel more ominous and alive.
+
+I want the Florida map to show slow red pulse points at actual prison/facility locations across the state, like a live statewide corrections monitoring network.
+
+The effect should feel like:
+
+heartbeat / surveillance activity
+live monitored prison network
+restricted command-center visualization
+subtle and cinematic
+
+Not cheesy, not overdone, and not distracting from the main dashboard.
+
+Visual effect
+
+Add these effects to the Florida state graphic:
+
+1. Slow red pulse nodes
+
+Place small glowing red dots/pulse points at prison locations across the Florida map.
+
+These should:
+
+pulse slowly
+glow softly
+feel like monitored facility nodes
+not all pulse at exactly the same time
+have slight variation in intensity/timing
+
+Make them look like live monitored sites.
+
+2. Faint red heartbeat glow behind the Florida map
+
+Add a very subtle dark red ambient pulse/glow behind the state of Florida.
+
+This should:
+
+pulse slowly like a heartbeat
+stay low opacity
+feel ominous
+not overpower the blue map lines
+
+The main Florida outline should still remain blue, but the red pulse behind it should make it feel more dangerous and classified.
+
+3. Keep the map readable
+
+Do not turn the whole Florida map red.
+
+Keep:
+
+blue wireframe/state outline
+futuristic map style
+subtle digital feel
+
+Only add red as a pulse/accent layer for prison activity.
+
+Use real prison/facility locations conceptually
+
+The pulse nodes should represent real FDOC prison/facility locations across the state.
+
+You do not need to label them all, but the placement should look like real facility distribution across Florida, not random dots.
+
+Animation style
+
+Animation should be subtle:
+
+slow pulse
+soft expansion ring or glow
+no fast blinking
+no harsh flashing
+slight randomness so it feels alive
+Keep it clean
+
+This effect should stay in the background and should not compete with:
+
+the main FDOC hologram
+the cards
+the warning banner
+the right-side panels
+
+It should just add more “statewide classified monitoring network” atmosphere.
+
+Final feel
+
+The Florida map should feel like:
+
+active prison network monitoring
+statewide FDOC surveillance visualization
+high-security operations display
+ominous but polished
+
+The final reaction should be:
+
+“That looks like live correctional facilities are lighting up across the state.”
+
+Do not change the rest of the dashboard layout. Only enhance the Florida map background graphic with this subtle red pulse prison-location effect.

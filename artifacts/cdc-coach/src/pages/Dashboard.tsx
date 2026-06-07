@@ -48,19 +48,19 @@ const FL_FRAC = { x0: 0.712, x1: 0.864, y0: 0.087, y1: 0.255 }; // Florida bbox 
 // Monitored facility nodes — positioned (% within the Florida map overlay box)
 // to approximate FDOC facility distribution; d = delay, t = duration (organic variation)
 const FL_NODES = [
-  { x: 6,  y: 18, d: 0.0, t: 4.6 },  // far western panhandle
-  { x: 20, y: 21, d: 1.5, t: 5.2 },  // central panhandle
-  { x: 33, y: 23, d: 2.4, t: 4.2 },  // Tallahassee region
-  { x: 78, y: 12, d: 0.7, t: 5.0 },  // Jacksonville (NE)
-  { x: 60, y: 22, d: 2.0, t: 4.4 },  // Lake City / Raiford
-  { x: 67, y: 33, d: 0.4, t: 5.4 },  // Gainesville / Ocala
-  { x: 82, y: 40, d: 1.8, t: 4.0 },  // Daytona / east coast
-  { x: 72, y: 48, d: 1.0, t: 4.8 },  // Orlando (central)
-  { x: 60, y: 54, d: 2.6, t: 5.1 },  // Tampa (west coast)
-  { x: 80, y: 60, d: 0.9, t: 4.3 },  // central spine / Sebring
-  { x: 70, y: 72, d: 1.6, t: 5.3 },  // Ft. Myers (SW)
-  { x: 90, y: 78, d: 0.3, t: 4.5 },  // West Palm / Miami (SE)
-  { x: 84, y: 90, d: 2.2, t: 4.9 },  // Homestead / southern tip
+  { x: 5,  y: 13, d: 0.0, t: 6.6 },  // far western panhandle (Pensacola)
+  { x: 22, y: 13, d: 2.1, t: 7.4 },  // central panhandle
+  { x: 42, y: 16, d: 3.4, t: 6.0 },  // Tallahassee
+  { x: 55, y: 24, d: 1.2, t: 7.0 },  // Big Bend
+  { x: 73, y: 11, d: 4.0, t: 6.8 },  // Jacksonville (NE)
+  { x: 62, y: 32, d: 0.6, t: 7.8 },  // Gainesville / Ocala
+  { x: 75, y: 40, d: 2.7, t: 6.2 },  // Daytona (east coast)
+  { x: 64, y: 46, d: 1.6, t: 7.2 },  // Orlando (central)
+  { x: 58, y: 52, d: 3.8, t: 6.6 },  // Tampa (west coast)
+  { x: 71, y: 58, d: 1.0, t: 7.6 },  // Sebring (central spine)
+  { x: 76, y: 66, d: 2.3, t: 6.4 },  // West Palm (SE)
+  { x: 64, y: 70, d: 4.4, t: 7.0 },  // Ft. Myers (SW)
+  { x: 74, y: 86, d: 0.3, t: 6.9 },  // Homestead / southern tip
 ];
 
 const PHONETIC = ["ALPHA", "BRAVO", "DELTA", "ECHO", "FOXTROT", "SIERRA", "TANGO", "OMEGA", "VECTOR", "ZULU"];
@@ -212,8 +212,8 @@ export default function Dashboard() {
             <p className={ambLine}>Node: FDC-OCI-01</p>
             <p className={`${ambLine} text-emerald-300/45`}>Status: Online</p>
           </div>
-          {/* Right — threat level */}
-          <div className="absolute right-[12%] top-[15%] space-y-[3px] text-right">
+          {/* Left — threat level (kept clear of the Florida map) */}
+          <div className="absolute left-2 top-[46%] space-y-[3px]">
             <p className={ambLine}>Threat Level: <span className="text-emerald-300/55">Minimal</span></p>
             <p className={`${ambLine} text-emerald-300/45`}>Status: Secure</p>
           </div>

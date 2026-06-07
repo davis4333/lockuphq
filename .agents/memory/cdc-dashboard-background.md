@@ -17,4 +17,6 @@ The page background (`artifacts/cdc-coach/public/bg-fdoc-command.png`) is a ~16:
 
 **Florida wireframe map (upper-right):** the bg image has a blue dotted Florida outline baked in. To overlay anything on it (e.g. red facility pulse nodes), do NOT use static viewport percentages — a `fixed` `cover` background shifts the map by viewport aspect ratio, so a static box drifts off (looked aligned in a 16:9 dev screenshot but landed far right of the map in the user's canvas iframe).
 
+**Pulse gotcha:** if a node's glow is a *static* inline `box-shadow`, animating only `opacity`/`scale` reads as "not pulsing" (the constant halo masks it). Animate the `box-shadow` inside the keyframe too (and drop min opacity ~0.18) so the glow visibly breathes; keep a faint inline `box-shadow` as the reduced-motion fallback. Slow = ~6–8s per cycle, staggered per node.
+
 **Fix that works:** replicate the CSS in JS. Compute the map's on-screen rect from `window.innerWidth/Height` using `cover` math (`s = max(W/imgW, H/imgH)`, horizontal center, `offsetY = 30` for `background-position: center 30px`) and a Florida bounding box stored as fractions of the 1672×941 image (`FL_FRAC` in `Dashboard.tsx` ≈ x[0.712,0.864] y[0.087,0.255], measured by cropping the bg PNG with ImageMagick). Recompute on `resize`. Node positions are then `%` within that computed box.

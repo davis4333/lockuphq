@@ -48,19 +48,19 @@ const FL_FRAC = { x0: 0.712, x1: 0.864, y0: 0.087, y1: 0.255 }; // Florida bbox 
 // Monitored facility nodes — positioned (% within the Florida map overlay box)
 // to approximate FDOC facility distribution; d = delay, t = duration (organic variation)
 const FL_NODES = [
-  { x: 5,  y: 13, d: 0.0, t: 6.6 },  // far western panhandle (Pensacola)
-  { x: 22, y: 13, d: 2.1, t: 7.4 },  // central panhandle
-  { x: 42, y: 16, d: 3.4, t: 6.0 },  // Tallahassee
-  { x: 55, y: 24, d: 1.2, t: 7.0 },  // Big Bend
-  { x: 73, y: 11, d: 4.0, t: 6.8 },  // Jacksonville (NE)
-  { x: 62, y: 32, d: 0.6, t: 7.8 },  // Gainesville / Ocala
-  { x: 75, y: 40, d: 2.7, t: 6.2 },  // Daytona (east coast)
-  { x: 64, y: 46, d: 1.6, t: 7.2 },  // Orlando (central)
-  { x: 58, y: 52, d: 3.8, t: 6.6 },  // Tampa (west coast)
-  { x: 71, y: 58, d: 1.0, t: 7.6 },  // Sebring (central spine)
-  { x: 76, y: 66, d: 2.3, t: 6.4 },  // West Palm (SE)
-  { x: 64, y: 70, d: 4.4, t: 7.0 },  // Ft. Myers (SW)
-  { x: 74, y: 86, d: 0.3, t: 6.9 },  // Homestead / southern tip
+  { x: 5,  y: 14, d: 0.0, t: 6.6 },  // Santa Rosa / Century — far W panhandle
+  { x: 22, y: 15, d: 2.1, t: 7.4 },  // Walton / Okaloosa — central panhandle
+  { x: 40, y: 17, d: 3.4, t: 6.0 },  // Apalachee / Liberty — east panhandle
+  { x: 52, y: 22, d: 1.2, t: 7.0 },  // Wakulla / Taylor — Big Bend / Tallahassee
+  { x: 74, y: 12, d: 4.0, t: 6.8 },  // Baker — Jacksonville (NE)
+  { x: 61, y: 25, d: 0.6, t: 7.8 },  // Raiford / Union / Lake Butler — FSP core
+  { x: 60, y: 36, d: 2.4, t: 6.4 },  // Lowell / Marion — Ocala
+  { x: 76, y: 42, d: 2.7, t: 6.2 },  // Tomoka — Daytona (east coast)
+  { x: 66, y: 48, d: 1.6, t: 7.2 },  // Central FL Reception — Orlando
+  { x: 57, y: 53, d: 3.8, t: 6.6 },  // Hillsborough / Zephyrhills — Tampa
+  { x: 70, y: 59, d: 1.0, t: 7.6 },  // Avon Park / Polk — central spine
+  { x: 80, y: 67, d: 2.3, t: 7.0 },  // Martin / Okeechobee — SE / Lake O
+  { x: 74, y: 85, d: 0.3, t: 6.9 },  // Dade / Homestead — southern tip
 ];
 
 const PHONETIC = ["ALPHA", "BRAVO", "DELTA", "ECHO", "FOXTROT", "SIERRA", "TANGO", "OMEGA", "VECTOR", "ZULU"];
@@ -175,10 +175,10 @@ export default function Dashboard() {
         {/* Live monitored facility nodes */}
         {FL_NODES.map((n, i) => (
           <span key={i} className="absolute" style={{ left: `${n.x}%`, top: `${n.y}%` }}>
-            <span className="cdc-node-ring absolute h-[6px] w-[6px] -ml-[3px] -mt-[3px] rounded-full border border-red-500/70"
+            <span className="cdc-node-ring absolute h-[9px] w-[9px] -ml-[4.5px] -mt-[4.5px] rounded-full border border-red-500/70"
               style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s` }} />
-            <span className="cdc-node-dot absolute h-[5px] w-[5px] -ml-[2.5px] -mt-[2.5px] rounded-full bg-red-400"
-              style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s`, boxShadow: "0 0 5px 1px rgba(239,68,68,0.9), 0 0 11px 2px rgba(220,38,38,0.55)" }} />
+            <span className="cdc-node-dot absolute h-[8px] w-[8px] -ml-[4px] -mt-[4px] rounded-full bg-red-400"
+              style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s`, boxShadow: "0 0 6px 1px rgba(239,68,68,0.9), 0 0 13px 3px rgba(220,38,38,0.55)" }} />
           </span>
         ))}
       </div>

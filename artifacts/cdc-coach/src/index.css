@@ -148,7 +148,10 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    /* Freeze motion broadly, but keep the subtle ambient facility-monitor
+       pulse alive — it is a slow, non-vestibular accent the design relies on. */
+    *:not(.cdc-node-dot):not(.cdc-node-ring):not(.cdc-fl-heartbeat),
+    *::before, *::after {
       animation-duration: 0.001ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.001ms !important;
@@ -231,10 +234,10 @@
 /* Monitored facility node — soft glowing red dot */
 .cdc-node-dot { animation: cdc-node-dot 6s ease-in-out infinite; will-change: opacity, transform; }
 @keyframes cdc-node-dot {
-  0%, 100% { opacity: 0.18; transform: scale(0.55);
-    box-shadow: 0 0 3px 0 rgba(239,68,68,0.40), 0 0 6px 1px rgba(220,38,38,0.22); }
-  50%      { opacity: 1;    transform: scale(1.35);
-    box-shadow: 0 0 7px 2px rgba(239,68,68,0.95), 0 0 17px 5px rgba(220,38,38,0.62); }
+  0%, 100% { opacity: 0.15; transform: scale(0.45);
+    box-shadow: 0 0 3px 0 rgba(239,68,68,0.35), 0 0 6px 1px rgba(220,38,38,0.20); }
+  50%      { opacity: 1;    transform: scale(1.5);
+    box-shadow: 0 0 9px 2px rgba(239,68,68,0.95), 0 0 20px 6px rgba(220,38,38,0.62); }
 }
 
 /* Monitored facility node — slow expanding surveillance ring */

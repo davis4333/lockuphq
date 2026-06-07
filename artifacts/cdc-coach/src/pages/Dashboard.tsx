@@ -73,11 +73,22 @@ export default function Dashboard() {
       {/* Hologram bloom — subtle, tight brightening right on the badge (no diffuse fog) */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed left-1/2 top-[30%] z-[1] hidden md:block"
+        className="pointer-events-none fixed left-1/2 top-[26%] z-[1] hidden md:block"
         style={{
-          width: "min(26vw, 300px)",
-          height: "min(26vw, 300px)",
-          background: "radial-gradient(circle, rgba(120,195,255,0.34) 0%, rgba(80,160,245,0.10) 46%, transparent 66%)",
+          width: "min(46vw, 560px)",
+          height: "min(40vw, 480px)",
+          background: "radial-gradient(ellipse at 50% 45%, rgba(70,160,255,0.30) 0%, rgba(45,120,235,0.12) 38%, transparent 60%)",
+          animation: "holo-halo 7s ease-in-out infinite",
+        }}
+      />
+      {/* Hologram bloom — tight, brighter core right on the badge */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed left-1/2 top-[28%] z-[1] hidden md:block"
+        style={{
+          width: "min(28vw, 330px)",
+          height: "min(28vw, 330px)",
+          background: "radial-gradient(circle, rgba(145,210,255,0.50) 0%, rgba(90,170,250,0.15) 46%, transparent 66%)",
           animation: "holo-pulse 6s ease-in-out infinite",
         }}
       />
@@ -87,17 +98,17 @@ export default function Dashboard() {
         aria-hidden="true"
         className="pointer-events-none fixed inset-x-0 bottom-0 z-[2] h-[62%]"
         style={{
-          background: "linear-gradient(to top, rgba(2,6,18,0.96) 0%, rgba(2,6,18,0.92) 28%, rgba(2,6,18,0.78) 52%, rgba(2,6,18,0.42) 74%, rgba(2,6,18,0.12) 90%, transparent 100%)",
+          background: "linear-gradient(to top, rgba(2,6,18,0.95) 0%, rgba(2,6,18,0.88) 30%, rgba(2,6,18,0.66) 55%, rgba(2,6,18,0.34) 76%, rgba(2,6,18,0.10) 90%, transparent 100%)",
         }}
       />
-      {/* Top corner scrims — mask 'SYSTEM INTEGRITY' / 'COORDINATES' labels */}
+      {/* Top corner scrims — soften the side gutters (towers stay visible) */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-y-0 left-0 z-[2] w-[20%] hidden xl:block"
-        style={{ background: "linear-gradient(to right, rgba(2,6,18,0.62) 0%, transparent 100%)" }} />
+        style={{ background: "linear-gradient(to right, rgba(2,6,18,0.40) 0%, transparent 100%)" }} />
       <div aria-hidden="true" className="pointer-events-none fixed inset-y-0 right-0 z-[2] w-[20%] hidden xl:block"
-        style={{ background: "linear-gradient(to left, rgba(2,6,18,0.62) 0%, transparent 100%)" }} />
+        style={{ background: "linear-gradient(to left, rgba(2,6,18,0.40) 0%, transparent 100%)" }} />
       {/* Cinematic vignette — soft dark frame around screen edges */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[3]"
-        style={{ background: "radial-gradient(ellipse at 50% 44%, transparent 52%, rgba(2,6,18,0.45) 88%, rgba(1,4,12,0.65) 100%)" }} />
+        style={{ background: "radial-gradient(ellipse at 50% 42%, transparent 56%, rgba(2,6,18,0.34) 90%, rgba(1,4,12,0.55) 100%)" }} />
 
       {/* ── CONTENT ───────────────────────────────────────── */}
       <div className="relative z-10 mx-auto flex h-[100dvh] max-w-[1500px] flex-col overflow-y-auto px-4 sm:px-8 py-3 sm:py-3.5">

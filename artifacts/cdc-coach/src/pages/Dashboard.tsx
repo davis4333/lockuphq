@@ -218,6 +218,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {MODULES.map((mod) => {
                 const Icon = mod.icon;
+                const granted = !!mod.route;
                 return (
                   <div
                     key={mod.id}
@@ -226,6 +227,21 @@ export default function Dashboard() {
                   >
                     {/* Inner glass shine */}
                     <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-blue-200/10 to-transparent" />
+
+                    {/* Classified access badge */}
+                    {granted ? (
+                      <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-[3px] border border-emerald-400/45 bg-emerald-950/55 px-1.5 py-[3px] backdrop-blur-sm"
+                        style={{ boxShadow: "0 0 10px rgba(16,185,129,0.28)" }}>
+                        <span className="h-[5px] w-[5px] rounded-full bg-emerald-400" style={{ boxShadow: "0 0 6px rgba(16,185,129,0.95)" }} />
+                        <span className="text-[7px] font-black uppercase tracking-[0.14em] text-emerald-300">Access Granted</span>
+                      </div>
+                    ) : (
+                      <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-[3px] border border-amber-400/45 bg-[rgba(40,16,4,0.62)] px-1.5 py-[3px] backdrop-blur-sm"
+                        style={{ boxShadow: "0 0 10px rgba(245,158,11,0.22)" }}>
+                        <span className="h-[5px] w-[5px] rounded-full bg-amber-400" style={{ boxShadow: "0 0 6px rgba(245,158,11,0.95)" }} />
+                        <span className="text-[7px] font-black uppercase tracking-[0.14em] text-amber-300">Access Denied</span>
+                      </div>
+                    )}
 
                     {/* Icon */}
                     <div className="relative w-10 h-10 rounded-md border border-blue-400/60 bg-blue-900/50 flex items-center justify-center transition-all group-hover:border-blue-300/90"
@@ -240,14 +256,25 @@ export default function Dashboard() {
                     </div>
 
                     {/* Launch button */}
-                    <button
-                      onClick={() => handleLaunch(mod)}
-                      aria-label={`Launch ${mod.title} module`}
-                      className="relative mt-auto w-full flex items-center justify-center gap-1.5 rounded border border-blue-400/65 bg-blue-700/30 text-blue-100 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] transition-all group-hover:bg-blue-600/55 group-hover:border-blue-300/95 group-hover:text-white"
-                      style={{ boxShadow: "0 0 16px rgba(37,99,235,0.28)" }}
-                    >
-                      Launch Module <ChevronRight className="h-3 w-3" />
-                    </button>
+                    {granted ? (
+                      <button
+                        onClick={() => handleLaunch(mod)}
+                        aria-label={`Launch ${mod.title} module`}
+                        className="relative mt-auto w-full flex items-center justify-center gap-1.5 rounded border border-blue-400/65 bg-blue-700/30 text-blue-100 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] transition-all group-hover:bg-blue-600/55 group-hover:border-blue-300/95 group-hover:text-white"
+                        style={{ boxShadow: "0 0 16px rgba(37,99,235,0.28)" }}
+                      >
+                        Launch Module <ChevronRight className="h-3 w-3" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleLaunch(mod)}
+                        aria-label={`${mod.title} module locked`}
+                        className="relative mt-auto w-full flex items-center justify-center gap-1.5 rounded border border-amber-400/35 bg-amber-950/25 text-amber-200/75 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] cursor-not-allowed transition-all hover:bg-amber-900/35 hover:border-amber-300/55"
+                        style={{ boxShadow: "0 0 12px rgba(245,158,11,0.14)" }}
+                      >
+                        <Lock className="h-3 w-3" /> Launch Module
+                      </button>
+                    )}
                   </div>
                 );
               })}

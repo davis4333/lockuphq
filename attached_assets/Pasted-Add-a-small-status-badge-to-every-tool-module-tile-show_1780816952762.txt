@@ -1,0 +1,111 @@
+Add a small status badge to every tool/module tile showing whether that module is currently working or unfinished.
+
+Do not change the dashboard layout, background, header, cards, or panel positioning. Only update the module cards.
+
+Goal
+
+Each tile should feel like a restricted classified system module.
+
+Working modules should feel like the officer has access to something restricted.
+
+Unfinished modules should feel locked down, restricted, and unavailable.
+
+Do not use boring labels like “Online” and “Offline.”
+
+Use cooler classified-system wording.
+
+Status badge wording
+
+For modules that are working/functional, show:
+
+ACCESS GRANTED
+
+For modules that are not finished yet, show:
+
+ACCESS DENIED
+
+Alternative wording is acceptable only if it feels more classified and intimidating, but my preferred wording is:
+
+Working = ACCESS GRANTED
+Not finished = ACCESS DENIED
+Visual style
+
+Add the badge near the upper-right area of each tool card.
+
+Working modules badge
+
+Text:
+
+ACCESS GRANTED
+
+Style:
+
+dark translucent green/blue badge
+small glowing green dot
+subtle green glow
+clean futuristic border
+premium classified-system feel
+Unfinished modules badge
+
+Text:
+
+ACCESS DENIED
+
+Style:
+
+dark translucent red/amber badge
+small red or amber warning dot
+subtle red/amber glow
+locked/restricted feeling
+should look intentional, not broken
+Card behavior
+
+For working modules:
+
+Keep the LAUNCH MODULE button active
+Button works normally
+Tile feels like a live restricted module
+
+For unfinished modules:
+
+Keep the tile visible
+Show ACCESS DENIED
+Disable the launch action or make it open a small “Module locked / in development” message
+Do not let it open a broken page
+Button text can stay LAUNCH MODULE, but it should look locked/disabled if the module is unfinished
+Apply to all modules
+
+Current modules:
+
+LOCK-UP SLIP
+STRIP / PROPERTY RESTRICTION
+MEAL RESTRICTION / LOAF
+INCIDENT REPORT NARRATIVE
+DR DESCRIPTION
+ASK CDC
+ASK FDC POLICY
+WHAT FORM DO I NEED?
+
+Use the app’s actual current functionality to decide which modules are working.
+
+If a module is fully implemented and opens correctly, mark it:
+
+ACCESS GRANTED
+
+If a module is not built yet, placeholder only, or incomplete, mark it:
+
+ACCESS DENIED
+
+Design target
+
+The cards should feel like classified government system modules.
+
+The reaction should be:
+
+“Damn, I have access to this?”
+
+Not:
+
+“This is an online/offline website badge.”
+
+Do not change anything else on the dashboard.

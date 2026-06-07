@@ -68,25 +68,36 @@ export default function Dashboard() {
   return (
     <div className="relative min-h-screen w-full text-white overflow-hidden">
 
+      {/* Hologram halo — broad soft glow behind the badge */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed left-1/2 top-[38%] z-[1] hidden md:block"
+        style={{
+          width: "min(80vw, 980px)",
+          height: "min(80vw, 980px)",
+          background: "radial-gradient(circle, rgba(45,120,235,0.32) 0%, rgba(40,110,230,0.10) 42%, transparent 68%)",
+          animation: "holo-halo 7s ease-in-out infinite",
+        }}
+      />
       {/* Hologram core glow — centered, pulsing */}
       <div
         aria-hidden="true"
         className="pointer-events-none fixed left-1/2 top-[37%] z-[1] hidden md:block"
         style={{
-          width: "min(58vw, 680px)",
-          height: "min(58vw, 680px)",
-          background: "radial-gradient(circle, rgba(70,165,255,0.62) 0%, rgba(45,120,235,0.24) 38%, transparent 66%)",
+          width: "min(56vw, 660px)",
+          height: "min(56vw, 660px)",
+          background: "radial-gradient(circle, rgba(95,190,255,0.78) 0%, rgba(55,140,245,0.30) 36%, transparent 64%)",
           animation: "holo-pulse 6s ease-in-out infinite",
         }}
       />
       {/* Hologram floor projection — light cone hitting the grid floor */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed left-1/2 top-[58%] z-[1] hidden md:block"
+        className="pointer-events-none fixed left-1/2 top-[57%] z-[1] hidden md:block"
         style={{
-          width: "min(46vw, 560px)",
-          height: "180px",
-          background: "radial-gradient(ellipse at 50% 0%, rgba(80,180,255,0.55) 0%, rgba(50,130,240,0.18) 45%, transparent 75%)",
+          width: "min(48vw, 600px)",
+          height: "200px",
+          background: "radial-gradient(ellipse at 50% 0%, rgba(100,195,255,0.65) 0%, rgba(55,140,245,0.22) 45%, transparent 76%)",
           animation: "holo-floor 6s ease-in-out infinite",
         }}
       />
@@ -94,9 +105,9 @@ export default function Dashboard() {
       {/* Lower scrim — masks baked-in background text behind the working UI */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-[2] h-[58%]"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-[2] h-[55%]"
         style={{
-          background: "linear-gradient(to top, rgba(2,6,18,0.88) 0%, rgba(2,6,18,0.62) 45%, rgba(2,6,18,0.12) 82%, transparent 100%)",
+          background: "linear-gradient(to top, rgba(2,6,18,0.86) 0%, rgba(2,6,18,0.56) 48%, rgba(2,6,18,0.08) 84%, transparent 100%)",
         }}
       />
       {/* Top corner scrims — mask 'SYSTEM INTEGRITY' / 'COORDINATES' labels */}
@@ -169,9 +180,12 @@ export default function Dashboard() {
         </header>
 
         {/* ── WARNING BANNER (constrained width) ──────────── */}
-        <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-400/60 bg-amber-950/45 backdrop-blur-md px-4 py-3 w-full max-w-[760px]"
-          style={{ boxShadow: "0 0 22px rgba(245,158,11,0.16)" }}>
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+        <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-400/70 bg-[rgba(28,18,2,0.72)] backdrop-blur-md px-4 py-3 w-full max-w-[760px]"
+          style={{ boxShadow: "0 0 26px rgba(245,158,11,0.22)" }}>
+          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded border border-amber-400/60 bg-amber-500/15"
+            style={{ boxShadow: "0 0 10px rgba(245,158,11,0.3)" }}>
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-300" />
+          </div>
           <div>
             <p className={`${micro} text-amber-400 mb-1`}>Training Sandbox Mode — Active</p>
             <p className="text-[11px] text-amber-200/80 leading-relaxed">
@@ -186,7 +200,10 @@ export default function Dashboard() {
         <div className="flex-1 min-h-[90px]" />
 
         {/* ── LOWER CONSOLE: modules + right panels ───────── */}
-        <div className="mx-auto w-full max-w-[1280px] flex flex-col xl:flex-row gap-5 items-start">
+        <div className="mx-auto w-full max-w-[1340px] flex flex-col xl:flex-row gap-5 items-start">
+
+          {/* Left breathing room — shifts the console right under the hologram */}
+          <div aria-hidden="true" className="hidden xl:block shrink-0" style={{ width: "5%" }} />
 
           {/* Module grid */}
           <div className="flex-1 min-w-0 w-full">
@@ -196,17 +213,20 @@ export default function Dashboard() {
                 return (
                   <div
                     key={mod.id}
-                    className="group relative flex flex-col gap-3 rounded-lg border border-blue-400/40 bg-[rgba(6,16,48,0.70)] backdrop-blur-lg p-4 min-h-[186px] transition-all duration-200 hover:-translate-y-1 hover:border-blue-300/80 hover:bg-[rgba(10,24,62,0.80)]"
-                    style={{ boxShadow: "0 0 18px rgba(37,99,235,0.16), inset 0 0 22px rgba(37,99,235,0.07)" }}
+                    className="group relative overflow-hidden flex flex-col gap-3 rounded-lg border border-blue-400/50 bg-[rgba(4,11,34,0.80)] backdrop-blur-lg p-4 min-h-[200px] transition-all duration-200 hover:-translate-y-1 hover:border-blue-300/90 hover:bg-[rgba(8,20,56,0.85)]"
+                    style={{ boxShadow: "0 0 20px rgba(37,99,235,0.20), inset 0 0 24px rgba(37,99,235,0.08)" }}
                   >
+                    {/* Inner glass shine */}
+                    <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-blue-200/10 to-transparent" />
+
                     {/* Icon */}
-                    <div className="w-12 h-12 rounded-md border border-blue-400/50 bg-blue-900/50 flex items-center justify-center transition-all group-hover:border-blue-300/80"
-                      style={{ boxShadow: "0 0 12px rgba(59,130,246,0.28), inset 0 0 12px rgba(59,130,246,0.15)" }}>
-                      <Icon className="h-5 w-5 text-blue-200" />
+                    <div className="relative w-12 h-12 rounded-md border border-blue-400/60 bg-blue-900/50 flex items-center justify-center transition-all group-hover:border-blue-300/90"
+                      style={{ boxShadow: "0 0 16px rgba(59,130,246,0.40), inset 0 0 14px rgba(59,130,246,0.20)" }}>
+                      <Icon className="h-5 w-5 text-blue-100" />
                     </div>
 
                     {/* Title + description */}
-                    <div className="flex-1">
+                    <div className="relative flex-1">
                       <h3 className="text-[12px] font-black uppercase tracking-[0.07em] text-white leading-tight">{mod.title}</h3>
                       <p className="text-[9.5px] text-slate-300/75 mt-1.5 leading-snug">{mod.description}</p>
                     </div>
@@ -215,8 +235,8 @@ export default function Dashboard() {
                     <button
                       onClick={() => handleLaunch(mod)}
                       aria-label={`Launch ${mod.title} module`}
-                      className="mt-auto w-full flex items-center justify-center gap-1.5 rounded border border-blue-400/55 bg-blue-700/25 text-blue-200 py-2 text-[9.5px] font-black uppercase tracking-[0.18em] transition-all group-hover:bg-blue-600/45 group-hover:border-blue-300/90 group-hover:text-white"
-                      style={{ boxShadow: "0 0 12px rgba(37,99,235,0.2)" }}
+                      className="relative mt-auto w-full flex items-center justify-center gap-1.5 rounded border border-blue-400/65 bg-blue-700/30 text-blue-100 py-2 text-[9.5px] font-black uppercase tracking-[0.18em] transition-all group-hover:bg-blue-600/55 group-hover:border-blue-300/95 group-hover:text-white"
+                      style={{ boxShadow: "0 0 16px rgba(37,99,235,0.28)" }}
                     >
                       Launch Module <ChevronRight className="h-3 w-3" />
                     </button>
@@ -229,18 +249,19 @@ export default function Dashboard() {
           {/* Right panels */}
           <div className="flex flex-col gap-3.5 w-full xl:w-[248px] shrink-0">
             {/* System Status */}
-            <div className={`${panel} p-4`} style={{ boxShadow: "0 0 18px rgba(37,99,235,0.15)" }}>
-              <p className={`${micro} text-blue-200 mb-3 pb-2 border-b border-blue-500/20`}>System Status</p>
-              <div className="space-y-2.5">
+            <div className={`relative overflow-hidden ${panel} p-4`} style={{ boxShadow: "0 0 24px rgba(37,99,235,0.22), inset 0 0 24px rgba(37,99,235,0.07)" }}>
+              <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-blue-200/8 to-transparent" />
+              <p className={`relative ${micro} text-blue-200 mb-3 pb-2 border-b border-blue-500/25`}>System Status</p>
+              <div className="relative space-y-3">
                 {SYS_STATUS.map(({ label, value }) => (
                   <div key={label} className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] uppercase tracking-[0.1em] text-slate-200/90 truncate">{label}</span>
+                    <span className="text-[10px] uppercase tracking-[0.1em] text-slate-200 truncate">{label}</span>
                     <span className="flex items-center gap-1.5 shrink-0">
                       <span className={`text-[9.5px] font-black uppercase tracking-wider ${value === "Active" || value === "Enabled" ? "text-blue-300" : "text-emerald-400"}`}>
                         {value}
                       </span>
-                      <span className={`w-1.5 h-1.5 rounded-full ${value === "Active" || value === "Enabled" ? "bg-blue-300" : "bg-emerald-400"}`}
-                        style={{ boxShadow: "0 0 6px currentColor" }} />
+                      <span className={`w-2 h-2 rounded-full ${value === "Active" || value === "Enabled" ? "bg-blue-300" : "bg-emerald-400"}`}
+                        style={{ boxShadow: "0 0 8px currentColor" }} />
                     </span>
                   </div>
                 ))}
@@ -248,9 +269,10 @@ export default function Dashboard() {
             </div>
 
             {/* System Information */}
-            <div className={`${panel} p-4`} style={{ boxShadow: "0 0 18px rgba(37,99,235,0.15)" }}>
-              <p className={`${micro} text-blue-200 mb-3 pb-2 border-b border-blue-500/20`}>System Information</p>
-              <div className="space-y-2.5">
+            <div className={`relative overflow-hidden ${panel} p-4`} style={{ boxShadow: "0 0 24px rgba(37,99,235,0.22), inset 0 0 24px rgba(37,99,235,0.07)" }}>
+              <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-blue-200/8 to-transparent" />
+              <p className={`relative ${micro} text-blue-200 mb-3 pb-2 border-b border-blue-500/25`}>System Information</p>
+              <div className="relative space-y-3">
                 <InfoRow label="Clearance Level" value="Confinement Ops" />
                 <InfoRow label="Environment" value="Training" />
                 <InfoRow label="Version" value="2.0.0" />

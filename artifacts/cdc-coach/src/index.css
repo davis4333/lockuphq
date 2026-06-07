@@ -142,20 +142,25 @@
     position: fixed;
     inset: 0;
     background:
-      radial-gradient(ellipse at 50% 40%, rgba(4, 12, 35, 0.12) 0%, rgba(2, 6, 18, 0.58) 72%),
-      linear-gradient(to bottom, rgba(2, 6, 18, 0.50) 0%, rgba(2, 6, 18, 0.38) 42%, rgba(2, 6, 18, 0.66) 100%);
+      radial-gradient(ellipse at 50% 38%, rgba(40, 110, 220, 0.10) 0%, rgba(4, 12, 35, 0.04) 30%, rgba(2, 6, 18, 0.55) 74%),
+      linear-gradient(to bottom, rgba(2, 6, 18, 0.46) 0%, rgba(2, 6, 18, 0.32) 42%, rgba(2, 6, 18, 0.64) 100%);
     pointer-events: none;
     z-index: 0;
   }
 
   @keyframes holo-pulse {
-    0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(1); }
-    50%      { opacity: 0.75; transform: translate(-50%, -50%) scale(1.05); }
+    0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(1); }
+    50%      { opacity: 0.90; transform: translate(-50%, -50%) scale(1.06); }
+  }
+
+  @keyframes holo-halo {
+    0%, 100% { opacity: 0.35; transform: translate(-50%, -50%) scale(1); }
+    50%      { opacity: 0.55; transform: translate(-50%, -50%) scale(1.04); }
   }
 
   @keyframes holo-floor {
-    0%, 100% { opacity: 0.40; transform: translate(-50%, 0) scaleX(1); }
-    50%      { opacity: 0.65; transform: translate(-50%, 0) scaleX(1.08); }
+    0%, 100% { opacity: 0.45; transform: translate(-50%, 0) scaleX(1); }
+    50%      { opacity: 0.72; transform: translate(-50%, 0) scaleX(1.1); }
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -52,7 +52,7 @@ const FL_NODES = [
   { x: 22, y: 15, d: 2.1, t: 7.4 },  // Walton / Okaloosa — central panhandle
   { x: 40, y: 17, d: 3.4, t: 6.0 },  // Apalachee / Liberty — east panhandle
   { x: 52, y: 22, d: 1.2, t: 7.0 },  // Wakulla / Taylor — Big Bend / Tallahassee
-  { x: 74, y: 12, d: 4.0, t: 6.8 },  // Baker — Jacksonville (NE)
+  { x: 75, y: 15, d: 4.0, t: 6.8 },  // Baker — Jacksonville (NE)
   { x: 61, y: 25, d: 0.6, t: 7.8 },  // Raiford / Union / Lake Butler — FSP core
   { x: 60, y: 36, d: 2.4, t: 6.4 },  // Lowell / Marion — Ocala
   { x: 76, y: 42, d: 2.7, t: 6.2 },  // Tomoka — Daytona (east coast)
@@ -175,10 +175,10 @@ export default function Dashboard() {
         {/* Live monitored facility nodes */}
         {FL_NODES.map((n, i) => (
           <span key={i} className="absolute" style={{ left: `${n.x}%`, top: `${n.y}%` }}>
-            <span className="cdc-node-ring absolute h-[9px] w-[9px] -ml-[4.5px] -mt-[4.5px] rounded-full border border-red-500/70"
+            <span className="cdc-node-ring absolute h-[8px] w-[8px] -ml-[4px] -mt-[4px] rounded-full border border-red-500/60"
               style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s` }} />
-            <span className="cdc-node-dot absolute h-[8px] w-[8px] -ml-[4px] -mt-[4px] rounded-full bg-red-400"
-              style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s`, boxShadow: "0 0 6px 1px rgba(239,68,68,0.9), 0 0 13px 3px rgba(220,38,38,0.55)" }} />
+            <span className="cdc-node-dot absolute h-[6px] w-[6px] -ml-[3px] -mt-[3px] rounded-full bg-red-400"
+              style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s`, boxShadow: "0 0 5px 1px rgba(239,68,68,0.8), 0 0 10px 2px rgba(220,38,38,0.45)" }} />
           </span>
         ))}
       </div>

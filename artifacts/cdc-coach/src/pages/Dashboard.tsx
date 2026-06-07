@@ -31,7 +31,6 @@ const MODULES: Module[] = [
 const SYS_STATUS = [
   { label: "Document Engine", value: "Online" },
   { label: "Policy Engine", value: "Online" },
-  { label: "Training Sandbox", value: "Active" },
   { label: "Database", value: "Operational" },
   { label: "AI Models", value: "Operational" },
   { label: "Security Protocol", value: "Enabled" },

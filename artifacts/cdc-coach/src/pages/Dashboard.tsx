@@ -5,6 +5,7 @@ import {
   Lock, ShieldAlert, UtensilsCrossed, FileText, ClipboardList,
   MessageSquare, BookOpen, HelpCircle, AlertTriangle, ChevronRight,
 } from "lucide-react";
+import fdocSeal from "@assets/image_1780817318233.png";
 
 // ─── Types ───────────────────────────────────────────────
 type Module = {
@@ -130,21 +131,9 @@ export default function Dashboard() {
         <header className="flex flex-col lg:flex-row lg:items-center gap-3">
           {/* FDOC identity */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <div className="relative w-10 h-10 rounded-full border border-blue-400/70 bg-blue-950/70 flex items-center justify-center shrink-0"
+            <div className="relative w-10 h-10 rounded-full border border-blue-400/70 bg-blue-950/70 overflow-hidden flex items-center justify-center shrink-0"
               style={{ boxShadow: "0 0 16px rgba(59,130,246,0.5), inset 0 0 12px rgba(59,130,246,0.28)" }}>
-              <svg viewBox="0 0 64 64" className="h-[34px] w-[34px]" fill="none" aria-hidden="true"
-                style={{ filter: "drop-shadow(0 0 2px rgba(96,165,250,0.9))" }}>
-                <circle cx="32" cy="32" r="29" stroke="rgba(147,197,253,0.9)" strokeWidth="1.5" />
-                <circle cx="32" cy="32" r="24.5" stroke="rgba(96,165,250,0.5)" strokeWidth="1" />
-                <path
-                  d="M23 19 L39 19 L39 24 C41 27 43 32 42 38 C41.5 44 39 49 36.5 48 C34.5 47 34.5 41 32 36 C30.5 32 27 30 23 29 Z"
-                  fill="rgba(59,130,246,0.22)" stroke="rgba(147,197,253,0.92)" strokeWidth="1.2" strokeLinejoin="round"
-                />
-                <text x="32" y="38" textAnchor="middle" fontSize="12.5" fontWeight="900" letterSpacing="0.4"
-                  fill="rgba(224,242,254,0.96)" fontFamily="ui-sans-serif, system-ui, sans-serif">FDC</text>
-                <path d="M21.5 50.5 l1 1.7 1.9 .3 -1.4 1.4 .3 1.9 -1.7 -.9 -1.7 .9 .3 -1.9 -1.4 -1.4 1.9 -.3 z" fill="rgba(147,197,253,0.85)" />
-                <path d="M40.6 50.5 l1 1.7 1.9 .3 -1.4 1.4 .3 1.9 -1.7 -.9 -1.7 .9 .3 -1.9 -1.4 -1.4 1.9 -.3 z" fill="rgba(147,197,253,0.85)" />
-              </svg>
+              <img src={fdocSeal} alt="Florida Department of Corrections seal" className="h-full w-full object-cover" />
             </div>
             <div className="leading-[1.15]">
               <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.14em] text-blue-100">Florida Department</p>

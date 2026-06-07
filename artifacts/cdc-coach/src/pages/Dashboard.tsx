@@ -308,9 +308,9 @@ export default function Dashboard() {
 
 function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-start justify-between gap-3">
-      <span className="text-[10px] uppercase tracking-[0.1em] text-slate-300/80 whitespace-nowrap shrink-0">{label}</span>
-      <span className={`text-[9.5px] font-bold uppercase tracking-wider text-blue-200 text-right ${mono ? "font-mono" : ""}`}>{value}</span>
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-[10px] uppercase tracking-[0.07em] text-slate-300/80 whitespace-nowrap shrink-0">{label}</span>
+      <span className={`text-[8.5px] font-bold uppercase tracking-tight text-blue-200 text-right whitespace-nowrap ${mono ? "font-mono" : ""}`}>{value}</span>
     </div>
   );
 }

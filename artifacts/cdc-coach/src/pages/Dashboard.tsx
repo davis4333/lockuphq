@@ -221,35 +221,35 @@ export default function Dashboard() {
 
           {/* Module grid */}
           <div className="flex-1 min-w-0 w-full">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {MODULES.map((mod) => {
                 const Icon = mod.icon;
                 return (
                   <div
                     key={mod.id}
-                    className="group relative overflow-hidden flex flex-col gap-3 rounded-lg border border-blue-400/50 bg-[rgba(4,11,34,0.80)] backdrop-blur-lg p-4 min-h-[200px] transition-all duration-200 hover:-translate-y-1 hover:border-blue-300/90 hover:bg-[rgba(8,20,56,0.85)]"
+                    className="group relative overflow-hidden flex flex-col gap-2 rounded-lg border border-blue-400/50 bg-[rgba(4,11,34,0.80)] backdrop-blur-lg p-3 min-h-[152px] transition-all duration-200 hover:-translate-y-1 hover:border-blue-300/90 hover:bg-[rgba(8,20,56,0.85)]"
                     style={{ boxShadow: "0 0 20px rgba(37,99,235,0.20), inset 0 0 24px rgba(37,99,235,0.08)" }}
                   >
                     {/* Inner glass shine */}
                     <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-blue-200/10 to-transparent" />
 
                     {/* Icon */}
-                    <div className="relative w-12 h-12 rounded-md border border-blue-400/60 bg-blue-900/50 flex items-center justify-center transition-all group-hover:border-blue-300/90"
+                    <div className="relative w-10 h-10 rounded-md border border-blue-400/60 bg-blue-900/50 flex items-center justify-center transition-all group-hover:border-blue-300/90"
                       style={{ boxShadow: "0 0 16px rgba(59,130,246,0.40), inset 0 0 14px rgba(59,130,246,0.20)" }}>
-                      <Icon className="h-5 w-5 text-blue-100" />
+                      <Icon className="h-[18px] w-[18px] text-blue-100" />
                     </div>
 
                     {/* Title + description */}
                     <div className="relative flex-1">
-                      <h3 className="text-[12px] font-black uppercase tracking-[0.07em] text-white leading-tight">{mod.title}</h3>
-                      <p className="text-[9.5px] text-slate-300/75 mt-1.5 leading-snug">{mod.description}</p>
+                      <h3 className="text-[11.5px] font-black uppercase tracking-[0.06em] text-white leading-tight">{mod.title}</h3>
+                      <p className="text-[9px] text-slate-300/75 mt-1 leading-snug">{mod.description}</p>
                     </div>
 
                     {/* Launch button */}
                     <button
                       onClick={() => handleLaunch(mod)}
                       aria-label={`Launch ${mod.title} module`}
-                      className="relative mt-auto w-full flex items-center justify-center gap-1.5 rounded border border-blue-400/65 bg-blue-700/30 text-blue-100 py-2 text-[9.5px] font-black uppercase tracking-[0.18em] transition-all group-hover:bg-blue-600/55 group-hover:border-blue-300/95 group-hover:text-white"
+                      className="relative mt-auto w-full flex items-center justify-center gap-1.5 rounded border border-blue-400/65 bg-blue-700/30 text-blue-100 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] transition-all group-hover:bg-blue-600/55 group-hover:border-blue-300/95 group-hover:text-white"
                       style={{ boxShadow: "0 0 16px rgba(37,99,235,0.28)" }}
                     >
                       Launch Module <ChevronRight className="h-3 w-3" />

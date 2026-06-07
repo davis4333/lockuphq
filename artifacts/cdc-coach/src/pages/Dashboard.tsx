@@ -5,7 +5,7 @@ import {
   Lock, ShieldAlert, UtensilsCrossed, FileText, ClipboardList,
   MessageSquare, BookOpen, HelpCircle, AlertTriangle, ChevronRight,
 } from "lucide-react";
-import fdocSeal from "@assets/image_1780817318233.png";
+import fdocSeal from "@assets/ChatGPT_Image_Jun_7,_2026,_03_31_51_AM_1780817532915.png";
 
 // ─── Types ───────────────────────────────────────────────
 type Module = {

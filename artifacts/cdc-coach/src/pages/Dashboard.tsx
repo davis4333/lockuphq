@@ -59,8 +59,11 @@ const FL_NODES = [
   { x: 66, y: 48, d: 1.6, t: 7.2 },  // Central FL Reception — Orlando
   { x: 57, y: 53, d: 3.8, t: 6.6 },  // Hillsborough / Zephyrhills — Tampa
   { x: 70, y: 59, d: 1.0, t: 7.6 },  // Avon Park / Polk — central spine
-  { x: 80, y: 67, d: 2.3, t: 7.0 },  // Martin / Okeechobee — SE / Lake O
-  { x: 74, y: 85, d: 0.3, t: 6.9 },  // Dade / Homestead — southern tip
+  { x: 73, y: 70, d: 2.3, t: 7.0 },  // Okeechobee C.I. — N shore of Lake Okeechobee
+  { x: 84, y: 71, d: 3.1, t: 7.6 },  // Martin C.I. — Indiantown (E of Lake O)
+  { x: 80, y: 83, d: 1.4, t: 6.4 },  // South Florida Reception Center — Doral / Miami-Dade
+  { x: 78, y: 86, d: 3.6, t: 7.2 },  // Everglades C.I. — SW Miami-Dade
+  { x: 74, y: 88, d: 0.3, t: 6.9 },  // Dade C.I. — Florida City / southern tip
 ];
 
 const PHONETIC = ["ALPHA", "BRAVO", "DELTA", "ECHO", "FOXTROT", "SIERRA", "TANGO", "OMEGA", "VECTOR", "ZULU"];

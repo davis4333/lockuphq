@@ -51,7 +51,7 @@ export default function Dashboard() {
   const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "America/New_York" });
   const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" }).toUpperCase();
 
-  const panel = "rounded-lg border border-blue-400/35 bg-[rgba(6,16,48,0.78)] backdrop-blur-lg";
+  const panel = "rounded-lg border border-blue-400/45 bg-[rgba(4,11,34,0.84)] backdrop-blur-lg";
   const micro = "text-[9px] font-bold uppercase tracking-[0.18em]";
 
   const handleLaunch = (mod: Module) => {
@@ -90,6 +90,17 @@ export default function Dashboard() {
           animation: "holo-pulse 6s ease-in-out infinite",
         }}
       />
+      {/* Hologram tight bloom — bright core right on the badge */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed left-1/2 top-[38%] z-[1] hidden md:block"
+        style={{
+          width: "min(34vw, 400px)",
+          height: "min(34vw, 400px)",
+          background: "radial-gradient(circle, rgba(140,210,255,0.55) 0%, rgba(90,180,255,0.18) 45%, transparent 64%)",
+          animation: "holo-pulse 6s ease-in-out infinite",
+        }}
+      />
       {/* Hologram floor projection — light cone hitting the grid floor */}
       <div
         aria-hidden="true"
@@ -115,6 +126,9 @@ export default function Dashboard() {
         style={{ background: "linear-gradient(to right, rgba(2,6,18,0.62) 0%, transparent 100%)" }} />
       <div aria-hidden="true" className="pointer-events-none fixed inset-y-0 right-0 z-[2] w-[20%] hidden xl:block"
         style={{ background: "linear-gradient(to left, rgba(2,6,18,0.62) 0%, transparent 100%)" }} />
+      {/* Cinematic vignette — soft dark frame around screen edges */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[3]"
+        style={{ background: "radial-gradient(ellipse at 50% 44%, transparent 52%, rgba(2,6,18,0.45) 88%, rgba(1,4,12,0.65) 100%)" }} />
 
       {/* ── CONTENT ───────────────────────────────────────── */}
       <div className="relative z-10 mx-auto flex min-h-screen max-w-[1500px] flex-col px-4 sm:px-8 py-3 sm:py-4">
@@ -173,7 +187,7 @@ export default function Dashboard() {
                 style={{ boxShadow: "0 0 10px rgba(52,211,153,1)" }} />
               <div className="leading-tight">
                 <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-emerald-400/70">System Status</p>
-                <p className="text-xs font-black uppercase tracking-[0.12em] text-emerald-400">Operational</p>
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-emerald-300" style={{ textShadow: "0 0 9px rgba(52,211,153,0.65)" }}>Operational</p>
               </div>
             </div>
           </div>
@@ -197,7 +211,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── SPACER — keeps the FDOC hologram visible ─────── */}
-        <div className="flex-1 min-h-[90px]" />
+        <div className="flex-1 min-h-[140px]" />
 
         {/* ── LOWER CONSOLE: modules + right panels ───────── */}
         <div className="mx-auto w-full max-w-[1340px] flex flex-col xl:flex-row gap-5 items-start">
@@ -257,11 +271,12 @@ export default function Dashboard() {
                   <div key={label} className="flex items-center justify-between gap-2">
                     <span className="text-[10px] uppercase tracking-[0.1em] text-slate-200 truncate">{label}</span>
                     <span className="flex items-center gap-1.5 shrink-0">
-                      <span className={`text-[9.5px] font-black uppercase tracking-wider ${value === "Active" || value === "Enabled" ? "text-blue-300" : "text-emerald-400"}`}>
+                      <span className={`text-[9.5px] font-black uppercase tracking-wider ${value === "Active" || value === "Enabled" ? "text-blue-200" : "text-emerald-300"}`}
+                        style={{ textShadow: value === "Active" || value === "Enabled" ? "0 0 9px rgba(147,197,253,0.6)" : "0 0 9px rgba(52,211,153,0.65)" }}>
                         {value}
                       </span>
                       <span className={`w-2 h-2 rounded-full ${value === "Active" || value === "Enabled" ? "bg-blue-300" : "bg-emerald-400"}`}
-                        style={{ boxShadow: "0 0 8px currentColor" }} />
+                        style={{ boxShadow: "0 0 10px currentColor" }} />
                     </span>
                   </div>
                 ))}
@@ -283,9 +298,10 @@ export default function Dashboard() {
         </div>
 
         {/* ── BOTTOM DISCLAIMER ───────────────────────────── */}
-        <footer className="flex items-center justify-center gap-2.5 pt-5 pb-1">
-          <Lock className="h-3 w-3 text-blue-400/50" />
-          <p className={`${micro} text-blue-400/55 text-center`}>
+        <footer className="mt-4 flex items-center justify-center gap-2.5 rounded-md border border-blue-500/20 bg-[rgba(3,9,28,0.6)] backdrop-blur-sm py-2 px-5 mx-auto"
+          style={{ boxShadow: "0 0 16px rgba(37,99,235,0.10)" }}>
+          <Lock className="h-3 w-3 text-blue-300/70" />
+          <p className={`${micro} text-blue-200/75 text-center`}>
             Training Sandbox Mode • For Practice Use Only • No Real Data Stored
           </p>
         </footer>

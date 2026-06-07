@@ -38,6 +38,13 @@ const SYS_STATUS = [
 const CLASSIFICATION = "RESTRICTED ACCESS // COMPARTMENTALIZED TRAINING SYSTEM // DO NOT REPRODUCE";
 const TICKER = "// AUDIT MODE ACTIVE — SESSION TRACE ENABLED — MODULE ACCESS MONITORED — CLEARANCE VERIFIED — SECURE SANDBOX ONLINE — DO NOT TERMINATE CONNECTION ";
 
+// Florida wireframe map location baked into the background image (bg-fdoc-command-v2.png).
+// Used to compute the on-screen overlay rect that tracks the `cover` background.
+const FL_IMG_W = 1672;
+const FL_IMG_H = 941;
+const FL_BG_POS_Y = 30; // matches `background-position: center 30px` in index.css
+const FL_FRAC = { x0: 0.712, x1: 0.864, y0: 0.087, y1: 0.255 }; // Florida bbox as image fractions
+
 // Monitored facility nodes — positioned (% within the Florida map overlay box)
 // to approximate FDOC facility distribution; d = delay, t = duration (organic variation)
 const FL_NODES = [
@@ -80,10 +87,35 @@ export default function Dashboard() {
   const startRef = useRef(Date.now());
   const [denied, setDenied] = useState<{ id: string; n: number } | null>(null);
   const denyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [flRect, setFlRect] = useState({ left: 0, top: 0, width: 0, height: 0 });
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
+  }, []);
+
+  // Track the Florida wireframe map baked into the fixed `cover` background image,
+  // so the facility-node overlay stays glued to it across any viewport aspect ratio.
+  useEffect(() => {
+    const computeFlRect = () => {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      // background-image: cover, background-position: center 30px (matches index.css)
+      const s = Math.max(W / FL_IMG_W, H / FL_IMG_H);
+      const renderW = FL_IMG_W * s;
+      const renderH = FL_IMG_H * s;
+      const offsetX = (W - renderW) / 2; // horizontal "center"
+      const offsetY = FL_BG_POS_Y; // vertical "30px" from top
+      setFlRect({
+        left: offsetX + FL_FRAC.x0 * renderW,
+        top: offsetY + FL_FRAC.y0 * renderH,
+        width: (FL_FRAC.x1 - FL_FRAC.x0) * renderW,
+        height: (FL_FRAC.y1 - FL_FRAC.y0) * renderH,
+      });
+    };
+    computeFlRect();
+    window.addEventListener("resize", computeFlRect);
+    return () => window.removeEventListener("resize", computeFlRect);
   }, []);
 
   useEffect(() => () => { if (denyTimer.current) clearTimeout(denyTimer.current); }, []);
@@ -136,7 +168,7 @@ export default function Dashboard() {
 
       {/* Statewide facility monitoring overlay on the Florida wireframe map */}
       <div aria-hidden="true" className="pointer-events-none fixed z-[2]"
-        style={{ left: "82%", top: "12.5%", width: "16.5%", height: "23%" }}>
+        style={{ left: flRect.left, top: flRect.top, width: flRect.width, height: flRect.height }}>
         {/* Faint dark-red ambient heartbeat behind the state */}
         <div className="cdc-fl-heartbeat absolute"
           style={{ left: "52%", top: "50%", width: "160%", height: "150%", borderRadius: "50%", background: "radial-gradient(ellipse at center, rgba(220,38,38,0.55) 0%, rgba(185,28,28,0.18) 42%, transparent 70%)", mixBlendMode: "screen" }} />

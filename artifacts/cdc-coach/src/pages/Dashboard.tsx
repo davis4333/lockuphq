@@ -116,19 +116,6 @@ export default function Dashboard() {
       <div aria-hidden="true" className="cdc-heartbeat pointer-events-none fixed left-1/2 top-[26%] z-[3] h-[460px] w-[460px]"
         style={{ background: "radial-gradient(circle, rgba(220,38,38,0.55) 0%, rgba(190,28,28,0.18) 38%, transparent 68%)", mixBlendMode: "screen" }} />
 
-      {/* Faint diagonal classified watermark */}
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[1] flex items-center justify-center overflow-hidden">
-        <span className="select-none whitespace-nowrap font-black uppercase tracking-[0.25em] text-blue-200/[0.035] text-[6vw] -rotate-[24deg]">
-          Restricted — Do Not Reproduce
-        </span>
-      </div>
-
-      {/* Atmosphere overlays — scanlines, grain, occasional flicker */}
-      <div aria-hidden="true" className="cdc-scanlines pointer-events-none fixed inset-0 z-[45] opacity-60" />
-      <div aria-hidden="true" className="cdc-grain pointer-events-none fixed inset-0 z-[44] opacity-[0.035]" />
-      <div aria-hidden="true" className="cdc-flicker pointer-events-none fixed inset-0 z-[46]"
-        style={{ background: "rgba(130,170,235,0.5)" }} />
-
       {/* ── TOP / BOTTOM CLASSIFICATION BARS ──────────────── */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-[50] flex items-center justify-center border-b border-red-500/30 bg-[rgba(28,4,4,0.78)] py-[3px] backdrop-blur-sm"
         style={{ boxShadow: "0 0 14px rgba(220,38,38,0.30)" }}>
@@ -272,7 +259,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── DEDICATED HOLOGRAM DISPLAY ZONE (flexible — absorbs all extra height) ── */}
-        <div aria-hidden="true" className="flex-1 min-h-[70px]" />
+        <div aria-hidden="true" className="flex-1 min-h-[104px]" />
 
         {/* ── LOWER CONSOLE: modules + right panels ───────── */}
         <div className="mx-auto w-full max-w-[1340px] flex flex-col xl:flex-row gap-5 items-start">
@@ -381,10 +368,10 @@ export default function Dashboard() {
           {/* Right panels */}
           <div className="flex flex-col gap-3 w-full xl:w-[248px] shrink-0">
             {/* System Status */}
-            <div className={`relative overflow-hidden ${panel} p-3.5`} style={{ boxShadow: "0 0 24px rgba(37,99,235,0.22), inset 0 0 24px rgba(37,99,235,0.07)" }}>
+            <div className={`relative overflow-hidden ${panel} p-3`} style={{ boxShadow: "0 0 24px rgba(37,99,235,0.22), inset 0 0 24px rgba(37,99,235,0.07)" }}>
               <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-blue-200/8 to-transparent" />
-              <p className={`relative ${micro} text-blue-200 mb-2.5 pb-2 border-b border-blue-500/25`}>System Status</p>
-              <div className="relative space-y-2.5">
+              <p className={`relative ${micro} text-blue-200 mb-2 pb-1.5 border-b border-blue-500/25`}>System Status</p>
+              <div className="relative space-y-2">
                 {SYS_STATUS.map(({ label, value }) => (
                   <div key={label} className="flex items-center justify-between gap-2">
                     <span className="text-[10px] uppercase tracking-[0.1em] text-slate-200 truncate">{label}</span>
@@ -402,10 +389,10 @@ export default function Dashboard() {
             </div>
 
             {/* System Information */}
-            <div className={`relative overflow-hidden ${panel} p-3.5`} style={{ boxShadow: "0 0 24px rgba(37,99,235,0.22), inset 0 0 24px rgba(37,99,235,0.07)" }}>
+            <div className={`relative overflow-hidden ${panel} p-3`} style={{ boxShadow: "0 0 24px rgba(37,99,235,0.22), inset 0 0 24px rgba(37,99,235,0.07)" }}>
               <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-blue-200/8 to-transparent" />
-              <p className={`relative ${micro} text-blue-200 mb-2.5 pb-2 border-b border-blue-500/25`}>System Information</p>
-              <div className="relative space-y-2.5">
+              <p className={`relative ${micro} text-blue-200 mb-2 pb-1.5 border-b border-blue-500/25`}>System Information</p>
+              <div className="relative space-y-2">
                 <InfoRow label="Clearance Level" value="Blacksite Authorized" />
                 <InfoRow label="Environment" value="Secure Sandbox" />
                 <InfoRow label="Encryption" value="AES-256 Active" />

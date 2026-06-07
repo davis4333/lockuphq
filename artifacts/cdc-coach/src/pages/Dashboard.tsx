@@ -283,8 +283,8 @@ export default function Dashboard() {
               <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-blue-200/8 to-transparent" />
               <p className={`relative ${micro} text-blue-200 mb-2.5 pb-2 border-b border-blue-500/25`}>System Information</p>
               <div className="relative space-y-2.5">
-                <InfoRow label="Clearance Level" value="Confinement Ops" />
-                <InfoRow label="Environment" value="Training" />
+                <InfoRow label="Clearance Level" value="Blacksite Authorized" />
+                <InfoRow label="Environment" value="Secure Sandbox" />
                 <InfoRow label="Version" value="2.0.0" />
                 <InfoRow label="Last System Check" value={`${timeStr} EST`} mono />
               </div>
@@ -308,9 +308,9 @@ export default function Dashboard() {
 
 function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-[10px] uppercase tracking-[0.1em] text-slate-300/80 truncate">{label}</span>
-      <span className={`text-[9.5px] font-bold uppercase tracking-wider text-blue-200 shrink-0 ${mono ? "font-mono" : ""}`}>{value}</span>
+    <div className="flex items-start justify-between gap-3">
+      <span className="text-[10px] uppercase tracking-[0.1em] text-slate-300/80 whitespace-nowrap shrink-0">{label}</span>
+      <span className={`text-[9.5px] font-bold uppercase tracking-wider text-blue-200 text-right ${mono ? "font-mono" : ""}`}>{value}</span>
     </div>
   );
 }

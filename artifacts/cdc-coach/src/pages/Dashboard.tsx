@@ -90,10 +90,6 @@ export default function Dashboard() {
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[3]"
         style={{ background: "radial-gradient(ellipse at 50% 42%, transparent 56%, rgba(2,6,18,0.34) 90%, rgba(1,4,12,0.55) 100%)" }} />
 
-      {/* Slow red heartbeat behind the FDOC hologram */}
-      <div aria-hidden="true" className="cdc-heartbeat pointer-events-none fixed left-1/2 top-[26%] z-[3] h-[460px] w-[460px]"
-        style={{ background: "radial-gradient(circle, rgba(220,38,38,0.55) 0%, rgba(190,28,28,0.18) 38%, transparent 68%)", mixBlendMode: "screen" }} />
-
       {/* ── CONTENT ───────────────────────────────────────── */}
       <div className="relative z-10 mx-auto flex h-[100dvh] max-w-[1500px] flex-col overflow-y-auto px-4 sm:px-8 pt-6 pb-6">
 

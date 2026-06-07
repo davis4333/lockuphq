@@ -199,13 +199,6 @@
   99.7% { opacity: 0.03; }
 }
 
-/* Slow red heartbeat behind the hologram */
-.cdc-heartbeat { animation: cdc-heartbeat 6.5s ease-in-out infinite; }
-@keyframes cdc-heartbeat {
-  0%, 100% { opacity: 0.08; transform: translate(-50%, -50%) scale(0.95); }
-  50%      { opacity: 0.26; transform: translate(-50%, -50%) scale(1.05); }
-}
-
 /* Activity ticker marquee */
 .cdc-ticker { animation: cdc-ticker 36s linear infinite; }
 @keyframes cdc-ticker {

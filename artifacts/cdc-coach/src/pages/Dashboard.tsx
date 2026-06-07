@@ -35,101 +35,22 @@ const SYS_STATUS = [
   { label: "Security Protocol", value: "Enabled" },
 ];
 
-const CLASSIFICATION = "RESTRICTED ACCESS // COMPARTMENTALIZED TRAINING SYSTEM // DO NOT REPRODUCE";
-const TICKER = "// AUDIT MODE ACTIVE — SESSION TRACE ENABLED — MODULE ACCESS MONITORED — CLEARANCE VERIFIED — SECURE SANDBOX ONLINE — DO NOT TERMINATE CONNECTION ";
-
-// Florida wireframe map location baked into the background image (bg-fdoc-command-v2.png).
-// Used to compute the on-screen overlay rect that tracks the `cover` background.
-const FL_IMG_W = 1672;
-const FL_IMG_H = 941;
-const FL_BG_POS_Y = 30; // matches `background-position: center 30px` in index.css
-const FL_FRAC = { x0: 0.717, x1: 0.853, y0: 0.108, y1: 0.283 }; // Florida bbox as image fractions (tight to baked outline)
-
-// Monitored facility nodes — positioned (% within the Florida map overlay box)
-// to approximate FDOC facility distribution; d = delay, t = duration (organic variation)
-const FL_NODES = [
-  { x: 5,  y: 5,  d: 0.0, t: 6.6 },  // Santa Rosa / Century — far W panhandle
-  { x: 18, y: 6,  d: 2.1, t: 7.4 },  // Walton / Okaloosa — central panhandle
-  { x: 40, y: 5,  d: 3.4, t: 6.0 },  // Apalachee / Liberty — east panhandle
-  { x: 51, y: 13, d: 1.2, t: 7.0 },  // Wakulla / Taylor — Big Bend / Tallahassee
-  { x: 82, y: 6,  d: 4.0, t: 6.8 },  // Baker — Jacksonville (NE)
-  { x: 64, y: 15, d: 0.6, t: 7.8 },  // Raiford / Union / Lake Butler — FSP core
-  { x: 64, y: 26, d: 2.4, t: 6.4 },  // Lowell / Marion — Ocala
-  { x: 85, y: 26, d: 2.7, t: 6.2 },  // Tomoka — Daytona (east coast)
-  { x: 72, y: 38, d: 1.6, t: 7.2 },  // Central FL Reception — Orlando
-  { x: 60, y: 43, d: 3.8, t: 6.6 },  // Hillsborough / Zephyrhills — Tampa
-  { x: 72, y: 52, d: 1.0, t: 7.6 },  // Avon Park / Polk — central spine
-  { x: 70, y: 61, d: 2.3, t: 7.0 },  // Okeechobee C.I. — N shore of Lake Okeechobee
-  { x: 85, y: 60, d: 3.1, t: 7.6 },  // Martin C.I. — Indiantown (E of Lake O)
-  { x: 82, y: 76, d: 1.4, t: 6.4 },  // South Florida Reception Center — Doral / Miami-Dade
-  { x: 72, y: 82, d: 3.6, t: 7.2 },  // Everglades C.I. — SW Miami-Dade
-  { x: 76, y: 95, d: 0.3, t: 6.9 },  // Dade C.I. — Florida City / southern tip
-];
-
-const PHONETIC = ["ALPHA", "BRAVO", "DELTA", "ECHO", "FOXTROT", "SIERRA", "TANGO", "OMEGA", "VECTOR", "ZULU"];
-function genSessionId() {
-  const hex = () => Math.floor(Math.random() * 16).toString(16).toUpperCase();
-  const word = PHONETIC[Math.floor(Math.random() * PHONETIC.length)];
-  const num = String(Math.floor(1000 + Math.random() * 9000));
-  return `${hex()}${hex()}${hex()}-${word}-${num}`;
-}
-
-function fmtElapsed(ms: number) {
-  const t = Math.max(0, Math.floor(ms / 1000));
-  const h = String(Math.floor(t / 3600)).padStart(2, "0");
-  const m = String(Math.floor((t % 3600) / 60)).padStart(2, "0");
-  const s = String(t % 60).padStart(2, "0");
-  return `${h}:${m}:${s}`;
-}
-
 // ─── Main Component ───────────────────────────────────────
 export default function Dashboard() {
   const [, navigate] = useLocation();
   const [now, setNow] = useState(new Date());
-  const [sessionId] = useState(genSessionId);
-  const startRef = useRef(Date.now());
   const [denied, setDenied] = useState<{ id: string; n: number } | null>(null);
   const denyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [flRect, setFlRect] = useState({ left: 0, top: 0, width: 0, height: 0 });
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Track the Florida wireframe map baked into the fixed `cover` background image,
-  // so the facility-node overlay stays glued to it across any viewport aspect ratio.
-  useEffect(() => {
-    const computeFlRect = () => {
-      // Use the document client box (excludes the scrollbar gutter) so the
-      // cover-math matches the area a `background-attachment: fixed` image
-      // actually paints into. window.innerWidth/Height include the scrollbar,
-      // which flips the cover axis near 16:9 and shifts the map sideways.
-      const W = document.documentElement.clientWidth;
-      const H = document.documentElement.clientHeight;
-      // background-image: cover, background-position: center 30px (matches index.css)
-      const s = Math.max(W / FL_IMG_W, H / FL_IMG_H);
-      const renderW = FL_IMG_W * s;
-      const renderH = FL_IMG_H * s;
-      const offsetX = (W - renderW) / 2; // horizontal "center"
-      const offsetY = FL_BG_POS_Y; // vertical "30px" from top
-      setFlRect({
-        left: offsetX + FL_FRAC.x0 * renderW,
-        top: offsetY + FL_FRAC.y0 * renderH,
-        width: (FL_FRAC.x1 - FL_FRAC.x0) * renderW,
-        height: (FL_FRAC.y1 - FL_FRAC.y0) * renderH,
-      });
-    };
-    computeFlRect();
-    window.addEventListener("resize", computeFlRect);
-    return () => window.removeEventListener("resize", computeFlRect);
-  }, []);
-
   useEffect(() => () => { if (denyTimer.current) clearTimeout(denyTimer.current); }, []);
 
   const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "America/New_York" });
   const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" }).toUpperCase();
-  const sessionDuration = fmtElapsed(now.getTime() - startRef.current);
 
   const panel = "rounded-lg border border-blue-400/45 bg-[rgba(4,11,34,0.84)] backdrop-blur-lg";
   const micro = "text-[9px] font-bold uppercase tracking-[0.18em]";
@@ -172,33 +93,6 @@ export default function Dashboard() {
       {/* Slow red heartbeat behind the FDOC hologram */}
       <div aria-hidden="true" className="cdc-heartbeat pointer-events-none fixed left-1/2 top-[26%] z-[3] h-[460px] w-[460px]"
         style={{ background: "radial-gradient(circle, rgba(220,38,38,0.55) 0%, rgba(190,28,28,0.18) 38%, transparent 68%)", mixBlendMode: "screen" }} />
-
-      {/* Statewide facility monitoring overlay on the Florida wireframe map */}
-      <div aria-hidden="true" className="pointer-events-none fixed z-[2]"
-        style={{ left: flRect.left, top: flRect.top, width: flRect.width, height: flRect.height }}>
-        {/* Faint dark-red ambient heartbeat behind the state */}
-        <div className="cdc-fl-heartbeat absolute"
-          style={{ left: "52%", top: "50%", width: "140%", height: "130%", borderRadius: "50%", background: "radial-gradient(ellipse at center, rgba(220,38,38,0.32) 0%, rgba(185,28,28,0.12) 42%, transparent 70%)", mixBlendMode: "screen" }} />
-        {/* Live monitored facility nodes */}
-        {FL_NODES.map((n, i) => (
-          <span key={i} className="absolute" style={{ left: `${n.x}%`, top: `${n.y}%` }}>
-            <span className="cdc-node-ring absolute h-[8px] w-[8px] -ml-[4px] -mt-[4px] rounded-full border border-red-500/60"
-              style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s` }} />
-            <span className="cdc-node-dot absolute h-[6px] w-[6px] -ml-[3px] -mt-[3px] rounded-full bg-red-400"
-              style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s`, boxShadow: "0 0 3px 1px rgba(239,68,68,0.6), 0 0 6px 2px rgba(220,38,38,0.3)" }} />
-          </span>
-        ))}
-      </div>
-
-      {/* ── TOP / BOTTOM CLASSIFICATION BARS ──────────────── */}
-      <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-[50] flex items-center justify-center border-b border-red-500/30 bg-[rgba(28,4,4,0.78)] py-[3px] backdrop-blur-sm"
-        style={{ boxShadow: "0 0 14px rgba(220,38,38,0.30)" }}>
-        <span className="text-[8px] font-bold uppercase tracking-[0.34em] text-red-300/80">{CLASSIFICATION}</span>
-      </div>
-      <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 bottom-0 z-[50] flex items-center justify-center border-t border-red-500/30 bg-[rgba(28,4,4,0.78)] py-[3px] backdrop-blur-sm"
-        style={{ boxShadow: "0 0 14px rgba(220,38,38,0.30)" }}>
-        <span className="text-[8px] font-bold uppercase tracking-[0.34em] text-red-300/80">{CLASSIFICATION}</span>
-      </div>
 
       {/* ── CONTENT ───────────────────────────────────────── */}
       <div className="relative z-10 mx-auto flex h-[100dvh] max-w-[1500px] flex-col overflow-y-auto px-4 sm:px-8 pt-6 pb-6">
@@ -299,7 +193,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* ── WARNING BANNER + SESSION TELEMETRY ──────────── */}
+        {/* ── WARNING BANNER ──────────────────────────────── */}
         <div className="mt-3.5 flex flex-col lg:flex-row items-stretch gap-3">
           {/* Warning banner */}
           <div className="flex items-start gap-3 rounded-lg border border-amber-400/70 bg-[rgba(28,18,2,0.72)] backdrop-blur-md px-4 py-3 w-full max-w-full lg:max-w-[520px]"
@@ -312,23 +206,9 @@ export default function Dashboard() {
               <p className={`${micro} text-amber-400 mb-1`}>Restricted Training System — Audit Mode Active</p>
               <p className="text-[11px] text-amber-200/80 leading-relaxed">
                 Authorized training use only. Do not enter real inmate names, DC numbers, medical information,
-                or restricted work information. Simulated session activity may be displayed for training atmosphere.
-                No operational data is stored.
-              </p>
-              <p className="mt-1.5 text-[8px] font-mono uppercase tracking-[0.16em] text-amber-300/55">
-                Session Trace: Active // Operator: [Redacted] // System Mode: Secure Sandbox
+                or restricted work information. No operational data is stored.
               </p>
             </div>
-          </div>
-
-          {/* Session telemetry HUD */}
-          <div className={`${panel} border-blue-400/35 flex flex-col justify-center gap-1.5 px-4 py-3 w-full lg:w-[230px] shrink-0`}
-            style={{ boxShadow: "0 0 18px rgba(37,99,235,0.16)" }}>
-            <p className="text-[8px] font-bold uppercase tracking-[0.22em] text-blue-300/55 mb-0.5 pb-1 border-b border-blue-500/20">Session Telemetry</p>
-            <TeleRow label="Session ID" value={sessionId} accent="blue" />
-            <TeleRow label="Terminal Origin" value="27.3°N 80.3°W" accent="dim" />
-            <TeleRow label="Operator" value="[REDACTED]" accent="amber" />
-            <TeleRow label="Duration" value={sessionDuration} accent="emerald" />
           </div>
         </div>
 
@@ -470,20 +350,10 @@ export default function Dashboard() {
                 <InfoRow label="Clearance Level" value="Blacksite Authorized" />
                 <InfoRow label="Environment" value="Secure Sandbox" />
                 <InfoRow label="Encryption" value="AES-256 Active" />
-                <InfoRow label="Session Trace" value="Armed" />
                 <InfoRow label="Build" value="Classified" />
                 <InfoRow label="Last System Check" value={`${timeStr} EST`} mono />
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* ── LIVE ACTIVITY TICKER ────────────────────────── */}
-        <div className="mt-3 overflow-hidden rounded-md border border-blue-500/20 bg-[rgba(3,9,28,0.55)] backdrop-blur-sm py-1.5"
-          style={{ boxShadow: "0 0 14px rgba(37,99,235,0.10)" }}>
-          <div className="cdc-ticker flex w-max whitespace-nowrap">
-            <span className="text-[8.5px] font-mono uppercase tracking-[0.22em] text-emerald-300/45 px-2">{TICKER.repeat(2)}</span>
-            <span className="text-[8.5px] font-mono uppercase tracking-[0.22em] text-emerald-300/45 px-2" aria-hidden="true">{TICKER.repeat(2)}</span>
           </div>
         </div>
 
@@ -510,16 +380,3 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
   );
 }
 
-function TeleRow({ label, value, accent }: { label: string; value: string; accent: "blue" | "emerald" | "amber" | "dim" }) {
-  const tone =
-    accent === "emerald" ? "text-emerald-300/85"
-      : accent === "amber" ? "text-amber-300/80"
-        : accent === "dim" ? "text-blue-300/55"
-          : "text-blue-200/85";
-  return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span className="text-[7.5px] font-bold uppercase tracking-[0.14em] text-blue-300/45 whitespace-nowrap shrink-0">{label}</span>
-      <span className={`text-[9px] font-mono font-bold tracking-tight text-right whitespace-nowrap ${tone}`}>{value}</span>
-    </div>
-  );
-}

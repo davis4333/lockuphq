@@ -70,57 +70,15 @@ export default function Dashboard() {
   return (
     <div className="relative min-h-screen w-full text-white overflow-hidden">
 
-      {/* Hologram halo — broad soft glow behind the badge */}
+      {/* Hologram bloom — subtle, tight brightening right on the badge (no diffuse fog) */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed left-1/2 top-[38%] z-[1] hidden md:block"
+        className="pointer-events-none fixed left-1/2 top-[30%] z-[1] hidden md:block"
         style={{
-          width: "min(80vw, 980px)",
-          height: "min(80vw, 980px)",
-          background: "radial-gradient(circle, rgba(45,120,235,0.32) 0%, rgba(40,110,230,0.10) 42%, transparent 68%)",
-          animation: "holo-halo 7s ease-in-out infinite",
-        }}
-      />
-      {/* Hologram core glow — centered, pulsing */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed left-1/2 top-[37%] z-[1] hidden md:block"
-        style={{
-          width: "min(56vw, 660px)",
-          height: "min(56vw, 660px)",
-          background: "radial-gradient(circle, rgba(95,190,255,0.78) 0%, rgba(55,140,245,0.30) 36%, transparent 64%)",
+          width: "min(26vw, 300px)",
+          height: "min(26vw, 300px)",
+          background: "radial-gradient(circle, rgba(120,195,255,0.34) 0%, rgba(80,160,245,0.10) 46%, transparent 66%)",
           animation: "holo-pulse 6s ease-in-out infinite",
-        }}
-      />
-      {/* Hologram tight bloom — bright core right on the badge */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed left-1/2 top-[38%] z-[1] hidden md:block"
-        style={{
-          width: "min(34vw, 400px)",
-          height: "min(34vw, 400px)",
-          background: "radial-gradient(circle, rgba(140,210,255,0.55) 0%, rgba(90,180,255,0.18) 45%, transparent 64%)",
-          animation: "holo-pulse 6s ease-in-out infinite",
-        }}
-      />
-      {/* Hologram floor projection — light cone hitting the grid floor (kept in the gap above the cards) */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed left-1/2 top-[46%] z-[1] hidden md:block"
-        style={{
-          width: "min(38vw, 460px)",
-          height: "104px",
-          background: "radial-gradient(ellipse at 50% 0%, rgba(95,185,255,0.26) 0%, rgba(55,140,245,0.08) 44%, transparent 74%)",
-          animation: "holo-floor 6s ease-in-out infinite",
-        }}
-      />
-
-      {/* Mid-band mask — feathered overlay that hides the baked-in horizontal HUD line + blue fog between the hologram and the cards */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 top-[33%] z-[2] h-[26%]"
-        style={{
-          background: "linear-gradient(to bottom, transparent 0%, rgba(2,6,18,0.55) 28%, rgba(2,6,18,0.82) 60%, rgba(2,6,18,0.9) 100%)",
         }}
       />
 

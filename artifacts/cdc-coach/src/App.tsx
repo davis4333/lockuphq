@@ -5,6 +5,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import LockUpSlip from "@/pages/LockUpSlip";
 import PropertyRestriction from "@/pages/PropertyRestriction";
+import BackgroundEffects from "@/components/BackgroundEffects";
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
 function App() {
   return (
     <TooltipProvider>
+      <BackgroundEffects />
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
         <Router />
       </WouterRouter>

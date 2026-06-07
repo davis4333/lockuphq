@@ -459,7 +459,7 @@ export default function LockUpSlip() {
     fields.captain;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-transparent">
       <div className="max-w-3xl mx-auto px-4 py-8">
         <button
           onClick={() => navigate("/")}

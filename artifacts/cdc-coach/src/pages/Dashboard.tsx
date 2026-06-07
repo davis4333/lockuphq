@@ -66,7 +66,7 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-transparent">
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-1">
@@ -103,10 +103,10 @@ export default function Dashboard() {
                 onClick={() => card.active && card.route && navigate(card.route)}
                 disabled={!card.active}
                 className={[
-                  "relative flex flex-col items-start gap-3 rounded-xl border p-5 text-left transition-all duration-150",
+                  "relative flex flex-col items-start gap-3 rounded-xl border p-5 text-left transition-all duration-150 backdrop-blur-md",
                   card.active
-                    ? "border-card-border bg-card hover:border-primary/60 hover:bg-card cursor-pointer hover:shadow-lg hover:shadow-primary/5"
-                    : "border-border/40 bg-card/40 cursor-not-allowed opacity-60",
+                    ? "border-primary/20 bg-card hover:border-primary/50 cursor-pointer hover:shadow-lg hover:shadow-primary/10"
+                    : "border-white/5 bg-card/40 cursor-not-allowed opacity-50",
                 ].join(" ")}
               >
                 <div className={[

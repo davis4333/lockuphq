@@ -1,0 +1,215 @@
+The current version is still not matching the reference image closely enough. It has the right idea, but the layout feels too flat, too spread out, and too much like a standard web page.
+
+Rework the page so it matches the uploaded command-center reference image much more closely.
+
+Main issue
+
+Right now the dashboard feels like cards placed across the page. I want it to feel like a cinematic classified government command-center console.
+
+The final page should look much closer to the uploaded reference image:
+
+Holographic FDOC badge is the visual centerpiece.
+Cards are compact tactical modules.
+Tool grid is centered, not pushed hard left.
+System panels sit cleanly on the right.
+Header feels like a secure classified terminal.
+Background is visible and dramatic.
+Everything feels intentional and premium.
+Desktop layout requirements
+
+For desktop, use a centered fixed-width command dashboard layout.
+
+Do not let the module cards stretch across the whole screen.
+
+Use this approximate structure:
+
+Full page max content width: around 1500px
+Main dashboard content centered horizontally
+Left margin should not be tiny
+Right system panels should not touch the edge
+Tool grid and right panels should feel like one unified console
+
+The page should visually match this layout:
+
+TOP
+[FDOC identity] [CONFINEMENT COMMAND CENTER]                [clock] [system status]
+
+UPPER MIDDLE
+[training sandbox warning]              [large visible FDOC hologram in background]
+
+LOWER MIDDLE
+[tool card] [tool card] [tool card] [tool card]        [system status panel]
+[tool card] [tool card] [tool card] [tool card]        [system information panel]
+
+BOTTOM
+[locked sandbox disclaimer]
+Move the tool grid
+
+The tool grid is currently too far left and too stretched.
+
+Fix it:
+
+Move the tool grid slightly to the right.
+Center it under the FDOC hologram.
+Do not start the cards near the far left edge of the screen.
+The first card should start more like the reference image, with significant left breathing room.
+The grid should feel like it sits in the lower center of the page.
+Keep two rows of four cards on desktop.
+Leave a clean gap between the tool grid and the right-side system panels.
+Card sizing
+
+The cards are currently too wide and too flat.
+
+Make the tool cards closer to the reference image:
+
+Each card should be compact and tactical.
+Make card height slightly taller.
+Make card width slightly smaller.
+The cards should look like secure launch modules, not normal website cards.
+Keep all cards exactly the same size.
+Keep button aligned at the bottom of every card.
+Increase internal padding slightly.
+Add stronger neon blue border glow.
+Add a subtle blue inner glow.
+Add a hover effect where the card lifts slightly and the border glows brighter.
+
+The cards should have this feel:
+
+[icon]
+
+LOCK-UP SLIP
+Generate confinement placement narratives for incoming inmates.
+
+[ LAUNCH MODULE  > ]
+Hologram fix
+
+The FDOC hologram is too dim and too hidden.
+
+Make it more visible and closer to the reference:
+
+Increase hologram brightness.
+Increase blue glow around the badge.
+Make the floor projection glow stronger.
+Keep the hologram centered behind the upper middle area.
+Cards should sit below the hologram, not directly over the middle of it.
+Add a subtle pulsing glow animation if possible.
+Make the hologram feel like it is being projected from the floor.
+
+The badge should feel like the centerpiece of the command center.
+
+Header fix
+
+The header is close, but make it more cinematic and aligned like the reference.
+
+Keep:
+
+CONFINEMENT COMMAND CENTER
+OCI • TRAINING SANDBOX • ONLINE
+
+Adjust:
+
+Keep the title large and spaced out.
+Align the header cleanly with the rest of the dashboard.
+Add subtle HUD line accents around the title.
+Make the green ONLINE dot glow slightly.
+Keep the FDOC identity block on the far left, but make it cleaner and more official.
+Warning banner fix
+
+The warning banner is too long and too high.
+
+Adjust it:
+
+Move it slightly down from the header.
+Make it narrower, around 700–780px wide on desktop.
+Do not stretch it across the screen.
+Keep it left/middle aligned like the reference image.
+Add stronger amber glow and border.
+Keep text readable but compact.
+
+Text:
+
+TRAINING SANDBOX MODE — ACTIVE
+
+Body:
+
+Use fake information only. Do not enter real inmate names, DC numbers, medical information, or any restricted work information. This tool is for training and practice purposes only. No data is saved or transmitted.
+
+Right-side panels
+
+The right-side panels are good but need better positioning.
+
+Fix:
+
+Move them slightly down so the System Status panel aligns with the top row of cards.
+Keep both panels the same width.
+Make them slightly brighter and cleaner.
+Add stronger glassmorphism.
+Add more neon blue edge glow.
+Do not let background text bleed through them.
+Make the text easier to read.
+
+System Status panel rows:
+
+DOCUMENT ENGINE — ONLINE
+POLICY ENGINE — ONLINE
+TRAINING SANDBOX — ACTIVE
+DATABASE — OPERATIONAL
+AI MODELS — OPERATIONAL
+SECURITY PROTOCOL — ENABLED
+
+System Information panel rows:
+
+CLEARANCE LEVEL — CONFINEMENT OPS
+ENVIRONMENT — TRAINING
+VERSION — 2.0.0
+LAST SYSTEM CHECK — live current time
+Background visibility
+
+The background is too dark in some places and too messy in others.
+
+Fix:
+
+Keep the background cinematic.
+Keep the watch towers visible.
+Keep the blue floor grid visible.
+Make the center hologram brighter.
+Add a dark overlay behind text/cards only where needed.
+Do not make the whole page so dark that the background loses impact.
+The real UI should be the brightest layer.
+The background should support the UI, not compete with it.
+Bottom disclaimer
+
+Keep the bottom disclaimer centered.
+
+Text:
+
+TRAINING SANDBOX MODE • FOR PRACTICE USE ONLY • NO REAL DATA STORED
+
+Make it look like a locked classified footer. It should sit below the cards and be centered like the reference image.
+
+Remove / do not add
+
+Do not add:
+
+Left sidebar
+Next Up panel
+Training progress
+Readiness percentage
+Charts
+Caseload widgets
+Coaching widgets
+Generic dashboard analytics
+Fake inmate data
+Fake operational numbers
+Final look
+
+The finished result should feel like:
+
+A restricted FDOC internal system
+A classified command terminal
+A futuristic corrections operations console
+Something officers open and immediately think, “Damn, this looks official.”
+
+It should not feel like a normal Replit app with cards over a background.
+
+Prioritize visual matching to the uploaded reference image: card placement, hologram visibility, right-side panels, warning banner position, and cinematic spacing

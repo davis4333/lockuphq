@@ -1,0 +1,132 @@
+The tiles are still covering the FDOC hologram. The issue is not styling anymore — it is layout structure.
+
+I need you to change the page layout so the hologram has its own dedicated display zone and the tool tiles cannot move into that space.
+
+Do not redesign the page. Keep the same style, same cards, same functionality, same background, same system panels. This is strictly a layout fix.
+
+Core fix
+
+Create an explicit three-section vertical layout for the main dashboard body:
+
+Top section = header and warning banner
+Middle section = dedicated hologram display zone
+Bottom section = tool cards + right-side system panels + footer
+
+Right now the tiles are rising into the hologram space. That must stop.
+
+Required structure
+
+Build the page so the main content uses a layout like this:
+
+Header row
+Warning banner row
+Dedicated hologram row
+Cards / system panels row
+Footer row
+
+The key requirement is that the dedicated hologram row must exist as its own layout section with enough height to clearly show the full FDOC hologram.
+
+Hologram display zone
+
+Create a dedicated hologram display area in the center of the page.
+
+Requirements:
+
+It must sit below the warning banner
+It must sit above the tool cards
+It must have enough height to show the full hologram clearly
+No cards or side panels are allowed to overlap this zone
+The full circular FDOC badge and the projection glow beneath it must be visible
+
+On desktop, give this hologram zone a minimum height of about 260px to 320px.
+
+That space should be intentionally empty except for the visible hologram in the background.
+
+Card grid position
+
+Move the entire card grid down so it begins below the hologram zone.
+
+Do not just nudge it down a few pixels. I need the top row of cards placed clearly under the badge.
+
+Requirements:
+
+Top row of tiles starts below the dedicated hologram zone
+No tile may overlap the FDOC badge
+Keep two rows of four tiles
+If needed, reduce tile height slightly so the whole layout still fits nicely
+Keep the tiles centered
+Keep the horizontal spacing clean
+Right-side panels position
+
+The System Status and System Information panels must move down with the cards.
+
+They should align with the top of the card grid, not with the hologram zone.
+
+The right-side panels should never intrude into the hologram display area.
+
+Background positioning
+
+If needed, reposition the background image so the FDOC hologram sits higher in the viewport and lands correctly inside the dedicated hologram zone.
+
+Requirements:
+
+Hologram centered horizontally
+Hologram placed in the upper-middle area
+Projection glow visible
+Cards appear below it
+Towers and floor still visible
+Important implementation instruction
+
+Do not rely on normal content flow alone.
+
+I want you to intentionally reserve vertical space for the hologram.
+
+That means:
+
+create a dedicated container/section for the hologram zone
+give it explicit height or min-height
+place the card grid in the next section below it
+do not allow negative margins, overlap, or upward pull from the card section
+Visual target
+
+The page should look like this:
+
+HEADER
+[FDOC identity] [Confinement Command Center] [Clock] [System Status]
+
+WARNING BANNER
+[Training Sandbox Mode — Active]
+
+HOLOGRAM ZONE
+[full FDOC hologram clearly visible]
+[projection glow visible]
+[no tiles here]
+
+CARDS + RIGHT PANELS
+[row 1 of 4 tiles]        [system status]
+[row 2 of 4 tiles]        [system information]
+
+FOOTER
+[training sandbox footer]
+Preserve styling
+
+Keep:
+
+same futuristic command-center look
+same glassmorphism cards
+same neon blue borders
+same right-side panels
+same warning banner
+same footer
+same tool names
+same functionality
+
+Do not add any new widgets.
+
+Final goal
+
+The full FDOC hologram must be clearly visible, just like the uploaded reference image.
+
+The tiles should sit below it, not on top of it.
+
+The screen should feel like a classified FDOC command console, with the hologram as the centerpiece.

@@ -210,8 +210,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── SPACER — keeps the FDOC hologram visible ─────── */}
-        <div className="flex-1 min-h-[140px]" />
+        {/* ── DEDICATED HOLOGRAM DISPLAY ZONE (reserved, never overlapped) ── */}
+        <div aria-hidden="true" className="shrink-0 h-[clamp(220px,32vh,320px)]" />
 
         {/* ── LOWER CONSOLE: modules + right panels ───────── */}
         <div className="mx-auto w-full max-w-[1340px] flex flex-col xl:flex-row gap-5 items-start">
@@ -297,8 +297,11 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* ── FLEX SPACER — absorbs extra height BELOW cards, keeps footer low ── */}
+        <div aria-hidden="true" className="flex-1 min-h-[16px]" />
+
         {/* ── BOTTOM DISCLAIMER ───────────────────────────── */}
-        <footer className="mt-4 flex items-center justify-center gap-2.5 rounded-md border border-blue-500/20 bg-[rgba(3,9,28,0.6)] backdrop-blur-sm py-2 px-5 mx-auto"
+        <footer className="flex items-center justify-center gap-2.5 rounded-md border border-blue-500/20 bg-[rgba(3,9,28,0.6)] backdrop-blur-sm py-2 px-5 mx-auto"
           style={{ boxShadow: "0 0 16px rgba(37,99,235,0.10)" }}>
           <Lock className="h-3 w-3 text-blue-300/70" />
           <p className={`${micro} text-blue-200/75 text-center`}>

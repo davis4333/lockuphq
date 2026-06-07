@@ -103,14 +103,14 @@ export default function Dashboard() {
           animation: "holo-pulse 6s ease-in-out infinite",
         }}
       />
-      {/* Hologram floor projection — light cone hitting the grid floor */}
+      {/* Hologram floor projection — light cone hitting the grid floor (kept in the gap above the cards) */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed left-1/2 top-[57%] z-[1] hidden md:block"
+        className="pointer-events-none fixed left-1/2 top-[46%] z-[1] hidden md:block"
         style={{
-          width: "min(48vw, 600px)",
-          height: "200px",
-          background: "radial-gradient(ellipse at 50% 0%, rgba(100,195,255,0.65) 0%, rgba(55,140,245,0.22) 45%, transparent 76%)",
+          width: "min(42vw, 520px)",
+          height: "130px",
+          background: "radial-gradient(ellipse at 50% 0%, rgba(95,185,255,0.38) 0%, rgba(55,140,245,0.12) 44%, transparent 74%)",
           animation: "holo-floor 6s ease-in-out infinite",
         }}
       />
@@ -118,9 +118,9 @@ export default function Dashboard() {
       {/* Lower scrim — masks baked-in background text behind the working UI */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-[2] h-[55%]"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-[2] h-[62%]"
         style={{
-          background: "linear-gradient(to top, rgba(2,6,18,0.86) 0%, rgba(2,6,18,0.56) 48%, rgba(2,6,18,0.08) 84%, transparent 100%)",
+          background: "linear-gradient(to top, rgba(2,6,18,0.96) 0%, rgba(2,6,18,0.92) 28%, rgba(2,6,18,0.78) 52%, rgba(2,6,18,0.42) 74%, rgba(2,6,18,0.12) 90%, transparent 100%)",
         }}
       />
       {/* Top corner scrims — mask 'SYSTEM INTEGRITY' / 'COORDINATES' labels */}

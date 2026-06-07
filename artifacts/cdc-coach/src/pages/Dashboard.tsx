@@ -108,10 +108,19 @@ export default function Dashboard() {
         aria-hidden="true"
         className="pointer-events-none fixed left-1/2 top-[46%] z-[1] hidden md:block"
         style={{
-          width: "min(42vw, 520px)",
-          height: "130px",
-          background: "radial-gradient(ellipse at 50% 0%, rgba(95,185,255,0.38) 0%, rgba(55,140,245,0.12) 44%, transparent 74%)",
+          width: "min(38vw, 460px)",
+          height: "104px",
+          background: "radial-gradient(ellipse at 50% 0%, rgba(95,185,255,0.26) 0%, rgba(55,140,245,0.08) 44%, transparent 74%)",
           animation: "holo-floor 6s ease-in-out infinite",
+        }}
+      />
+
+      {/* Mid-band mask — feathered overlay that hides the baked-in horizontal HUD line + blue fog between the hologram and the cards */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 top-[33%] z-[2] h-[26%]"
+        style={{
+          background: "linear-gradient(to bottom, transparent 0%, rgba(2,6,18,0.55) 28%, rgba(2,6,18,0.82) 60%, rgba(2,6,18,0.9) 100%)",
         }}
       />
 

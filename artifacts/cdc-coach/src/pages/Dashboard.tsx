@@ -101,8 +101,12 @@ export default function Dashboard() {
   // so the facility-node overlay stays glued to it across any viewport aspect ratio.
   useEffect(() => {
     const computeFlRect = () => {
-      const W = window.innerWidth;
-      const H = window.innerHeight;
+      // Use the document client box (excludes the scrollbar gutter) so the
+      // cover-math matches the area a `background-attachment: fixed` image
+      // actually paints into. window.innerWidth/Height include the scrollbar,
+      // which flips the cover axis near 16:9 and shifts the map sideways.
+      const W = document.documentElement.clientWidth;
+      const H = document.documentElement.clientHeight;
       // background-image: cover, background-position: center 30px (matches index.css)
       const s = Math.max(W / FL_IMG_W, H / FL_IMG_H);
       const renderW = FL_IMG_W * s;
@@ -174,14 +178,14 @@ export default function Dashboard() {
         style={{ left: flRect.left, top: flRect.top, width: flRect.width, height: flRect.height }}>
         {/* Faint dark-red ambient heartbeat behind the state */}
         <div className="cdc-fl-heartbeat absolute"
-          style={{ left: "52%", top: "50%", width: "160%", height: "150%", borderRadius: "50%", background: "radial-gradient(ellipse at center, rgba(220,38,38,0.55) 0%, rgba(185,28,28,0.18) 42%, transparent 70%)", mixBlendMode: "screen" }} />
+          style={{ left: "52%", top: "50%", width: "140%", height: "130%", borderRadius: "50%", background: "radial-gradient(ellipse at center, rgba(220,38,38,0.32) 0%, rgba(185,28,28,0.12) 42%, transparent 70%)", mixBlendMode: "screen" }} />
         {/* Live monitored facility nodes */}
         {FL_NODES.map((n, i) => (
           <span key={i} className="absolute" style={{ left: `${n.x}%`, top: `${n.y}%` }}>
             <span className="cdc-node-ring absolute h-[8px] w-[8px] -ml-[4px] -mt-[4px] rounded-full border border-red-500/60"
               style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s` }} />
             <span className="cdc-node-dot absolute h-[6px] w-[6px] -ml-[3px] -mt-[3px] rounded-full bg-red-400"
-              style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s`, boxShadow: "0 0 5px 1px rgba(239,68,68,0.8), 0 0 10px 2px rgba(220,38,38,0.45)" }} />
+              style={{ animationDelay: `${n.d}s`, animationDuration: `${n.t}s`, boxShadow: "0 0 3px 1px rgba(239,68,68,0.6), 0 0 6px 2px rgba(220,38,38,0.3)" }} />
           </span>
         ))}
       </div>

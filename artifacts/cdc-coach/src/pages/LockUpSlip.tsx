@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Copy, CheckCheck, AlertTriangle, FileText, ChevronDown, Search, X } from "lucide-react";
+import PageShell, { hudPanel, hudInput, hudLabel } from "@/components/PageShell";
 
 type Charge = { code: string; title: string };
 type Section = { section: string; charges: Charge[] };
@@ -233,10 +234,8 @@ function ChargePicker({ value, onChange }: ChargePickerProps) {
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={[
-          "w-full flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring",
-          value
-            ? "border-input bg-background text-foreground"
-            : "border-input bg-background text-muted-foreground/60",
+          "w-full flex items-center justify-between rounded-lg border border-blue-400/40 bg-[rgba(2,8,24,0.72)] px-3 py-2.5 text-sm transition-colors focus:outline-none focus:border-blue-300/70 focus:ring-2 focus:ring-blue-400/30",
+          value ? "text-blue-50" : "text-blue-300/40",
         ].join(" ")}
       >
         <span className="truncate">{displayLabel}</span>
@@ -247,29 +246,30 @@ function ChargePicker({ value, onChange }: ChargePickerProps) {
               tabIndex={0}
               onClick={(e) => { e.stopPropagation(); onChange(""); }}
               onKeyDown={(e) => e.key === "Enter" && (e.stopPropagation(), onChange(""))}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-blue-300/60 hover:text-blue-100"
             >
               <X className="h-3.5 w-3.5" />
             </span>
           )}
-          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+          <ChevronDown className={`h-4 w-4 text-blue-300/60 transition-transform ${open ? "rotate-180" : ""}`} />
         </span>
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-xl overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <div className="absolute z-50 mt-1 w-full rounded-lg border border-blue-400/45 bg-[rgba(4,11,34,0.97)] backdrop-blur-lg shadow-xl overflow-hidden"
+          style={{ boxShadow: "0 0 24px rgba(37,99,235,0.25)" }}>
+          <div className="flex items-center gap-2 border-b border-blue-400/20 px-3 py-2">
+            <Search className="h-3.5 w-3.5 shrink-0 text-blue-300/60" />
             <input
               ref={searchRef}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by number or keyword..."
-              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+              className="flex-1 bg-transparent text-sm text-blue-50 placeholder:text-blue-300/35 focus:outline-none"
             />
             {search && (
-              <button onClick={() => setSearch("")} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => setSearch("")} className="text-blue-300/60 hover:text-blue-100">
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
@@ -283,8 +283,8 @@ function ChargePicker({ value, onChange }: ChargePickerProps) {
                 className={[
                   "w-full text-left px-4 py-2.5 text-sm transition-colors",
                   value === "Protection Evaluation"
-                    ? "bg-primary/20 text-primary font-medium"
-                    : "text-foreground hover:bg-muted",
+                    ? "bg-blue-500/20 text-blue-200 font-medium"
+                    : "text-blue-100 hover:bg-blue-500/10",
                 ].join(" ")}
               >
                 Protection Evaluation
@@ -298,8 +298,8 @@ function ChargePicker({ value, onChange }: ChargePickerProps) {
                 className={[
                   "w-full text-left px-4 py-2.5 text-sm transition-colors",
                   value === "Protection Evaluation"
-                    ? "bg-primary/20 text-primary font-medium"
-                    : "text-foreground hover:bg-muted",
+                    ? "bg-blue-500/20 text-blue-200 font-medium"
+                    : "text-blue-100 hover:bg-blue-500/10",
                 ].join(" ")}
               >
                 Protection Evaluation
@@ -312,7 +312,7 @@ function ChargePicker({ value, onChange }: ChargePickerProps) {
 
             {filteredSections.map((sec) => (
               <div key={sec.section}>
-                <div className="sticky top-0 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/80 border-b border-border/40">
+                <div className="sticky top-0 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-blue-200/70 bg-[rgba(7,16,42,0.95)] border-b border-blue-400/15">
                   {sec.section}
                 </div>
                 {sec.charges.map((c) => {
@@ -326,8 +326,8 @@ function ChargePicker({ value, onChange }: ChargePickerProps) {
                       className={[
                         "w-full text-left px-4 py-2 text-sm transition-colors flex items-start gap-2",
                         isSelected
-                          ? "bg-primary/20 text-primary font-medium"
-                          : "text-foreground hover:bg-muted",
+                          ? "bg-blue-500/20 text-blue-200 font-medium"
+                          : "text-blue-100 hover:bg-blue-500/10",
                       ].join(" ")}
                     >
                       <span className="shrink-0 font-mono text-xs text-muted-foreground mt-0.5 w-8">{c.code}</span>
@@ -459,36 +459,22 @@ export default function LockUpSlip() {
     fields.captain;
 
   return (
-    <div className="min-h-screen bg-transparent">
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <button
-          onClick={() => navigate("/")}
-          className="mb-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
-        </button>
-
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
-            <FileText className="h-5 w-5" />
-          </div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Lock-Up Slip</h1>
-        </div>
-        <p className="mb-6 text-sm text-muted-foreground">
-          Fill in the details below to generate a confinement placement narrative.
+    <PageShell
+      title="Lock-Up Slip"
+      icon={FileText}
+      subtitle="Fill in the details below to generate a confinement placement narrative."
+    >
+      <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-400/70 bg-[rgba(28,18,2,0.72)] backdrop-blur-md px-4 py-3"
+        style={{ boxShadow: "0 0 20px rgba(245,158,11,0.18)" }}>
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+        <p className="text-xs text-amber-200/80 leading-relaxed">
+          <strong className="text-amber-300">Training Sandbox Mode:</strong> Use fake names, fake DC numbers, and fake information only. Never enter real inmate data, real DC numbers, or any restricted information.
         </p>
+      </div>
 
-        <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-          <p className="text-xs text-amber-200/80 leading-relaxed">
-            <strong className="text-amber-300">Training Sandbox Mode:</strong> Use fake names, fake DC numbers, and fake information only. Never enter real inmate data, real DC numbers, or any restricted information.
-          </p>
-        </div>
-
-        <div className="space-y-5 rounded-xl border border-card-border bg-card p-6">
+      <div className={`${hudPanel} p-6 space-y-5`}>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            <label className={hudLabel}>
               Reason / Charge <span className="text-destructive">*</span>
             </label>
             <ChargePicker value={fields.reason} onChange={handleReasonChange} />
@@ -501,7 +487,7 @@ export default function LockUpSlip() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              <label className={hudLabel}>
                 Last Name (Fake) <span className="text-destructive">*</span>
               </label>
               <input
@@ -510,11 +496,11 @@ export default function LockUpSlip() {
                 value={fields.lastName}
                 onChange={handleChange}
                 placeholder="e.g. Doe"
-                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                className={hudInput}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              <label className={hudLabel}>
                 First Name (Fake) <span className="text-destructive">*</span>
               </label>
               <input
@@ -523,13 +509,13 @@ export default function LockUpSlip() {
                 value={fields.firstName}
                 onChange={handleChange}
                 placeholder="e.g. John"
-                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                className={hudInput}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            <label className={hudLabel}>
               DC Number (Fake) <span className="text-destructive">*</span>
             </label>
             <input
@@ -538,13 +524,13 @@ export default function LockUpSlip() {
               value={fields.dcNumber}
               onChange={handleChange}
               placeholder="e.g. X00000"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+              className={hudInput}
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              <label className={hudLabel}>
                 Date <span className="text-destructive">*</span>
               </label>
               <input
@@ -552,11 +538,11 @@ export default function LockUpSlip() {
                 name="date"
                 value={fields.date}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className={hudInput}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              <label className={hudLabel}>
                 Time (24hr) <span className="text-destructive">*</span>
               </label>
               <input
@@ -564,13 +550,13 @@ export default function LockUpSlip() {
                 name="time"
                 value={fields.time}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className={hudInput}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            <label className={hudLabel}>
               Captain / Approving Authority <span className="text-destructive">*</span>
             </label>
             <input
@@ -579,20 +565,20 @@ export default function LockUpSlip() {
               value={fields.captain}
               onChange={handleChange}
               placeholder="e.g. R. Holmes"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+              className={hudInput}
             />
             <p className="mt-1 text-[11px] text-amber-400/80">Enter name only, no title. Example: R. Holmes — output will read: Per Captain R. Holmes</p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            <label className={hudLabel}>
               Confinement Type
             </label>
             <select
               name="confinementType"
               value={fields.confinementType}
               onChange={handleChange}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className={hudInput}
             >
               {CONFINEMENT_TYPES.map((t) => (
                 <option key={t} value={t}>{t}</option>
@@ -602,7 +588,7 @@ export default function LockUpSlip() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              <label className={hudLabel}>
                 Bunk Assignment
               </label>
               <input
@@ -611,12 +597,12 @@ export default function LockUpSlip() {
                 value={fields.bunkAssignment}
                 onChange={handleChange}
                 placeholder="e.g. D2-101-L"
-                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                className={hudInput}
               />
               <p className="mt-1 text-[11px] text-muted-foreground">Optional — added to narrative if entered</p>
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              <label className={hudLabel}>
                 Inmate Pronoun
               </label>
               <div className="flex gap-4 mt-1">
@@ -647,7 +633,7 @@ export default function LockUpSlip() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            <label className={hudLabel}>
               Phone Calls
             </label>
             <div className="flex gap-4">
@@ -681,11 +667,12 @@ export default function LockUpSlip() {
               onClick={handleGenerate}
               disabled={!canGenerate}
               className={[
-                "w-full rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-150",
+                "w-full rounded-lg px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] transition-all duration-150",
                 canGenerate
-                  ? "bg-primary text-primary-foreground hover:opacity-90 active:opacity-80"
-                  : "bg-muted text-muted-foreground cursor-not-allowed",
+                  ? "border border-blue-300/50 bg-blue-600/85 text-white hover:bg-blue-500 cursor-pointer"
+                  : "border border-blue-400/15 bg-[rgba(4,11,34,0.6)] text-blue-300/40 cursor-not-allowed",
               ].join(" ")}
+              style={canGenerate ? { boxShadow: "0 0 20px rgba(37,99,235,0.35)" } : undefined}
             >
               Generate Lock-Up Slip Narrative
             </button>
@@ -698,9 +685,9 @@ export default function LockUpSlip() {
         </div>
 
         {narrative && (
-          <div ref={narrativeRef} className="mt-6 rounded-xl border border-card-border bg-card p-6">
+          <div ref={narrativeRef} className={`mt-6 ${hudPanel} p-6`}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+              <h2 className="text-sm font-semibold text-blue-100 uppercase tracking-[0.16em]">
                 Generated Narrative
               </h2>
               <button
@@ -709,7 +696,7 @@ export default function LockUpSlip() {
                   "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
                   copied
                     ? "border-green-600/40 bg-green-600/10 text-green-400"
-                    : "border-border bg-secondary text-foreground hover:border-primary/50",
+                    : "border-blue-400/40 bg-[rgba(2,8,24,0.6)] text-blue-100 hover:border-blue-300/60",
                 ].join(" ")}
               >
                 {copied ? (
@@ -730,7 +717,7 @@ export default function LockUpSlip() {
               readOnly
               value={narrative}
               rows={18}
-              className="w-full rounded-lg border border-input bg-background px-4 py-3 text-sm text-foreground leading-relaxed font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-lg border border-blue-400/40 bg-[rgba(2,8,24,0.72)] px-4 py-3 text-sm text-blue-50 leading-relaxed font-mono resize-none focus:outline-none focus:border-blue-300/70 focus:ring-2 focus:ring-blue-400/30"
             />
 
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
@@ -740,7 +727,7 @@ export default function LockUpSlip() {
                   "flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-all",
                   copied
                     ? "bg-green-600/20 text-green-400 border border-green-600/40"
-                    : "bg-primary text-primary-foreground hover:opacity-90",
+                    : "border border-blue-300/50 bg-blue-600/85 text-white hover:bg-blue-500",
                 ].join(" ")}
               >
                 {copied ? <CheckCheck className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -748,7 +735,7 @@ export default function LockUpSlip() {
               </button>
               <button
                 onClick={() => navigate("/")}
-                className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-border bg-secondary px-4 py-3 text-sm font-semibold text-foreground hover:border-primary/40 transition-all"
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-blue-400/30 bg-[rgba(4,11,34,0.7)] px-4 py-3 text-sm font-semibold text-blue-100 hover:border-blue-300/60 transition-all"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to Dashboard
@@ -756,7 +743,6 @@ export default function LockUpSlip() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </PageShell>
   );
 }

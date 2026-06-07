@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { ArrowLeft, ShieldAlert, AlertTriangle, Download } from "lucide-react";
+import { ShieldAlert, AlertTriangle, Download } from "lucide-react";
 import PizZip from "pizzip";
+import PageShell, { hudPanel, hudInput, hudLabel } from "@/components/PageShell";
 
 const SHIFTS = [
   "First Shift: 12:00am - 8:30am",
@@ -154,7 +154,6 @@ function buildTemplateData(fields: typeof defaultFields) {
 }
 
 export default function PropertyRestriction() {
-  const [, navigate] = useLocation();
   const [fields, setFields] = useState(() => ({
     ...defaultFields,
     reasonForRestriction: buildReasonText(defaultFields),
@@ -246,45 +245,26 @@ export default function PropertyRestriction() {
     fields.chiefName &&
     fields.restrictionUntil;
 
-  const labelClass = "block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1";
-  const inputClass =
-    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40";
+  const labelClass = hudLabel;
+  const inputClass = hudInput;
 
   return (
-    <div className="min-h-screen bg-transparent">
-      <div className="max-w-3xl mx-auto px-4 py-8">
-
-        <button
-          onClick={() => navigate("/")}
-          className="mb-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
-        </button>
-
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
-            <ShieldAlert className="h-5 w-5" />
-          </div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">
-            Strip / Property Restriction
-          </h1>
-        </div>
-        <p className="text-sm text-muted-foreground mb-5">
-          Fill in the fields below, then click Download. The completed Word document is generated
-          from the uploaded template — open the downloaded .docx to print or save the official form.
+    <PageShell
+      title="Strip / Property Restriction"
+      icon={ShieldAlert}
+      subtitle="Fill in the fields below, then click Download. The completed Word document is generated from the uploaded template — open the downloaded .docx to print or save the official form."
+    >
+      <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-400/70 bg-[rgba(28,18,2,0.72)] backdrop-blur-md px-4 py-3"
+        style={{ boxShadow: "0 0 20px rgba(245,158,11,0.18)" }}>
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+        <p className="text-sm text-amber-200/80 leading-relaxed">
+          <span className="font-semibold text-amber-300">Training Sandbox Mode:</span> Use fake
+          names, fake DC numbers, and fake information only. Never enter real inmate data, real DC
+          numbers, or any restricted information.
         </p>
+      </div>
 
-        <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-          <p className="text-sm text-amber-200/80 leading-relaxed">
-            <span className="font-semibold text-amber-300">Training Sandbox Mode:</span> Use fake
-            names, fake DC numbers, and fake information only. Never enter real inmate data, real DC
-            numbers, or any restricted information.
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-card-border bg-card p-6 space-y-5 backdrop-blur-md">
+      <div className={`${hudPanel} p-6 space-y-5`}>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -435,34 +415,33 @@ export default function PropertyRestriction() {
               placeholder="Any additional comments..." className={inputClass} />
           </div>
 
-        </div>
-
-        <div className="mt-6 flex flex-col gap-3">
-          <button
-            onClick={handleDownloadWord}
-            disabled={!canDownload || downloading}
-            className={[
-              "w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-150",
-              canDownload && !downloading
-                ? "bg-emerald-700 text-white hover:bg-emerald-600 cursor-pointer"
-                : "bg-muted text-muted-foreground cursor-not-allowed",
-            ].join(" ")}
-          >
-            <Download className="h-4 w-4" />
-            {downloading ? "Preparing Download…" : "Download Completed Word Form"}
-          </button>
-
-          {downloadError && (
-            <p className="text-xs text-red-400 text-center">Error: {downloadError}</p>
-          )}
-          {!canDownload && (
-            <p className="text-center text-xs text-muted-foreground/60">
-              Fill in all required fields (*) to download.
-            </p>
-          )}
-        </div>
-
       </div>
-    </div>
+
+      <div className="mt-6 flex flex-col gap-3">
+        <button
+          onClick={handleDownloadWord}
+          disabled={!canDownload || downloading}
+          className={[
+            "w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] transition-all duration-150",
+            canDownload && !downloading
+              ? "border border-blue-300/50 bg-blue-600/85 text-white hover:bg-blue-500 cursor-pointer"
+              : "border border-blue-400/15 bg-[rgba(4,11,34,0.6)] text-blue-300/40 cursor-not-allowed",
+          ].join(" ")}
+          style={canDownload && !downloading ? { boxShadow: "0 0 20px rgba(37,99,235,0.35)" } : undefined}
+        >
+          <Download className="h-4 w-4" />
+          {downloading ? "Preparing Download…" : "Download Completed Word Form"}
+        </button>
+
+        {downloadError && (
+          <p className="text-xs text-red-400 text-center">Error: {downloadError}</p>
+        )}
+        {!canDownload && (
+          <p className="text-center text-xs text-blue-300/45">
+            Fill in all required fields (*) to download.
+          </p>
+        )}
+      </div>
+    </PageShell>
   );
 }

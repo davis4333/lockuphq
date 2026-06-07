@@ -1,0 +1,221 @@
+Replace the current page background with the new uploaded background image.
+
+This new background was generated specifically for this dashboard. The FDOC hologram is intentionally positioned higher in the image so the tool cards can sit below it without covering the badge.
+
+Use this new image as the actual full-page background.
+
+Main goal
+
+Update the dashboard so it matches the new background composition:
+
+Full FDOC hologram clearly visible in the upper-middle
+Tool cards sit below the hologram
+No cards cover the FDOC badge
+System panels align to the right of the card grid
+Everything fits on one screen on desktop
+No unnecessary scrolling
+Dashboard still feels like a classified FDOC command center
+Background settings
+
+Set the new uploaded image as the fixed full-page background.
+
+Use these background rules:
+
+cover the full viewport
+fixed position
+centered horizontally
+position the image so the FDOC hologram sits in the upper-middle of the screen
+no tiling
+responsive
+do not blur the background
+keep the hologram, watchtowers, fence line, floor grid, and blue projection glow visible
+
+Add a dark blue/black overlay for readability, but do not make the overlay so dark that the FDOC hologram disappears.
+
+The hologram should remain clearly visible.
+
+Important layout correction
+
+Do not push the cards up into the hologram.
+
+The page should have this structure:
+
+HEADER
+FDOC identity / Confinement Command Center / clock / operational status
+
+WARNING BANNER
+Training Sandbox Mode — Active
+
+HOLOGRAM DISPLAY AREA
+Full FDOC hologram visible
+No cards covering it
+
+MODULE AREA
+8 tool cards in two rows of four
+System Status and System Information panels on the right
+
+FOOTER
+Training sandbox disclaimer
+Header
+
+Keep the current header:
+
+CONFINEMENT COMMAND CENTER
+
+Subtitle:
+
+OCI • TRAINING SANDBOX • ONLINE
+
+Keep the FDOC identity block on the far left.
+
+Keep the live clock near the top right.
+
+Keep the top-right panel:
+
+SYSTEM STATUS
+OPERATIONAL
+
+Make sure the header stays compact so it does not push the rest of the dashboard too far down.
+
+Warning banner
+
+Keep the warning banner under the header.
+
+Text:
+
+TRAINING SANDBOX MODE — ACTIVE
+
+Body:
+
+Use fake information only. Do not enter real inmate names, DC numbers, medical information, or any restricted work information. This tool is for training and practice purposes only. No data is saved or transmitted.
+
+Keep it compact and amber/yellow like a secure classified-system warning.
+
+Hologram display area
+
+Because the new background has the hologram placed higher, reserve a clear visual area for it.
+
+Requirements:
+
+The FDOC hologram must be fully visible.
+No module card should overlap the circular badge.
+No system panel should overlap the circular badge.
+The projection glow beneath the badge should still be visible.
+The hologram should feel like the centerpiece of the dashboard.
+Module cards
+
+Keep the 8 module cards:
+
+LOCK-UP SLIP
+STRIP / PROPERTY RESTRICTION
+MEAL RESTRICTION / LOAF
+INCIDENT REPORT NARRATIVE
+DR DESCRIPTION
+ASK CDC
+ASK FDC POLICY
+WHAT FORM DO I NEED?
+
+Keep the buttons:
+
+LAUNCH MODULE
+
+Position the cards below the hologram.
+
+Desktop layout:
+
+two rows of four cards
+compact card size
+all cards equal size
+buttons aligned at the bottom
+card grid centered under the hologram
+no cards touching the far left edge
+leave clean space between the card grid and right system panels
+
+Card style:
+
+dark translucent glass
+neon blue border
+subtle blue glow
+icon glow
+tactical classified-system look
+hover effect with stronger glow and slight lift
+Right-side panels
+
+Keep the right-side panels:
+
+SYSTEM STATUS
+
+Rows:
+
+DOCUMENT ENGINE — ONLINE
+POLICY ENGINE — ONLINE
+TRAINING SANDBOX — ACTIVE
+DATABASE — OPERATIONAL
+AI MODELS — OPERATIONAL
+SECURITY PROTOCOL — ENABLED
+
+Below it:
+
+SYSTEM INFORMATION
+
+Rows:
+
+CLEARANCE LEVEL — CONFINEMENT OPS
+ENVIRONMENT — TRAINING
+VERSION — 2.0.0
+LAST SYSTEM CHECK — live current time
+
+The right-side panels should align with the card grid, not the hologram.
+
+They should sit to the right of the modules and should not cover the badge.
+
+Desktop fit
+
+Make this a one-screen command center on desktop.
+
+Requirements:
+
+no unnecessary vertical scrolling
+dashboard fits inside the visible browser viewport
+cards are compact enough to fit
+footer remains visible
+system information panel is not cut off
+hologram remains visible above the cards
+
+Do not solve spacing by creating a long scrolling page.
+
+Footer
+
+Keep the bottom footer centered:
+
+TRAINING SANDBOX MODE • FOR PRACTICE USE ONLY • NO REAL DATA STORED
+
+Make it look like a small locked classified-system footer strip.
+
+Do not add
+
+Do not add:
+
+left sidebar
+Next Up panel
+charts
+progress bars
+fake inmate data
+fake counts
+generic dashboard widgets
+coaching/caseload sections
+Final visual target
+
+The final page should look like a restricted FDOC command system.
+
+The new background should do the heavy lifting:
+
+hologram high and visible
+cards below it
+system panels on the right
+dark classified command-center mood
+polished, futuristic, official-looking interface
+
+The finished reaction should be:
+
+“Damn, this looks like something official and restricted.”

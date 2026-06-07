@@ -194,7 +194,7 @@ export default function Dashboard() {
         </header>
 
         {/* ── WARNING BANNER (constrained width) ──────────── */}
-        <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-400/70 bg-[rgba(28,18,2,0.72)] backdrop-blur-md px-4 py-3 w-full max-w-[760px]"
+        <div className="mt-3.5 flex items-start gap-3 rounded-lg border border-amber-400/70 bg-[rgba(28,18,2,0.72)] backdrop-blur-md px-4 py-3 w-full max-w-[480px]"
           style={{ boxShadow: "0 0 26px rgba(245,158,11,0.22)" }}>
           <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded border border-amber-400/60 bg-amber-500/15"
             style={{ boxShadow: "0 0 10px rgba(245,158,11,0.3)" }}>

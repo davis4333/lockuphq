@@ -1,0 +1,1 @@
+- [CDC Dashboard background](cdc-dashboard-background.md) — FDOC seal baked high in the bg image; its on-screen position is fixed (cant move via background-position); narrow the banner to clear it, keep top overlay light.

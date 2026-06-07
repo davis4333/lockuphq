@@ -43,27 +43,27 @@ const TICKER = "// AUDIT MODE ACTIVE — SESSION TRACE ENABLED — MODULE ACCESS
 const FL_IMG_W = 1672;
 const FL_IMG_H = 941;
 const FL_BG_POS_Y = 30; // matches `background-position: center 30px` in index.css
-const FL_FRAC = { x0: 0.712, x1: 0.864, y0: 0.087, y1: 0.255 }; // Florida bbox as image fractions
+const FL_FRAC = { x0: 0.717, x1: 0.853, y0: 0.108, y1: 0.283 }; // Florida bbox as image fractions (tight to baked outline)
 
 // Monitored facility nodes — positioned (% within the Florida map overlay box)
 // to approximate FDOC facility distribution; d = delay, t = duration (organic variation)
 const FL_NODES = [
-  { x: 5,  y: 14, d: 0.0, t: 6.6 },  // Santa Rosa / Century — far W panhandle
-  { x: 22, y: 15, d: 2.1, t: 7.4 },  // Walton / Okaloosa — central panhandle
-  { x: 40, y: 17, d: 3.4, t: 6.0 },  // Apalachee / Liberty — east panhandle
-  { x: 52, y: 22, d: 1.2, t: 7.0 },  // Wakulla / Taylor — Big Bend / Tallahassee
-  { x: 75, y: 15, d: 4.0, t: 6.8 },  // Baker — Jacksonville (NE)
-  { x: 61, y: 25, d: 0.6, t: 7.8 },  // Raiford / Union / Lake Butler — FSP core
-  { x: 60, y: 36, d: 2.4, t: 6.4 },  // Lowell / Marion — Ocala
-  { x: 76, y: 42, d: 2.7, t: 6.2 },  // Tomoka — Daytona (east coast)
-  { x: 66, y: 48, d: 1.6, t: 7.2 },  // Central FL Reception — Orlando
-  { x: 57, y: 53, d: 3.8, t: 6.6 },  // Hillsborough / Zephyrhills — Tampa
-  { x: 70, y: 59, d: 1.0, t: 7.6 },  // Avon Park / Polk — central spine
-  { x: 73, y: 70, d: 2.3, t: 7.0 },  // Okeechobee C.I. — N shore of Lake Okeechobee
-  { x: 84, y: 71, d: 3.1, t: 7.6 },  // Martin C.I. — Indiantown (E of Lake O)
-  { x: 80, y: 83, d: 1.4, t: 6.4 },  // South Florida Reception Center — Doral / Miami-Dade
-  { x: 78, y: 86, d: 3.6, t: 7.2 },  // Everglades C.I. — SW Miami-Dade
-  { x: 74, y: 88, d: 0.3, t: 6.9 },  // Dade C.I. — Florida City / southern tip
+  { x: 5,  y: 5,  d: 0.0, t: 6.6 },  // Santa Rosa / Century — far W panhandle
+  { x: 18, y: 6,  d: 2.1, t: 7.4 },  // Walton / Okaloosa — central panhandle
+  { x: 40, y: 5,  d: 3.4, t: 6.0 },  // Apalachee / Liberty — east panhandle
+  { x: 51, y: 13, d: 1.2, t: 7.0 },  // Wakulla / Taylor — Big Bend / Tallahassee
+  { x: 82, y: 6,  d: 4.0, t: 6.8 },  // Baker — Jacksonville (NE)
+  { x: 64, y: 15, d: 0.6, t: 7.8 },  // Raiford / Union / Lake Butler — FSP core
+  { x: 64, y: 26, d: 2.4, t: 6.4 },  // Lowell / Marion — Ocala
+  { x: 85, y: 26, d: 2.7, t: 6.2 },  // Tomoka — Daytona (east coast)
+  { x: 72, y: 38, d: 1.6, t: 7.2 },  // Central FL Reception — Orlando
+  { x: 60, y: 43, d: 3.8, t: 6.6 },  // Hillsborough / Zephyrhills — Tampa
+  { x: 72, y: 52, d: 1.0, t: 7.6 },  // Avon Park / Polk — central spine
+  { x: 70, y: 61, d: 2.3, t: 7.0 },  // Okeechobee C.I. — N shore of Lake Okeechobee
+  { x: 85, y: 60, d: 3.1, t: 7.6 },  // Martin C.I. — Indiantown (E of Lake O)
+  { x: 82, y: 76, d: 1.4, t: 6.4 },  // South Florida Reception Center — Doral / Miami-Dade
+  { x: 72, y: 82, d: 3.6, t: 7.2 },  // Everglades C.I. — SW Miami-Dade
+  { x: 76, y: 95, d: 0.3, t: 6.9 },  // Dade C.I. — Florida City / southern tip
 ];
 
 const PHONETIC = ["ALPHA", "BRAVO", "DELTA", "ECHO", "FOXTROT", "SIERRA", "TANGO", "OMEGA", "VECTOR", "ZULU"];

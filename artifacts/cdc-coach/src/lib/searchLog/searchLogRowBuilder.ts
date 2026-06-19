@@ -1,6 +1,6 @@
 import { formatInmateCell, normalizeCellKey } from "./bedBookGrouper";
 import { isValidDcNumber } from "./dcNumberExtractor";
-import { groupedInmateFitsAtMin } from "./searchLogTextFit";
+import { searchLogCellFitsAtMin } from "./searchLogTextFit";
 import type {
   BunkHandling,
   GroupedEntry,
@@ -127,9 +127,10 @@ function nextRowId(): string {
 
 /**
  * Build Bed Book review rows from grouped entries, the current setup fields, and
- * the chosen bunk handling. Grouped-cell rows put both bunks' inmates on one
- * " / "-joined line and ask the DOCX filler to shrink only that cell to fit;
- * separate-bunk rows keep one inmate per line at the normal size.
+ * the chosen bunk handling. Grouped-cell rows join both bunks' inmates with " / ";
+ * separate-bunk rows keep one inmate per line. Either way the filler later
+ * collapses the value to one line and font-fits the cell, so this only controls
+ * how the inmate text is presented in the review table.
  */
 export function buildReviewRows(
   groups: GroupedEntry[],
@@ -206,11 +207,48 @@ export function resequenceTimes(rows: ReviewRow[], startTime: string): ReviewRow
 
 const DC_LINE = /\b([A-Za-z]\d{5}|\d{6})\b/;
 
+/** ReviewRow string fields that map 1:1 to the DOCX data columns. */
+type FitField = "date" | "time" | "area" | "type" | "inmate" | "officer" | "discrepancies" | "tablet";
+
+// Column index (matches SEARCH_LOG_COL_TWIPS), ReviewRow field, and the label
+// shown in the one-line overflow warning.
+const FIT_FIELDS: Array<[number, FitField, string]> = [
+  [0, "date", "Date"],
+  [1, "time", "Time"],
+  [2, "area", "Area/Bunk"],
+  [3, "type", "Type of Search"],
+  [4, "inmate", "Inmate"],
+  [5, "officer", "Officer"],
+  [6, "discrepancies", "Discrepancies"],
+  [7, "tablet", "Tablet"],
+];
+
 /**
- * Validate one review row. Returns a list of warnings (empty = OK). Bed Book rows
- * additionally require a BED-ID and valid DC numbers and warn on grouped-inmate
- * overflow; manual rows only warn on blank required fields (area may be a free
- * location like "Dayroom" and the user's inmate text is never rewritten).
+ * Warn (never truncate) when any non-blank field is estimated too long to fit on
+ * one line even at the 6pt floor for its column. Applies to every row regardless
+ * of source — the filler shrinks the cell's font; the user shortens the value.
+ */
+function oneLineOverflowFlags(row: ReviewRow): ValidationFlag[] {
+  const flags: ValidationFlag[] = [];
+  for (const [colIndex, field, label] of FIT_FIELDS) {
+    const value = row[field];
+    if (!value.trim()) continue;
+    if (!searchLogCellFitsAtMin(colIndex, value)) {
+      flags.push({
+        field,
+        message: `This ${label} field may be too long to fit on one line at 6 pt. Review before generating`,
+      });
+    }
+  }
+  return flags;
+}
+
+/**
+ * Validate one review row. Returns a list of warnings (empty = OK). Every row is
+ * checked for one-line overflow on each filled column (see oneLineOverflowFlags).
+ * Bed Book rows additionally require a BED-ID and valid DC numbers; manual rows
+ * only warn on blank required fields (area may be a free location like "Dayroom"
+ * and the user's inmate text is never rewritten).
  */
 export function validateRow(row: ReviewRow): ValidationFlag[] {
   const flags: ValidationFlag[] = [];
@@ -220,6 +258,9 @@ export function validateRow(row: ReviewRow): ValidationFlag[] {
   if (!row.type.trim()) flags.push({ field: "type", message: "Missing type of search" });
   if (!row.officer.trim()) flags.push({ field: "officer", message: "Missing officer" });
   if (!row.tablet.trim()) flags.push({ field: "tablet", message: "Missing tablet value" });
+
+  // One-line fit warnings apply to every column and both row sources.
+  flags.push(...oneLineOverflowFlags(row));
 
   // Inmate segments: grouped rows separate inmates with " / "; separate-bunk and
   // manual rows may use newlines. Either way, validate each segment.
@@ -247,13 +288,6 @@ export function validateRow(row: ReviewRow): ValidationFlag[] {
         flags.push({ field: "inmate", message: "Invalid DC number pattern" });
       }
     }
-  }
-  if (row.inmateFit && row.inmate.trim() && !groupedInmateFitsAtMin(row.inmate)) {
-    flags.push({
-      field: "inmate",
-      message:
-        "This grouped inmate field may be too long to fit on one line at 6 pt. Review before generating",
-    });
   }
   return flags;
 }

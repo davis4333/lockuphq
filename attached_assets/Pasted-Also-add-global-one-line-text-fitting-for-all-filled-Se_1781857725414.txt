@@ -1,0 +1,111 @@
+Also add global one-line text fitting for all filled Search Log cells in the original DOCX.
+
+Current issue:
+Some filled fields wrap onto multiple lines and spill visually, especially in columns like:
+
+* Name and Rank of Officer(s) Conducting Search
+* Inmate Name/FDC Number
+* Discrepancies/Contraband Found
+
+This makes the generated Search Log look unprofessional and can interfere with the official form layout.
+
+Required change:
+When generating the original Search Log DOCX, all filled data cells should attempt to keep their text on a single line by automatically adjusting font size inside that specific cell only.
+
+This applies to all filled Search Log data columns, especially:
+
+* Date
+* Time
+* Area/Bunk Searched
+* Type of Search
+* Inmate Name/FDC Number
+* Name and Rank of Officer(s) Conducting Search
+* Discrepancies/Contraband Found
+* Tablet Y/N
+
+Important:
+
+* Do not recreate the document.
+* Do not change the table layout.
+* Do not widen columns.
+* Do not increase row height.
+* Do not stretch the page.
+* Do not shift other cells.
+* Only adjust the font size inside the specific filled cell that needs it.
+
+One-line fit behavior:
+For every filled cell:
+
+1. Start at the normal/original form font size.
+2. If the content does not fit on one line, reduce that cell’s font size only.
+3. Step down through:
+
+   * 8 pt
+   * 7 pt
+   * 6 pt
+4. Use 6 pt as the minimum font size.
+5. Keep the text on one line whenever possible.
+
+Global one-line goal:
+All filled boxes should stay on one line whenever possible.
+
+Examples:
+
+* Officer field should stay on one line.
+* Inmate Name/FDC Number should stay on one line.
+* Discrepancies/Contraband Found should stay on one line.
+* Area/Bunk Searched should stay on one line.
+
+Examples of fields that need this:
+Officer field:
+C/O Tyler Davis, Sgt. Rivera, Lt. Johnson
+
+Inmate field:
+ALLEN, RANDY 549290 / MCGHEE, COLBY T64164
+
+Discrepancies field:
+Trash
+
+If a value is too long even at 6 pt:
+
+* Do not silently delete text.
+* Do not abbreviate automatically unless explicitly coded for a safe, approved abbreviation pattern.
+* Do not recreate the row.
+* Do not overflow into adjacent cells.
+
+Instead:
+
+* Show a warning in the review table before generation.
+* Mark the row as needing review.
+* Let the user manually shorten or adjust the field if necessary.
+
+Suggested warning:
+“This field may be too long to fit on one line at 6 pt. Review before generating.”
+
+Recommended implementation:
+Create a reusable DOCX cell text-fit helper used by the Search Log generator.
+
+Example utility behavior:
+fitCellTextToOneLine(cell, value, options)
+
+It should:
+
+* measure or estimate whether the text fits in that column width
+* try normal size first
+* reduce to 8 pt, then 7 pt, then 6 pt
+* preserve the rest of the document formatting
+* apply the chosen font size only to that specific cell content
+
+Apply this text-fit helper consistently across all filled Search Log fields, not just the inmate column.
+
+Acceptance criteria:
+
+* Filled Search Log fields attempt to stay on one line.
+* Font size shrinks only in the specific cell that needs it.
+* Document layout does not change.
+* Rows do not grow taller just because one field is long.
+* Officer field no longer wraps into multiple lines like the current broken example.
+* Inmate field stays on one line when possible.
+* Discrepancy field stays on one line when possible.
+* Warning appears if a field is too long even at 6 pt.
+* Final output still uses the exact original Search Log DOCX form.

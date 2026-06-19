@@ -1,2 +1,1 @@
-- [Playwright file uploads](playwright-file-upload.md) — testing subagent can't read disk; build a File in-page and assign to input.files via DataTransfer, then dispatch a change event.
-- [Search Log DOCX form-fill](search-log-docx-fill.md) — how cdc-coach fills the original legacy FORMTEXT DOCX (regex run-surgery), incl. the opt-in grouped single-line inmate fit and its no-regression invariant.
+- [Search Log DOCX one-line fitting](search-log-docx-fitting.md) — every data cell font-fit to one line (10pt→6pt floor); inmateFit is vestigial, don't reintroduce the multiline branch; UI & filler share SEARCH_LOG_COL_TWIPS.

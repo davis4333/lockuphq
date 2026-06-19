@@ -1,11 +1,11 @@
 import PizZip from "pizzip";
 import { ROWS_PER_PAGE } from "./types";
 import {
+  collapseToLine,
   fitFontSize,
   inmateOneLine,
-  NARROW_COL_CANDIDATES,
-  INMATE_COL_CANDIDATES,
-  SEARCH_LOG_INMATE_COL_TWIPS,
+  ONE_LINE_CANDIDATES,
+  SEARCH_LOG_COL_TWIPS,
 } from "./searchLogTextFit";
 
 export class SearchLogDocxError extends Error {}
@@ -19,8 +19,9 @@ export interface DocxFillRow {
   officer: string;
   discrepancies: string;
   tablet: string;
-  // When true (grouped-cell rows), keep the inmate cell on ONE line and shrink
-  // only that cell's font (10→8→7→6pt) to fit; otherwise render multi-line at 10pt.
+  // No-op for the filler: every cell is now kept on one line and font-fit
+  // individually, so the inmate column no longer depends on this flag. Retained
+  // only so existing callers (row builder / UI) keep compiling.
   inmateFit?: boolean;
 }
 
@@ -77,18 +78,12 @@ const TABLE_RE = /<w:tbl>[\s\S]*?<\/w:tbl>/g;
 const ROW_RE = /<w:tr\b[\s\S]*?<\/w:tr>/g;
 const CELL_RE = /<w:tc>[\s\S]*?<\/w:tc>/g;
 
-// The four narrow left columns (Date, Time, Area/Bunk Searched, Type of Search)
-// must each stay on a single readable line. Rather than shrink them all to a
-// fixed small size, we keep them at the SAME 10pt (sz20) as the wide columns
-// whenever the value fits on one line, and only step the font down (per value)
-// for the rare value that would otherwise wrap. Time and Area also get a
-// non-breaking space/hyphen so the chosen size renders as one unbroken token.
-const NARROW_COLS = new Set([0, 1, 2, 3]); // date, time, area/bunk, type of search
+// Every filled data cell is kept on a single physical line by shrinking ONLY
+// that cell's own font (10pt down to a 6pt floor) — never by changing column
+// widths, row heights, or any other table geometry. Each cell's real <w:tcW> is
+// read so the chosen size matches the actual column; the review UI uses the same
+// width math (SEARCH_LOG_COL_TWIPS) so its overflow warnings stay in lockstep.
 
-// Font metrics + single-line fit estimation live in ./searchLogTextFit so the
-// review UI's overflow warning uses the exact same width math as the filler.
-const INMATE_COL = 4; // Inmate Name/FDC Number column index
-const CELL_DEFAULT_TWIPS_NARROW = 900;
 // Attribute order isn't guaranteed in OOXML, so match the whole <w:tcW> tag and
 // pull w:w out of it regardless of where it sits.
 const TCW_RE = /<w:tcW\b[^>]*?\bw:w="(\d+)"/;
@@ -104,21 +99,21 @@ function szRunPr(sz: number): string {
   return `<w:rPr><w:sz w:val="${sz}"/></w:rPr>`;
 }
 
-function fillDataRow(rowXml: string, values: string[], fitInmate: boolean): string {
+/**
+ * Fill one data row. Each cell's already-one-lined value is fit to the largest
+ * font (down to the 6pt floor) at which it stays on a single line within that
+ * cell's real width. Only the inserted run's font size changes — the cell, row,
+ * and table geometry are left exactly as the template defines them.
+ */
+function fillDataRow(rowXml: string, values: string[]): string {
   let i = 0;
   return rowXml.replace(CELL_RE, (cell) => {
     const idx = i;
     const v = values[idx] ?? "";
     i++;
-    let runPr = RUN_PR;
-    if (NARROW_COLS.has(idx)) {
-      const sz = fitFontSize(v, cellTwips(cell, CELL_DEFAULT_TWIPS_NARROW), NARROW_COL_CANDIDATES);
-      runPr = szRunPr(sz);
-    } else if (idx === INMATE_COL && fitInmate) {
-      const sz = fitFontSize(v, cellTwips(cell, SEARCH_LOG_INMATE_COL_TWIPS), INMATE_COL_CANDIDATES);
-      runPr = szRunPr(sz);
-    }
-    return fillFirstField(cell, v, runPr);
+    const width = cellTwips(cell, SEARCH_LOG_COL_TWIPS[idx] ?? SEARCH_LOG_COL_TWIPS[1]);
+    const sz = fitFontSize(v, width, ONE_LINE_CANDIDATES);
+    return fillFirstField(cell, v, szRunPr(sz));
   });
 }
 
@@ -130,19 +125,21 @@ function fillDataTable(tableXml: string, rows: DocxFillRow[]): string {
     const entry = rows[dataIdx];
     dataIdx++;
     if (!entry) return row; // leave remaining rows blank
-    // Grouped-cell rows keep both inmates on one line; others may span lines.
-    const inmateVal = entry.inmateFit ? inmateOneLine(entry.inmate) : entry.inmate;
+    // Collapse every value to ONE line up front so each cell can be font-fit to a
+    // single line. The inmate column joins its segments with " / "; the others
+    // collapse stray line breaks. Time and Area also get a non-breaking space /
+    // hyphen so their short tokens never break mid-value at the chosen size.
     const values = [
-      entry.date,
-      entry.time.replace(/ /g, "\u00A0"), // keep the time (e.g. "2:30 A") on one line
-      entry.area.replace(/-/g, "\u2011"), // keep the bunk code on one line
-      entry.type,
-      inmateVal,
-      entry.officer,
-      entry.discrepancies,
-      entry.tablet,
+      collapseToLine(entry.date),
+      collapseToLine(entry.time).replace(/ /g, "\u00A0"),
+      collapseToLine(entry.area).replace(/-/g, "\u2011"),
+      collapseToLine(entry.type),
+      inmateOneLine(entry.inmate),
+      collapseToLine(entry.officer),
+      collapseToLine(entry.discrepancies),
+      collapseToLine(entry.tablet),
     ];
-    return fillDataRow(row, values, !!entry.inmateFit);
+    return fillDataRow(row, values);
   });
 }
 

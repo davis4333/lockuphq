@@ -1,10 +1,11 @@
 /**
  * Shared text-fitting helpers for the Search Log.
  *
- * The DOCX filler is authoritative (it reads each cell's real `w:tcW`), but the
- * review UI needs the SAME width estimate to warn when a grouped inmate field is
- * too long to fit on one line at the 6pt minimum. Keeping the metrics here avoids
- * coupling the UI to the filler and keeps both estimates in lockstep.
+ * Every filled data cell is kept on one physical line by shrinking ONLY that
+ * cell's font (10pt down to a 6pt floor). The DOCX filler is authoritative (it
+ * reads each cell's real `w:tcW`), but the review UI needs the SAME width math to
+ * warn when a field is still too long to fit on one line at 6pt. Keeping the
+ * metrics here keeps both estimates in lockstep without coupling the UI to the filler.
  */
 
 // Times New Roman advance widths in font design units (1 em = 2048 units).
@@ -42,15 +43,25 @@ export const TNR_WIDTHS: Record<string, number> = (() => {
 export const CELL_SIDE_MARGIN_TWIPS = 115; // Word default cell padding (~0.08in) per side
 export const FIT_BUFFER_TWIPS = 10; // small cushion so a borderline value never overflows
 
-// Width (twips) of the "Inmate Name/FDC Number" column in the original DC6-2001
-// Search Log template (verified from the template's <w:tcW>). Used only for the
-// UI overflow warning; the filler reads the real width at fill time.
-export const SEARCH_LOG_INMATE_COL_TWIPS = 4140;
+// Data-row column widths (twips) of the original DC6-2001 Search Log table,
+// verified from the template's <w:tcW>, in column order:
+// [Date, Time, Area/Bunk, Type, Inmate, Officer, Discrepancies, Tablet].
+// The filler reads each cell's real width at fill time; these serve as the
+// fallback and as the source of truth for the review UI's per-field overflow
+// warning so both use identical width math.
+export const SEARCH_LOG_COL_TWIPS = [990, 900, 1260, 1080, 4140, 2880, 2520, 907];
 
-// Font size candidates (half-points). Narrow columns step 10pt -> 7pt; the
-// grouped inmate cell steps 10pt -> 8pt -> 7pt -> 6pt (6pt is the floor).
-export const NARROW_COL_CANDIDATES = [20, 19, 18, 17, 16, 15, 14];
-export const INMATE_COL_CANDIDATES = [20, 16, 14, 12];
+// Index of the Inmate Name/FDC Number column (its value is joined with " / ").
+export const SEARCH_LOG_INMATE_COL = 4;
+
+// Single font-size ladder (half-points) used for EVERY filled data cell: start at
+// the form's normal 10pt and step down (0.5pt at a time) only as far as needed to
+// keep the value on one line, with 6pt as the hard floor. Includes the 8/7/6pt
+// stops; the finer steps keep text as large as possible before reaching the floor.
+export const ONE_LINE_CANDIDATES = [20, 19, 18, 17, 16, 15, 14, 13, 12];
+
+// The 6pt floor (half-points) — the smallest size any cell is shrunk to.
+export const SEARCH_LOG_MIN_SZ = ONE_LINE_CANDIDATES[ONE_LINE_CANDIDATES.length - 1];
 
 /** Usable inner width of a cell after side padding and the safety buffer. */
 export function usableCellTwips(colTwips: number): number {
@@ -92,12 +103,34 @@ export function inmateOneLine(text: string): string {
 }
 
 /**
- * True if a grouped inmate string is estimated to fit on one line at the 6pt
- * minimum inside the Search Log inmate column. When false, the review table
- * should warn the user to shorten/split the field before generating.
+ * Collapse any value to a single physical line: turn line breaks into a single
+ * space and trim the ends, while preserving the text's own internal spacing.
+ * (The inmate column uses `inmateOneLine` instead so its segments join with " / ".)
  */
-export function groupedInmateFitsAtMin(text: string): boolean {
-  const min = INMATE_COL_CANDIDATES[INMATE_COL_CANDIDATES.length - 1];
-  const usable = usableCellTwips(SEARCH_LOG_INMATE_COL_TWIPS);
-  return estimateTextTwips(inmateOneLine(text), min) <= usable;
+export function collapseToLine(text: string): string {
+  return (text ?? "").replace(/\s*[\r\n]+\s*/g, " ").trim();
+}
+
+/**
+ * Normalize a cell's raw value to the exact single-line string the DOCX filler
+ * writes, so the review UI measures precisely what will be rendered: the inmate
+ * column joins its segments with " / "; every other column collapses line breaks.
+ */
+export function normalizeSearchLogCellText(colIndex: number, value: string): string {
+  return colIndex === SEARCH_LOG_INMATE_COL ? inmateOneLine(value) : collapseToLine(value);
+}
+
+/** True if `text` is estimated to fit on one line at the 6pt floor in `colTwips`. */
+export function fitsOnOneLineAtMin(text: string, colTwips: number): boolean {
+  return estimateTextTwips(text, SEARCH_LOG_MIN_SZ) <= usableCellTwips(colTwips);
+}
+
+/**
+ * True if a Search Log cell's value is estimated to fit on one line at the 6pt
+ * floor in its column. When false, the review table should warn the user to
+ * shorten the field before generating (the filler never truncates it).
+ */
+export function searchLogCellFitsAtMin(colIndex: number, value: string): boolean {
+  const twips = SEARCH_LOG_COL_TWIPS[colIndex] ?? SEARCH_LOG_COL_TWIPS[1];
+  return fitsOnOneLineAtMin(normalizeSearchLogCellText(colIndex, value), twips);
 }

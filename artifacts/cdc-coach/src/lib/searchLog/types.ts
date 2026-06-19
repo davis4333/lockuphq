@@ -68,12 +68,13 @@ export interface ReviewRow {
   time: string; // formatted e.g. "4:45 P"
   area: string; // Area/Bunk Searched
   type: string; // Type of Search
-  inmate: string; // multi-line "LAST, FIRST DC#" (grouped: " / "-joined, one line)
+  inmate: string; // "LAST, FIRST DC#" (grouped: " / "-joined; separate: "\n"-joined)
   officer: string; // "[RANK] [NAME]"
   discrepancies: string;
   tablet: string;
-  // Grouped-cell rows ask the DOCX filler to keep the inmate cell on one line and
-  // shrink only that cell's font (10→8→7→6pt) to fit; others render multi-line.
+  // Vestigial: the filler now keeps EVERY cell on one line and font-fits each
+  // independently, so this no longer affects output. Retained only so existing
+  // callers keep compiling; safe to remove once all references are gone.
   inmateFit?: boolean;
 }
 

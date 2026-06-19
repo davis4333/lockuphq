@@ -1,1 +1,1 @@
-- [Search Log DOCX one-line fitting](search-log-docx-fitting.md) — every data cell font-fit to one line (10pt→6pt floor); inmateFit is vestigial, don't reintroduce the multiline branch; UI & filler share SEARCH_LOG_COL_TWIPS.
+- [Verifying DOCX fillers](docx-filler-verification.md) — no LibreOffice here; transpile the filler TS with the `typescript` package API + PizZip and assert on document.xml.

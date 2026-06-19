@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import {
   Lock, ShieldAlert, UtensilsCrossed, FileText, ClipboardList,
   MessageSquare, BookOpen, HelpCircle, AlertTriangle, ChevronRight,
-  ScrollText,
+  ScrollText, CalendarRange,
 } from "lucide-react";
 import fdocSeal from "@assets/ChatGPT_Image_Jun_7,_2026,_03_31_51_AM_1780817532915.png";
 
@@ -21,6 +21,7 @@ const MODULES: Module[] = [
   { id: "lock-up-slip", title: "Lock-Up Slip", description: "Generate confinement placement narratives for incoming inmates.", icon: Lock, route: "/lock-up-slip" },
   { id: "strip-property", title: "Strip / Property Restriction", description: "Document property restriction placements.", icon: ShieldAlert, route: "/property-restriction" },
   { id: "search-log-autofill", title: "Search Log Autofill", description: "Upload Bed Book and fill original Search Log.", icon: ScrollText, route: "/search-log-autofill" },
+  { id: "dc6-229", title: "DC6-229 Daily Record Autofill", description: "Build a weekly Daily Record of Special Housing for each inmate.", icon: CalendarRange, route: "/dc6-229" },
   { id: "meal-restriction", title: "Meal Restriction / Loaf", description: "Generate special management meal documentation.", icon: UtensilsCrossed },
   { id: "incident-report", title: "Incident Report Narrative", description: "Draft IR narrative descriptions.", icon: FileText },
   { id: "dr-description", title: "DR Description", description: "Complete the description portion of a disciplinary report.", icon: ClipboardList },

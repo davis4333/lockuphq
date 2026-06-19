@@ -1,0 +1,396 @@
+We need to add a new dashboard tool to the existing Confinement Coach Lite app.
+
+Feature name:
+DC6-229 Daily Record Autofill
+
+Dashboard card:
+Title:
+DC6-229 Daily Record
+
+Subtitle:
+Upload Bed Book and generate inmate special housing forms
+
+Main goal:
+Allow the user to upload the Bed Book roster file, pull required inmate information from the roster, and fill the exact original DC6-229 DOCX form provided by the user.
+
+Important:
+Each inmate needs their own completed DC6-229 form.
+
+The final output should be a downloadable DOCX packet containing one complete DC6-229 form per inmate. Each inmate’s form must include both pages of the original DC6-229 document:
+
+* Page 1: Daily Record of Special Housing
+* Page 2: Instructions / legend / additional remarks page
+
+Critical document rule:
+DO NOT recreate the DC6-229 form.
+DO NOT generate a lookalike form.
+DO NOT use HTML-to-DOCX.
+DO NOT generate a PDF-only replacement.
+DO NOT change the form layout.
+DO NOT remove page 2.
+DO NOT alter the table structure.
+
+The completed output must use the exact original DC6-229 DOCX form as the template and fill only the needed blank fields.
+
+Use the same original-document filling method already used for the Search Log and Property Restriction paperwork.
+
+Template:
+Use the uploaded blank DOCX form:
+dc6-229 (3).docx
+
+Treat this file as the master template.
+
+Add this feature to the dashboard:
+
+* Add a new tool card/button for DC6-229 Daily Record.
+* Keep the existing Confinement Coach Lite dashboard style.
+* Do not redesign the full app.
+
+Privacy/session rules:
+
+* Uploaded Bed Book data is used only for the current browser session.
+* Do not save Bed Book data to a database.
+* Do not save Bed Book data to localStorage.
+* Do not send Bed Book data to AI.
+* Do not send Bed Book data to any external API.
+* Add a Clear Uploaded Bed Book button.
+* Refreshing the page should clear uploaded roster data unless the existing app has an approved session-only pattern.
+
+Accepted Bed Book formats:
+
+* .csv
+* .xlsx
+* .xls if practical
+
+The Bed Book may be a CSV file that begins with:
+SEP=|
+
+If the first line starts with SEP=, use the character after SEP= as the delimiter.
+
+If no SEP= line exists, auto-detect common delimiters:
+
+* comma
+* pipe
+* tab
+* semicolon
+
+Do not show a delimiter input in the UI.
+
+Expected Bed Book columns:
+Column A:
+Cell / Bed assignment
+
+Column B:
+FDC number / DOC number
+
+Column C:
+Inmate name
+
+Column H:
+Status
+
+Column mapping:
+
+* Column A → Cell number
+* Column B → FDC #
+* Column C → Inmate Name
+* Column H → Status
+
+The actual header row may not always be the first row. Scan the uploaded file until the needed header row is found when possible. If headers are missing, fall back to column positions A, B, C, and H.
+
+Fields to fill on the DC6-229 form:
+
+1. Inmate Name
+   Fill from Bed Book Column C.
+
+2. FDC#
+   Fill from Bed Book Column B.
+
+The raw value may contain prefixes, underscores, spaces, or extra characters.
+
+Extract the actual FDC/DC number using this logic:
+
+* Prefer the rightmost pattern matching one letter followed by five digits, such as A12345.
+* Also allow six digits, such as 123456.
+* If neither pattern is found, flag the row for review instead of guessing.
+
+Do not invent FDC numbers.
+Do not rewrite FDC numbers.
+
+3. Dorm & Cell #
+   The form already has the dorm letter B printed on the left side.
+
+Fill only the remaining cell number portion after the existing B.
+
+Example:
+If Bed Book Column A says:
+B1-106L
+
+Then fill the cell field as:
+1-106L
+
+Because the B is already printed on the form.
+
+Rules:
+
+* Remove only the leading B from the Bed Book cell value if it starts with B.
+* Preserve the rest of the cell value.
+* Preserve L or U if present.
+* Do not remove the bunk suffix unless the user specifically chooses a different option later.
+* Do not overwrite the existing printed B on the form.
+
+Examples:
+B1-106L → 1-106L
+B1-106U → 1-106U
+B3-221L → 3-221L
+
+4. Status
+   Fill from Bed Book Column H.
+
+This should populate the Status field on the DC6-229 form.
+
+Do not guess status.
+If Column H is blank, leave the field blank and flag the inmate for review.
+
+5. Dates on the left side
+   The DC6-229 form has a left-side Day/Date area in the Security Department section.
+
+Add a setup field:
+Week Start Date
+
+The user should select the Sunday date for the form week.
+
+The app should automatically generate dates Sunday through Saturday.
+
+Example:
+If Week Start Date is Sunday 06/14/2026, generate:
+Sunday 06/14/26
+Monday 06/15/26
+Tuesday 06/16/26
+Wednesday 06/17/26
+Thursday 06/18/26
+Friday 06/19/26
+Saturday 06/20/26
+
+Fill the left-side date/day boxes on page 1 with these dates in order, Sunday through Saturday.
+
+Formatting:
+Use a compact readable format that fits the form.
+
+Preferred format:
+Sun 06/14/26
+Mon 06/15/26
+Tue 06/16/26
+Wed 06/17/26
+Thu 06/18/26
+Fri 06/19/26
+Sat 06/20/26
+
+If the form’s date boxes are too small, use:
+06/14/26
+06/15/26
+06/16/26
+06/17/26
+06/18/26
+06/19/26
+06/20/26
+
+The user should be able to choose or preview the date format before generating if practical.
+
+Do not fill random activity/check boxes.
+Do not fill physical appearance.
+Do not fill attitude.
+Do not fill remarks.
+Do not fill medical/mental health fields.
+Do not fill programs fields.
+Only fill the requested header fields and left-side dates.
+
+UI workflow:
+
+Step 1:
+DC6-229 Setup
+
+Fields:
+
+* Week Start Date, Sunday
+* Date format preview
+* Optional output filename prefix
+* Optional filter by status
+* Optional filter by dorm/cell prefix
+
+Step 2:
+Upload Bed Book
+
+Upload area:
+
+* Drag and drop
+* Browse file
+* Accept .csv, .xlsx, .xls
+
+Step 3:
+Review Inmates
+
+After upload, show a review table with one row per inmate.
+
+Review table columns:
+
+* Include checkbox
+* Inmate Name
+* FDC #
+* Cell Number
+* Status
+* Validation Status
+
+The user must be able to:
+
+* Search/filter inmates
+* Exclude selected inmates
+* Edit inmate name
+* Edit FDC #
+* Edit cell number
+* Edit status
+* Clear uploaded roster
+
+Validation warnings:
+
+* Missing inmate name
+* Missing FDC #
+* Invalid FDC # pattern
+* Missing cell number
+* Missing status
+* Missing week start date
+* Week start date is not Sunday
+
+If the selected Week Start Date is not Sunday:
+
+* Show a warning.
+* Offer to auto-adjust to the previous or next Sunday.
+* Do not silently change the date without telling the user.
+
+Step 4:
+Generate & Download
+
+Add button:
+Generate DC6-229 Packet
+
+When clicked:
+
+1. Validate selected inmates.
+2. Show warnings for missing fields.
+3. Require confirmation that the user reviewed the generated information.
+4. Generate the completed DOCX packet.
+
+Output:
+One DOCX packet containing one complete DC6-229 form per included inmate.
+
+Each inmate should get:
+
+* Page 1 of DC6-229 with filled inmate information and dates.
+* Page 2 of DC6-229 preserved exactly as the original instruction/legend page.
+
+If there are 50 included inmates, the output DOCX should contain 50 complete forms.
+Since each form has 2 pages, the packet should have 100 pages.
+
+Each inmate’s form should start on a new page.
+
+Do not mix multiple inmates onto the same DC6-229 form.
+Do not remove page 2.
+Do not create one form for multiple inmates.
+
+DOCX filling requirements:
+
+* Load the exact original DC6-229 DOCX template.
+* Duplicate the complete two-page form for each included inmate.
+* Fill only the required fields on that inmate’s page 1.
+* Preserve page 2 exactly for each inmate.
+* Preserve all formatting, tables, borders, fonts, spacing, and page layout.
+* Write the filled result to one downloadable DOCX.
+
+If the DOCX cannot be safely duplicated while preserving both pages:
+
+* Stop and show an error.
+* Do not generate a fake replacement form.
+
+Required filled fields:
+
+* Inmate Name
+* FDC#
+* Dorm & Cell # cell-number portion after the printed B
+* Status
+* Sunday-through-Saturday dates on the left side
+
+Optional but useful:
+Add a packet summary before generation:
+
+* Total inmates found
+* Included inmates
+* Excluded inmates
+* Forms to generate
+* Total pages estimated
+* Week dates
+
+Example:
+Total Inmates: 214
+Included: 214
+Excluded: 0
+Forms: 214
+Estimated Pages: 428
+Week: Sun 06/14/26 - Sat 06/20/26
+
+Generate warning:
+“Review all entries before official use. This tool only fills the original DC6-229 form with uploaded roster information and selected week dates.”
+
+Suggested output filename:
+DC6-229 Packet - [WeekStartDate].docx
+
+Example:
+DC6-229 Packet - 06-14-26.docx
+
+Professional UI requirements:
+
+* Match existing Confinement Coach Lite dark blue style.
+* Keep the layout clean and professional.
+* Use cards/sections like the Search Log feature.
+* Avoid cramped tables.
+* No horizontal scrollbar if possible.
+* Sticky headers for long review tables if practical.
+* Clear final action panel for Generate & Download.
+
+Error handling:
+Show clear errors for:
+
+* Unsupported file type
+* Empty Bed Book file
+* Could not parse Bed Book
+* Header row not found
+* Missing Column A / Cell Number
+* Missing Column B / FDC #
+* Missing Column C / Inmate Name
+* Missing Column H / Status
+* DC6-229 template missing
+* Could not locate Inmate Name field in DOCX
+* Could not locate FDC# field in DOCX
+* Could not locate Dorm & Cell # field in DOCX
+* Could not locate Status field in DOCX
+* Could not locate left-side date boxes
+* Could not duplicate full two-page DC6-229 form
+* DOCX generation failed
+
+Acceptance criteria:
+
+* DC6-229 Daily Record appears on the dashboard.
+* User can open the new feature.
+* User can upload the Bed Book.
+* App pulls inmate name from Column C.
+* App pulls FDC # from Column B.
+* App pulls cell number from Column A.
+* App removes the leading B from the cell value before filling the form because the form already has B printed.
+* App pulls Status from Column H.
+* User selects a Sunday week start date.
+* App fills Sunday through Saturday dates on the left side of the form.
+* Each inmate receives their own complete DC6-229 form.
+* Page 2 is preserved for every inmate.
+* Final output is one downloadable DOCX packet.
+* The exact original DC6-229 DOCX form is used.
+* The form is not recreated.
+* Uploaded Bed Book data is session-only.

@@ -23,7 +23,7 @@ function matchColumn(header: string, aliases: string[]): boolean {
  * be skipped). Robust to surrounding whitespace and decorative asterisks, e.g.
  * "** VACANT **", "  UNDER MAINT  ", "UNDER MAINTENANCE".
  */
-function isPlaceholderName(name: string): boolean {
+export function isPlaceholderName(name: string): boolean {
   const normalized = (name ?? "")
     .replace(/\*/g, "")
     .replace(/\s+/g, " ")
@@ -114,7 +114,7 @@ function bestHeaderScore(grid: string[][]): number {
  * wins; otherwise we try comma, pipe, tab, and semicolon and keep whichever one
  * best reveals the required Bed Book headers, breaking ties by column count.
  */
-function csvToGrid(text: string): { grid: string[][]; delimiter: string } {
+export function csvToGrid(text: string): { grid: string[][]; delimiter: string } {
   // Strip a UTF-8 BOM if present.
   const body = text.replace(/^\uFEFF/, "");
   const rawLines = body.split(/\r\n|\r|\n/);
@@ -141,7 +141,7 @@ function csvToGrid(text: string): { grid: string[][]; delimiter: string } {
   return best ? { grid: best.grid, delimiter: best.delimiter } : { grid: buildGrid(rawLines, 0, ","), delimiter: "," };
 }
 
-interface HeaderLocation {
+export interface HeaderLocation {
   rowIndex: number;
   bedIdCol: number;
   docnumCol: number;
@@ -149,7 +149,7 @@ interface HeaderLocation {
 }
 
 /** Scan the grid for the first row that contains all three required headers. */
-function findHeaderRow(grid: string[][]): HeaderLocation | null {
+export function findHeaderRow(grid: string[][]): HeaderLocation | null {
   for (let r = 0; r < grid.length; r++) {
     const row = grid[r];
     if (!row || row.length === 0) continue;
@@ -220,7 +220,8 @@ export function parseCsvBedBook(text: string): ParsedBedBook {
   return gridToBedBook(grid, delimiter, "after the header row");
 }
 
-export function parseXlsxBedBook(data: ArrayBuffer): ParsedBedBook {
+/** Read the first worksheet of an XLSX/XLS workbook into a 2D string grid. */
+export function xlsxToGrid(data: ArrayBuffer): string[][] {
   const wb = XLSX.read(data, { type: "array" });
   const sheetName = wb.SheetNames[0];
   if (!sheetName) throw new BedBookParseError("The Bed Book workbook has no sheets.");
@@ -231,7 +232,11 @@ export function parseXlsxBedBook(data: ArrayBuffer): ParsedBedBook {
     defval: "",
     blankrows: false,
   });
-  return gridToBedBook(grid as string[][], "(workbook)", "in the workbook");
+  return grid as string[][];
+}
+
+export function parseXlsxBedBook(data: ArrayBuffer): ParsedBedBook {
+  return gridToBedBook(xlsxToGrid(data), "(workbook)", "in the workbook");
 }
 
 export async function parseBedBookFile(file: File): Promise<ParsedBedBook> {

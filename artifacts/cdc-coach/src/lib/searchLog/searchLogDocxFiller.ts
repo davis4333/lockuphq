@@ -63,12 +63,12 @@ const TABLE_RE = /<w:tbl>[\s\S]*?<\/w:tbl>/g;
 const ROW_RE = /<w:tr\b[\s\S]*?<\/w:tr>/g;
 const CELL_RE = /<w:tc>[\s\S]*?<\/w:tc>/g;
 
-// Column index of "Area/Bunk Searched" in a data row.
+// Narrow columns whose values must stay on one line: "Time" (e.g. "2:30 A") and
+// "Area/Bunk Searched" (e.g. "B1-101L"). Use a smaller font plus a non-breaking
+// space/hyphen so the value never wraps into "2:30" / "A" or "B1-" / "101L".
+const TIME_COL_INDEX = 1;
 const AREA_COL_INDEX = 2;
-// Bunk codes (e.g. "B1-101L") sit in a narrow column. Use a smaller font and a
-// non-breaking hyphen so the whole code stays readable on a single line instead
-// of wrapping at the "-" into "B1-" / "101L".
-const AREA_RUN_PR = '<w:rPr><w:sz w:val="16"/></w:rPr>';
+const NARROW_RUN_PR = '<w:rPr><w:sz w:val="16"/></w:rPr>';
 
 function fillDataRow(rowXml: string, values: string[], runPrs: (string | undefined)[] = []): string {
   let i = 0;
@@ -90,7 +90,7 @@ function fillDataTable(tableXml: string, rows: DocxFillRow[]): string {
     if (!entry) return row; // leave remaining rows blank
     const values = [
       entry.date,
-      entry.time,
+      entry.time.replace(/ /g, "\u00A0"), // keep the time (e.g. "2:30 A") on one line
       entry.area.replace(/-/g, "\u2011"), // keep the bunk code on one line
       entry.type,
       entry.inmate,
@@ -99,7 +99,8 @@ function fillDataTable(tableXml: string, rows: DocxFillRow[]): string {
       entry.tablet,
     ];
     const runPrs: (string | undefined)[] = [];
-    runPrs[AREA_COL_INDEX] = AREA_RUN_PR;
+    runPrs[TIME_COL_INDEX] = NARROW_RUN_PR;
+    runPrs[AREA_COL_INDEX] = NARROW_RUN_PR;
     return fillDataRow(row, values, runPrs);
   });
 }

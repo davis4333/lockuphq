@@ -94,7 +94,7 @@ export default function Dashboard() {
         style={{ background: "radial-gradient(ellipse at 50% 42%, transparent 56%, rgba(2,6,18,0.34) 90%, rgba(1,4,12,0.55) 100%)" }} />
 
       {/* ── CONTENT ───────────────────────────────────────── */}
-      <div className="relative z-10 mx-auto flex h-[100dvh] max-w-[1500px] flex-col overflow-y-auto px-4 sm:px-8 pt-6 pb-6">
+      <div className="relative z-10 mx-auto flex min-h-[100dvh] max-w-[1500px] flex-col px-4 sm:px-8 pt-6 pb-6">
 
         {/* ── AMBIENT CLASSIFIED MICRO-PANELS (decorative HUD readouts) ── */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 hidden xl:block">

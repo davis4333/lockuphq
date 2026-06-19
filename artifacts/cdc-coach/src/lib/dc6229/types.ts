@@ -1,4 +1,4 @@
-// Types for the DC6-229 Daily Record of Special Housing autofill tool.
+// Types for the DC6-229 Daily Record of Special Housing fill tool.
 // All data is session-only — never persisted, stored, or transmitted.
 
 /** How the 7 Sun–Sat dates are rendered in the daily grid. */

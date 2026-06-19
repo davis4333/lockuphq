@@ -1,2 +1,2 @@
-- [Verifying DOCX fillers](docx-filler-verification.md) — no LibreOffice here; transpile the filler TS with the `typescript` package API + PizZip and assert on document.xml.
-- [DC6-229 date-cell styling](dc6229-date-cell-styling.md) — template date boxes are inconsistently styled (1st is Heading3/left, rest centered); replace the cell paragraph (don't append a run) + use `\n`→`<w:br/>` for day-over-date.
+- [cdc-coach Dashboard layout](dashboard-layout.md) — only the module grid scrolls; a bounded spacer keeps tiles off the FDC seal; fixed app-shell gated to xl.
+- [Verifying DOCX fillers](docx-filler-verification.md) — how to verify cdc-coach DOCX form-fill output end-to-end without LibreOffice.

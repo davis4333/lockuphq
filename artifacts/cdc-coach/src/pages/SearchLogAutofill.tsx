@@ -551,7 +551,7 @@ export default function SearchLogAutofill() {
 
   return (
     <PageShell
-      title="Search Log Autofill"
+      title="Search Log"
       icon={ScrollText}
       maxWidthClass="max-w-7xl"
       subtitle="Choose how to fill the Search Log — upload a Bed Book roster or enter searches by hand — then review the rows and generate a completed DC6-2001 Word form. The blank form, headers, and footer are never altered — only the data boxes are filled."
@@ -746,7 +746,7 @@ export default function SearchLogAutofill() {
 
             <p className="mt-4 flex items-center gap-2 text-[11px] text-amber-200/80">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              Times auto-fill from the Start Time — one minute per cell, with upper/lower bunks in the
+              Times are generated from the Start Time — one minute per cell, with upper/lower bunks in the
               same cell sharing a time. Review and confirm all generated times before official use.
             </p>
             {parsed && (

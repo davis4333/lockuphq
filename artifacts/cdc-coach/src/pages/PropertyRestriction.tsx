@@ -332,7 +332,7 @@ export default function PropertyRestriction() {
               className={inputClass}
             />
             <p className="mt-1 text-[10px] text-muted-foreground/60 leading-relaxed">
-              Reference only — auto-fills from employee name, inmate name, and DC#. You can edit it manually.
+              Reference only — generated from employee name, inmate name, and DC#. You can edit it manually.
             </p>
           </div>
 

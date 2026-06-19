@@ -20,8 +20,8 @@ type Module = {
 const MODULES: Module[] = [
   { id: "lock-up-slip", title: "Lock-Up Slip", description: "Generate confinement placement narratives for incoming inmates.", icon: Lock, route: "/lock-up-slip" },
   { id: "strip-property", title: "Strip / Property Restriction", description: "Document property restriction placements.", icon: ShieldAlert, route: "/property-restriction" },
-  { id: "search-log-autofill", title: "Search Log Autofill", description: "Upload Bed Book and fill original Search Log.", icon: ScrollText, route: "/search-log-autofill" },
-  { id: "dc6-229", title: "DC6-229 Daily Record Autofill", description: "Build a weekly Daily Record of Special Housing for each inmate.", icon: CalendarRange, route: "/dc6-229" },
+  { id: "search-log-autofill", title: "Search Log", description: "Upload Bed Book and fill original Search Log.", icon: ScrollText, route: "/search-log" },
+  { id: "dc6-229", title: "DC6-229 Daily Record", description: "Build a weekly Daily Record of Special Housing for each inmate.", icon: CalendarRange, route: "/dc6-229" },
   { id: "meal-restriction", title: "Meal Restriction / Loaf", description: "Generate special management meal documentation.", icon: UtensilsCrossed },
   { id: "incident-report", title: "Incident Report Narrative", description: "Draft IR narrative descriptions.", icon: FileText },
   { id: "dr-description", title: "DR Description", description: "Complete the description portion of a disciplinary report.", icon: ClipboardList },
@@ -94,7 +94,7 @@ export default function Dashboard() {
         style={{ background: "radial-gradient(ellipse at 50% 42%, transparent 56%, rgba(2,6,18,0.34) 90%, rgba(1,4,12,0.55) 100%)" }} />
 
       {/* ── CONTENT ───────────────────────────────────────── */}
-      <div className="relative z-10 mx-auto flex min-h-[100dvh] max-w-[1500px] flex-col px-4 sm:px-8 pt-6 pb-6">
+      <div className="relative z-10 mx-auto flex min-h-[100dvh] xl:h-[100dvh] max-w-[1500px] flex-col xl:overflow-hidden px-4 sm:px-8 pt-6 pb-6">
 
         {/* ── AMBIENT CLASSIFIED MICRO-PANELS (decorative HUD readouts) ── */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 hidden xl:block">
@@ -133,7 +133,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── TOP HEADER ──────────────────────────────────── */}
-        <header className="flex flex-col lg:flex-row lg:items-center gap-3">
+        <header className="shrink-0 flex flex-col lg:flex-row lg:items-center gap-3">
           {/* FDOC identity */}
           <div className="flex items-center gap-2.5 shrink-0">
             <div className="relative w-10 h-10 rounded-full border border-blue-400/70 bg-blue-950/70 overflow-hidden flex items-center justify-center shrink-0"
@@ -193,7 +193,7 @@ export default function Dashboard() {
         </header>
 
         {/* ── WARNING BANNER ──────────────────────────────── */}
-        <div className="mt-3.5 flex flex-col lg:flex-row items-stretch gap-3">
+        <div className="shrink-0 mt-3.5 flex flex-col lg:flex-row items-stretch gap-3">
           {/* Warning banner */}
           <div className="flex items-start gap-3 rounded-lg border border-amber-400/70 bg-[rgba(28,18,2,0.72)] backdrop-blur-md px-4 py-3 w-full max-w-full lg:max-w-[520px]"
             style={{ boxShadow: "0 0 26px rgba(245,158,11,0.22)" }}>
@@ -211,17 +211,17 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── DEDICATED HOLOGRAM DISPLAY ZONE (flexible — absorbs all extra height) ── */}
-        <div aria-hidden="true" className="flex-1 min-h-[104px]" />
+        {/* ── DEDICATED HOLOGRAM DISPLAY ZONE (keeps the console clear of the FDC seal) ── */}
+        <div aria-hidden="true" className="shrink-0 h-[clamp(48px,22vh,240px)]" />
 
         {/* ── LOWER CONSOLE: modules + right panels ───────── */}
-        <div className="mx-auto w-full max-w-[1340px] flex flex-col xl:flex-row gap-5 items-start">
+        <div className="flex-1 min-h-0 mx-auto w-full max-w-[1340px] flex flex-col xl:flex-row gap-5 items-start">
 
           {/* Left breathing room — shifts the console right under the hologram */}
           <div aria-hidden="true" className="hidden xl:block shrink-0" style={{ width: "5%" }} />
 
-          {/* Module grid */}
-          <div className="flex-1 min-w-0 w-full">
+          {/* Module grid — the only scrolling region */}
+          <div className="flex-1 min-w-0 w-full min-h-0 self-stretch xl:overflow-y-auto cdc-scroll pt-1 pr-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {MODULES.map((mod) => {
                 const Icon = mod.icon;
@@ -319,7 +319,7 @@ export default function Dashboard() {
           </div>
 
           {/* Right panels */}
-          <div className="flex flex-col gap-3 w-full xl:w-[248px] shrink-0">
+          <div className="flex flex-col gap-3 w-full xl:w-[248px] shrink-0 min-h-0 xl:max-h-full xl:overflow-y-auto cdc-scroll">
             {/* System Status */}
             <div className={`relative overflow-hidden ${panel} p-3`} style={{ boxShadow: "0 0 24px rgba(37,99,235,0.22), inset 0 0 24px rgba(37,99,235,0.07)" }}>
               <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-blue-200/8 to-transparent" />
@@ -357,7 +357,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── BOTTOM DISCLAIMER ───────────────────────────── */}
-        <footer className="mt-3 flex items-center justify-center gap-2.5 rounded-md border border-blue-500/20 bg-[rgba(3,9,28,0.6)] backdrop-blur-sm py-2 px-5 mx-auto"
+        <footer className="shrink-0 mt-3 flex items-center justify-center gap-2.5 rounded-md border border-blue-500/20 bg-[rgba(3,9,28,0.6)] backdrop-blur-sm py-2 px-5 mx-auto"
           style={{ boxShadow: "0 0 16px rgba(37,99,235,0.10)" }}>
           <Lock className="h-3 w-3 text-blue-300/70" />
           <p className={`${micro} text-blue-200/75 text-center`}>

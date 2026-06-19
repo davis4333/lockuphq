@@ -14,7 +14,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/lock-up-slip" component={LockUpSlip} />
       <Route path="/property-restriction" component={PropertyRestriction} />
-      <Route path="/search-log-autofill" component={SearchLogAutofill} />
+      <Route path="/search-log" component={SearchLogAutofill} />
       <Route path="/dc6-229" component={DC6229DailyRecord} />
       <Route component={NotFound} />
     </Switch>

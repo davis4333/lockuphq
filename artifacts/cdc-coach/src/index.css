@@ -164,6 +164,26 @@
   }
 }
 
+/* ─── Themed thin scrollbar (matches the body scroll on other pages) ─── */
+.cdc-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(96, 165, 250, 0.35) transparent;
+}
+.cdc-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.cdc-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cdc-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(96, 165, 250, 0.3);
+  border-radius: 9999px;
+}
+.cdc-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(96, 165, 250, 0.5);
+}
+
 /* ─── Classified atmosphere effects ─────────────────────── */
 
 /* Faint scanline overlay */

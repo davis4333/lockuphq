@@ -5,7 +5,7 @@ description: How to end-to-end verify a Word-form filler in this repo when Libre
 
 # Verifying DOCX fillers without LibreOffice
 
-The cdc-coach autofill tools (Search Log, DC6-229) fill real government `.docx`
+The cdc-coach document-fill tools (Search Log, DC6-229) fill real government `.docx`
 templates by string-transforming `word/document.xml`. To verify a filler end-to-end
 against the real template:
 

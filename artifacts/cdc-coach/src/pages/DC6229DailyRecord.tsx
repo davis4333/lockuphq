@@ -289,7 +289,7 @@ export default function DC6229DailyRecord() {
 
   return (
     <PageShell
-      title="DC6-229 Daily Record Autofill"
+      title="DC6-229 Daily Record"
       icon={ClipboardList}
       maxWidthClass="max-w-7xl"
       subtitle="Prepare a Daily Record of Special Housing (DC6-229) for each inmate — upload a Bed Book roster or add inmates by hand, choose the Sunday the week starts, then generate one packet with a complete 2-page form per inmate. The original Word form is never altered — only the name, FDC#, cell, status, and the 7 week dates are filled, and page 2 of every form is left untouched."

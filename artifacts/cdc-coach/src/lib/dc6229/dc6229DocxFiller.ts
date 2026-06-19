@@ -1,7 +1,7 @@
 import PizZip from "pizzip";
 
 /**
- * DC6-229 "Daily Record of Special Housing" autofill.
+ * DC6-229 "Daily Record of Special Housing" form fill.
  *
  * The original government Word form is NEVER recreated — we open the real
  * `dc6-229-template.docx`, clone its single 2-page form section once per inmate

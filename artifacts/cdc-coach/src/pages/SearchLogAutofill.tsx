@@ -16,8 +16,8 @@ import PageShell, { hudPanel, hudInput, hudLabel } from "@/components/PageShell"
 import {
   SEARCH_TYPES,
   STAFF_RANKS,
-  TABLET_VALUES,
   TABLET_MODES,
+  type TabletValue,
   ROWS_PER_PAGE,
   type BunkHandling,
   type EntryMethod,
@@ -65,6 +65,17 @@ const TABLET_MODE_LABELS: Record<SetupFields["tabletMode"], string> = {
   N: "N — all no",
   Random: "Random Y / N",
 };
+
+// Per-row Tablet dropdown. The first two are this-row values; the last three are
+// bulk shortcuts that rewrite the whole Tablet column. Their values are distinct
+// from "Y"/"N" so the controlled <select> always snaps back to the row's own value.
+const TABLET_ROW_OPTIONS: { value: string; label: string }[] = [
+  { value: "Y", label: "Y - Yes" },
+  { value: "N", label: "N - No" },
+  { value: "ALL_Y", label: "Y - Yes All" },
+  { value: "ALL_N", label: "N - No All" },
+  { value: "RANDOM", label: "Random Y/N" },
+];
 
 const ENTRY_METHODS: { value: EntryMethod; label: string; icon: typeof FileSpreadsheet }[] = [
   { value: "bedbook", label: "Bed Book Upload", icon: FileSpreadsheet },
@@ -322,11 +333,12 @@ export default function SearchLogAutofill() {
     setActive((prev) => prev.map((r) => ({ ...r, discrepancies: setup.discrepancies })));
     setConfirmed(false);
   }
-  function applyTablet() {
+  function setAllTablet(value: TabletValue) {
+    setActive((prev) => prev.map((r) => ({ ...r, tablet: value })));
+    setConfirmed(false);
+  }
+  function randomizeTablet() {
     setActive((prev) => {
-      if (setup.tabletMode !== "Random") {
-        return prev.map((r) => ({ ...r, tablet: setup.tabletMode }));
-      }
       // Guarantee the Y/N mix across the rows that will actually appear in the
       // document (included rows); excluded rows just get any random value.
       const includedCount = prev.filter((r) => r.include).length;
@@ -338,6 +350,23 @@ export default function SearchLogAutofill() {
       }));
     });
     setConfirmed(false);
+  }
+  function applyTablet() {
+    if (setup.tabletMode === "Random") randomizeTablet();
+    else setAllTablet(setup.tabletMode);
+  }
+  // Per-row Tablet dropdown: "Y"/"N" set just this row; the bulk values rewrite
+  // the whole column. Generation isn't blocked, but reset confirmation either way.
+  function selectRowTablet(rowId: string, choice: string) {
+    if (choice === "Y" || choice === "N") {
+      updateRow(rowId, { tablet: choice });
+    } else if (choice === "ALL_Y") {
+      setAllTablet("Y");
+    } else if (choice === "ALL_N") {
+      setAllTablet("N");
+    } else if (choice === "RANDOM") {
+      randomizeTablet();
+    }
   }
 
   const hasRows = rows.length > 0;
@@ -817,10 +846,10 @@ export default function SearchLogAutofill() {
                         />
                       </td>
                       <td className="px-1.5 py-2 align-top">
-                        <select className={cellInput} value={r.tablet} onChange={(e) => updateRow(r.id, { tablet: e.target.value })}>
-                          {TABLET_VALUES.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
+                        <select className={cellInput} value={r.tablet} onChange={(e) => selectRowTablet(r.id, e.target.value)}>
+                          {TABLET_ROW_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
                             </option>
                           ))}
                         </select>

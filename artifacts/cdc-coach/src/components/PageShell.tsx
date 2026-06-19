@@ -15,10 +15,11 @@ type PageShellProps = {
   title: string;
   subtitle?: string;
   icon?: ComponentType<{ className?: string }>;
+  maxWidthClass?: string;
   children: ReactNode;
 };
 
-export default function PageShell({ title, subtitle, icon: Icon, children }: PageShellProps) {
+export default function PageShell({ title, subtitle, icon: Icon, maxWidthClass = "max-w-3xl", children }: PageShellProps) {
   const [, navigate] = useLocation();
 
   return (

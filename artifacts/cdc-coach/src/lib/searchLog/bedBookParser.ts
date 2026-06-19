@@ -1,0 +1,211 @@
+import * as XLSX from "xlsx";
+import type { ParsedBedBook, RawBedRow } from "./types";
+
+export class BedBookParseError extends Error {}
+
+const HEADER_ALIASES = {
+  bedId: ["bed-id", "bedid", "bed id", "bed"],
+  docnum: ["docnum", "doc-num", "doc num", "doc number", "docnumber", "dc"],
+  inmateName: ["inmate-name", "inmatename", "inmate name", "inmate", "name"],
+};
+
+function normalizeHeader(value: string): string {
+  return (value ?? "").toString().trim().toLowerCase();
+}
+
+function matchColumn(header: string, aliases: string[]): boolean {
+  const h = normalizeHeader(header);
+  return aliases.some((a) => h === a);
+}
+
+/** Split a single CSV line honoring quotes and a custom delimiter. */
+function splitLine(line: string, delimiter: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cur += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === delimiter) {
+      out.push(cur);
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+function detectDelimiter(sampleLine: string): string {
+  const candidates = ["|", "\t", ",", ";"];
+  let best = ",";
+  let bestCount = -1;
+  for (const c of candidates) {
+    const count = sampleLine.split(c).length - 1;
+    if (count > bestCount) {
+      bestCount = count;
+      best = c;
+    }
+  }
+  return best;
+}
+
+/** Turn a CSV/TSV string into a 2D grid of cells, honoring a leading SEP= line. */
+function csvToGrid(text: string): { grid: string[][]; delimiter: string } {
+  // Strip a UTF-8 BOM if present.
+  let body = text.replace(/^\uFEFF/, "");
+  const rawLines = body.split(/\r\n|\r|\n/);
+
+  let delimiter = "";
+  let startIdx = 0;
+
+  const first = (rawLines[0] ?? "").trim();
+  const sepMatch = first.match(/^sep\s*=\s*(.)/i);
+  if (sepMatch) {
+    delimiter = sepMatch[1];
+    if (delimiter === "\\" && first.toLowerCase().includes("\\t")) delimiter = "\t";
+    startIdx = 1;
+  }
+
+  if (!delimiter) {
+    const probe = rawLines.find((l) => l.trim().length > 0) ?? "";
+    delimiter = detectDelimiter(probe);
+  }
+
+  const grid: string[][] = [];
+  for (let i = startIdx; i < rawLines.length; i++) {
+    const line = rawLines[i];
+    if (line.trim().length === 0) {
+      grid.push([]);
+      continue;
+    }
+    grid.push(splitLine(line, delimiter));
+  }
+  return { grid, delimiter };
+}
+
+interface HeaderLocation {
+  rowIndex: number;
+  bedIdCol: number;
+  docnumCol: number;
+  inmateCol: number;
+}
+
+/** Scan the grid for the first row that contains all three required headers. */
+function findHeaderRow(grid: string[][]): HeaderLocation | null {
+  for (let r = 0; r < grid.length; r++) {
+    const row = grid[r];
+    if (!row || row.length === 0) continue;
+    let bedIdCol = -1;
+    let docnumCol = -1;
+    let inmateCol = -1;
+    for (let c = 0; c < row.length; c++) {
+      const cell = row[c];
+      if (bedIdCol === -1 && matchColumn(cell, HEADER_ALIASES.bedId)) bedIdCol = c;
+      else if (docnumCol === -1 && matchColumn(cell, HEADER_ALIASES.docnum)) docnumCol = c;
+      else if (inmateCol === -1 && matchColumn(cell, HEADER_ALIASES.inmateName)) inmateCol = c;
+    }
+    if (bedIdCol !== -1 && docnumCol !== -1 && inmateCol !== -1) {
+      return { rowIndex: r, bedIdCol, docnumCol, inmateCol };
+    }
+  }
+  return null;
+}
+
+function gridToBedBook(
+  grid: string[][],
+  delimiter: string,
+  headerScanLabel: string,
+): ParsedBedBook {
+  if (grid.length === 0) {
+    throw new BedBookParseError("The Bed Book file is empty.");
+  }
+
+  const header = findHeaderRow(grid);
+  if (!header) {
+    throw new BedBookParseError(
+      "Could not find a header row containing BED-ID, DOCNUM, and INMATE-NAME.",
+    );
+  }
+
+  const rows: RawBedRow[] = [];
+  for (let r = header.rowIndex + 1; r < grid.length; r++) {
+    const row = grid[r];
+    if (!row || row.length === 0) continue;
+    const bedId = (row[header.bedIdCol] ?? "").toString().trim();
+    const docnum = (row[header.docnumCol] ?? "").toString().trim();
+    const inmateName = (row[header.inmateCol] ?? "").toString().trim();
+    if (!bedId && !docnum && !inmateName) continue;
+    rows.push({ bedId, docnum, inmateName, sourceRow: r + 1 });
+  }
+
+  if (rows.length === 0) {
+    throw new BedBookParseError(`No valid roster rows found ${headerScanLabel}.`);
+  }
+
+  return {
+    rows,
+    delimiter,
+    headerRowIndex: header.rowIndex,
+    totalDataRows: rows.length,
+  };
+}
+
+export function parseCsvBedBook(text: string): ParsedBedBook {
+  if (!text || text.trim().length === 0) {
+    throw new BedBookParseError("The Bed Book file is empty.");
+  }
+  const { grid, delimiter } = csvToGrid(text);
+  return gridToBedBook(grid, delimiter, "after the header row");
+}
+
+export function parseXlsxBedBook(data: ArrayBuffer): ParsedBedBook {
+  const wb = XLSX.read(data, { type: "array" });
+  const sheetName = wb.SheetNames[0];
+  if (!sheetName) throw new BedBookParseError("The Bed Book workbook has no sheets.");
+  const sheet = wb.Sheets[sheetName];
+  const grid = XLSX.utils.sheet_to_json<string[]>(sheet, {
+    header: 1,
+    raw: false,
+    defval: "",
+    blankrows: false,
+  });
+  return gridToBedBook(grid as string[][], "(workbook)", "in the workbook");
+}
+
+export async function parseBedBookFile(file: File): Promise<ParsedBedBook> {
+  const name = file.name.toLowerCase();
+  const isExcel =
+    name.endsWith(".xlsx") ||
+    name.endsWith(".xls") ||
+    name.endsWith(".xlsm") ||
+    file.type.includes("spreadsheet") ||
+    file.type.includes("excel");
+
+  if (isExcel) {
+    const buf = await file.arrayBuffer();
+    return parseXlsxBedBook(buf);
+  }
+
+  if (name.endsWith(".csv") || name.endsWith(".txt") || file.type.includes("csv") || file.type === "text/plain") {
+    const text = await file.text();
+    return parseCsvBedBook(text);
+  }
+
+  throw new BedBookParseError(
+    "Unsupported file type. Upload a .csv, .xlsx, or .xls Bed Book file.",
+  );
+}

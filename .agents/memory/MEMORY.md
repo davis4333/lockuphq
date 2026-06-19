@@ -1,3 +1,1 @@
-- [CDC Dashboard background](cdc-dashboard-background.md) — FDOC seal baked high in the bg image; its on-screen position is fixed (cant move via background-position); narrow the banner to clear it, keep top overlay light.
-- [CDC Dashboard layout fit](cdc-dashboard-layout-fit.md) — single-viewport design; a flex-1 hologram spacer absorbs slack, so adding right-column/ticker content requires shrinking the spacer min-h or content overflows below the fold.
-- [CDC Coach page theming](cdc-coach-theme.md) — wrap new sub-pages in PageShell + use its hud* tokens so they match the Dashboard blue-HUD theme; opaque panels hide the seal hologram bleed.
+- [Search Log DOCX form-fill](search-log-docx-fill.md) — fill original legacy FORMTEXT Word forms via PizZip+regex; clone page per N rows, strip bookmarks, fail loudly on template mismatch.

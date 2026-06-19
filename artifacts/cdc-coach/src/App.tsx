@@ -5,6 +5,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import LockUpSlip from "@/pages/LockUpSlip";
 import PropertyRestriction from "@/pages/PropertyRestriction";
+import SearchLogAutofill from "@/pages/SearchLogAutofill";
 
 function Router() {
   return (
@@ -12,6 +13,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/lock-up-slip" component={LockUpSlip} />
       <Route path="/property-restriction" component={PropertyRestriction} />
+      <Route path="/search-log-autofill" component={SearchLogAutofill} />
       <Route component={NotFound} />
     </Switch>
   );

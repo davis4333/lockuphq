@@ -22,7 +22,10 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/cdc-coach/` — Confinement Desk Coach web app (React + Vite, dark FDOC blue-HUD theme). Routes wired in `src/App.tsx`; module cards in `src/pages/Dashboard.tsx` (`MODULES`).
+- `artifacts/cdc-coach/src/components/PageShell.tsx` — shared themed shell + HUD style tokens (`hudPanel`, `hudInput`, `hudLabel`). Optional `maxWidthClass` prop widens the content column (default `max-w-3xl`).
+- `artifacts/cdc-coach/src/lib/searchLog/` — Search Log Autofill logic: Bed Book parsing/grouping, row building, and the original-DOCX form filler (`searchLogDocxFiller.ts`).
+- `artifacts/cdc-coach/public/*-template.docx` — the original government Word forms that get filled (never recreated).
 
 ## Architecture decisions
 
@@ -30,7 +33,7 @@ _Populate as you build — non-obvious choices a reader couldn't infer from the 
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Confinement Desk Coach (cdc-coach) is a training/desk-aid command center for confinement officers. Modules include Lock-Up Slip, Strip/Property Restriction, and **Search Log Autofill** — upload a Bed Book roster (CSV with optional `SEP=|`, or XLSX/XLS), review/edit the parsed entries, and generate a completed Search Log by filling the original government Word form (continuation pages added automatically per 19 entries). Uploaded roster data is processed in-browser only — never saved, stored, or transmitted.
 
 ## User preferences
 

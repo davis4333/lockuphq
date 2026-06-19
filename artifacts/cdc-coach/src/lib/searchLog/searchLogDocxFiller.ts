@@ -47,8 +47,12 @@ function buildResultRuns(value: string, runPr: string = RUN_PR): string {
     .join("");
 }
 
+// The "end" run is matched with an rPr that cannot cross a run boundary
+// ((?!</w:r>)), so the lazy middle group captures and discards ALL of the
+// original FORMTEXT placeholder runs (e.g. a 5-space "<w:t>     </w:t>" plus
+// empty runs) instead of letting them survive inside the end-run capture.
 const FIELD_RESULT_RE =
-  /(<w:fldChar w:fldCharType="separate"\/><\/w:r>)([\s\S]*?)(<w:r\b[^>]*>(?:<w:rPr>[\s\S]*?<\/w:rPr>)?<w:fldChar w:fldCharType="end"\/><\/w:r>)/;
+  /(<w:fldChar w:fldCharType="separate"\/><\/w:r>)([\s\S]*?)(<w:r\b[^>]*>(?:<w:rPr>(?:(?!<\/w:r>)[\s\S])*?<\/w:rPr>)?<w:fldChar w:fldCharType="end"\/><\/w:r>)/;
 
 /** Replace the first FORMTEXT field result inside the given XML fragment. */
 function fillFirstField(fragment: string, value: string, runPr: string = RUN_PR): string {
@@ -63,9 +67,13 @@ const TABLE_RE = /<w:tbl>[\s\S]*?<\/w:tbl>/g;
 const ROW_RE = /<w:tr\b[\s\S]*?<\/w:tr>/g;
 const CELL_RE = /<w:tc>[\s\S]*?<\/w:tc>/g;
 
-// Narrow columns whose values must stay on one line: "Time" (e.g. "2:30 A") and
-// "Area/Bunk Searched" (e.g. "B1-101L"). Use a smaller font plus a non-breaking
-// space/hyphen so the value never wraps into "2:30" / "A" or "B1-" / "101L".
+// The four narrow left columns (Date, Time, Area/Bunk Searched, Type of Search)
+// must each stay on a single readable line. At the default 10pt some values
+// (e.g. the date "06/19/26") wrap to a second line, which makes the whole row
+// render double-height beside the single-line wide columns. A smaller font keeps
+// them on one line; Time and Area additionally get a non-breaking space/hyphen
+// so they never break at the " " or "-" (e.g. "2:30" / "A", "B1-" / "101L").
+const NARROW_COL_INDEXES = [0, 1, 2, 3]; // date, time, area/bunk, type of search
 const TIME_COL_INDEX = 1;
 const AREA_COL_INDEX = 2;
 const NARROW_RUN_PR = '<w:rPr><w:sz w:val="16"/></w:rPr>';
@@ -99,8 +107,7 @@ function fillDataTable(tableXml: string, rows: DocxFillRow[]): string {
       entry.tablet,
     ];
     const runPrs: (string | undefined)[] = [];
-    runPrs[TIME_COL_INDEX] = NARROW_RUN_PR;
-    runPrs[AREA_COL_INDEX] = NARROW_RUN_PR;
+    for (const idx of NARROW_COL_INDEXES) runPrs[idx] = NARROW_RUN_PR;
     return fillDataRow(row, values, runPrs);
   });
 }

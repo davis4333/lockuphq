@@ -1,7 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Copy, CheckCheck, AlertTriangle, FileText, ChevronDown, Search, X } from "lucide-react";
+import { ArrowLeft, Copy, CheckCheck, AlertTriangle, FileText, ChevronDown, Search, X, Download, CalendarDays } from "lucide-react";
 import PageShell, { hudPanel, hudInput, hudLabel } from "@/components/PageShell";
+import { buildWeekDays, isSunday, previousSunday, parseLocalDate, toIso, numericDate } from "@/lib/dc6229/weekDates";
+import { stripDormLetter } from "@/lib/dc6229/cellNumber";
+import { fillDc6229Docx, Dc6229DocxError, type Dc6229FormData } from "@/lib/dc6229/dc6229DocxFiller";
+
+const DC6229_TEMPLATE_URL = `${import.meta.env.BASE_URL}dc6-229-template.docx`;
 
 type Charge = { code: string; title: string };
 type Section = { section: string; charges: Charge[] };
@@ -421,16 +426,54 @@ const defaultFields = {
   callsOffered: "offered",
 };
 
+function capitalizeWord(raw: string): string {
+  const t = (raw ?? "").trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : t;
+}
+
+/**
+ * Week start for the auto-filled DC6-229 daily grid. Uses the most recent Sunday
+ * on or before today; if today IS Sunday, it steps back a full week so the grid
+ * covers the week that just ended (Sun..Sat, ending on yesterday's Saturday).
+ */
+function autoDc6229WeekStartIso(): string {
+  const todayIso = toIso(new Date());
+  let ws = previousSunday(todayIso);
+  if (isSunday(todayIso)) {
+    const d = parseLocalDate(ws);
+    if (d) {
+      d.setDate(d.getDate() - 7);
+      ws = toIso(d);
+    }
+  }
+  return ws;
+}
+
+/** The parenthetical code of a confinement type, e.g. "...(AC)" -> "AC". */
+function confinementStatusCode(confinementType: string): string {
+  const m = /\(([^)]+)\)/.exec(confinementType ?? "");
+  return (m ? m[1] : confinementType ?? "").trim();
+}
+
+function dashedWeekLabel(iso: string): string {
+  const d = parseLocalDate(iso);
+  return d ? numericDate(d).replace(/\//g, "-") : "UNDATED";
+}
+
 export default function LockUpSlip() {
   const [, navigate] = useLocation();
   const [fields, setFields] = useState(defaultFields);
   const [narrative, setNarrative] = useState("");
   const [copied, setCopied] = useState(false);
   const narrativeRef = useRef<HTMLDivElement>(null);
+  const [dc6229Generating, setDc6229Generating] = useState(false);
+  const [dc6229Error, setDc6229Error] = useState("");
+  const dc6229Week = useMemo(() => buildWeekDays(autoDc6229WeekStartIso(), "dayPrefixed"), []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     setFields((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setNarrative("");
+    setDc6229Error("");
   }
 
   function handleReasonChange(val: string) {
@@ -452,6 +495,53 @@ export default function LockUpSlip() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  const canDownloadDc6229 = !!(
+    fields.lastName.trim() &&
+    fields.firstName.trim() &&
+    fields.dcNumber.trim()
+  );
+
+  async function handleDownloadDc6229() {
+    setDc6229Error("");
+    if (!canDownloadDc6229) {
+      setDc6229Error("Enter the last name, first name, and DC number first.");
+      return;
+    }
+    setDc6229Generating(true);
+    try {
+      const weekStartIso = autoDc6229WeekStartIso();
+      const week = buildWeekDays(weekStartIso, "dayPrefixed");
+      if (week.length !== 7) {
+        setDc6229Error("Could not build the 7 week dates. Try again.");
+        return;
+      }
+      const last = capitalizeWord(fields.lastName) || "Last";
+      const first = capitalizeWord(fields.firstName) || "First";
+      const form: Dc6229FormData = {
+        inmateName: `${last}, ${first}`,
+        fdc: fields.dcNumber.trim().toUpperCase(),
+        cellNumber: stripDormLetter(fields.bunkAssignment),
+        status: confinementStatusCode(fields.confinementType),
+        dates: week.map((d) => d.docx),
+      };
+      const blob = await fillDc6229Docx(`${DC6229_TEMPLATE_URL}?v=${Date.now()}`, { forms: [form] });
+      const name = `DC6-229 Daily Record - ${last}, ${first} - Week of ${dashedWeekLabel(weekStartIso)}.docx`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      if (err instanceof Dc6229DocxError) setDc6229Error(err.message);
+      else setDc6229Error(`DC6-229 generation failed: ${String(err)}`);
+    } finally {
+      setDc6229Generating(false);
+    }
   }
 
   const canGenerate =
@@ -684,6 +774,58 @@ export default function LockUpSlip() {
             {!canGenerate && (
               <p className="mt-2 text-center text-xs text-muted-foreground">
                 Fill in all required fields (<span className="text-destructive">*</span>) to generate.
+              </p>
+            )}
+          </div>
+
+          <div className="pt-4 mt-1 border-t border-blue-400/15">
+            <div className="mb-1.5 flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-blue-300/80" />
+              <h3 className="text-[12px] font-bold uppercase tracking-[0.12em] text-blue-100">
+                Also Generate a DC6-229
+              </h3>
+            </div>
+            <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
+              Builds a Daily Record of Special Housing (DC6-229) from the name, DC number, bunk, and confinement type above. The 7 daily dates fill automatically for the current week — back to the most recent Sunday, or the prior week (ending Saturday) when today is Sunday.
+            </p>
+
+            {dc6229Week.length === 7 && (
+              <div className="mb-3 grid grid-cols-4 gap-1.5 sm:grid-cols-7">
+                {dc6229Week.map((d) => (
+                  <div
+                    key={d.iso}
+                    className="rounded border border-blue-400/20 bg-[rgba(4,11,34,0.6)] px-1.5 py-1 text-center"
+                  >
+                    <div className="text-[8px] font-bold uppercase tracking-[0.1em] text-blue-300/60">{d.dayName}</div>
+                    <div className="text-[11px] font-mono font-semibold text-blue-50">{d.date}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={handleDownloadDc6229}
+              disabled={!canDownloadDc6229 || dc6229Generating}
+              className={[
+                "w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] transition-all duration-150",
+                canDownloadDc6229 && !dc6229Generating
+                  ? "border border-blue-300/50 bg-blue-600/85 text-white hover:bg-blue-500 cursor-pointer"
+                  : "border border-blue-400/15 bg-[rgba(4,11,34,0.6)] text-blue-300/40 cursor-not-allowed",
+              ].join(" ")}
+              style={canDownloadDc6229 && !dc6229Generating ? { boxShadow: "0 0 20px rgba(37,99,235,0.35)" } : undefined}
+            >
+              <Download className="h-4 w-4" />
+              {dc6229Generating ? "Generating…" : "Download DC6-229"}
+            </button>
+
+            {dc6229Error && (
+              <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-red-300/90">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {dc6229Error}
+              </p>
+            )}
+            {!canDownloadDc6229 && !dc6229Error && (
+              <p className="mt-2 text-center text-xs text-muted-foreground">
+                Enter last name, first name, and DC number to enable.
               </p>
             )}
           </div>

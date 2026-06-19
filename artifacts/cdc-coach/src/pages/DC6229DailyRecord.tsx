@@ -57,7 +57,7 @@ const ENTRY_METHODS: {
 
 const DATE_FORMATS: { value: Dc6229DateFormat; label: string; example: string }[] = [
   { value: "mmddyy", label: "MM/DD/YY", example: "06/14/26" },
-  { value: "dayPrefixed", label: "Day + Date", example: "Sun 06/14/26" },
+  { value: "dayPrefixed", label: "Day + Date", example: "Sun over 06/14/26" },
 ];
 
 const defaultSetup = (): Dc6229Setup => ({
@@ -257,7 +257,7 @@ export default function DC6229DailyRecord() {
     }
     setGenerating(true);
     try {
-      const dates = weekDays.map((d) => d.formatted);
+      const dates = weekDays.map((d) => d.docx);
       const forms: Dc6229FormData[] = includedRecords.map((r) => ({
         inmateName: r.inmateName.trim(),
         fdc: r.fdc.trim(),
@@ -413,7 +413,7 @@ export default function DC6229DailyRecord() {
               {weekDays.map((d) => (
                 <div key={d.iso} className="rounded border border-blue-400/20 bg-[rgba(4,11,34,0.6)] px-2 py-1.5 text-center">
                   <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-blue-300/60">{d.dayName}</div>
-                  <div className="text-[12px] font-mono font-semibold text-blue-50">{d.formatted}</div>
+                  <div className="text-[12px] font-mono font-semibold text-blue-50">{d.date}</div>
                 </div>
               ))}
             </div>

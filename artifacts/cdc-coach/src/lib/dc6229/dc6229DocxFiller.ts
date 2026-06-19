@@ -92,6 +92,9 @@ const FIELD_RESULT_RE_G = new RegExp(FIELD_RESULT_RE.source, "g");
 const TABLE_RE = /<w:tbl>[\s\S]*?<\/w:tbl>/g;
 const ROW_RE = /<w:tr\b[\s\S]*?<\/w:tr>/g;
 const FIRST_CELL_RE = /<w:tc>[\s\S]*?<\/w:tc>/;
+// The single (empty) paragraph inside a Day/Date box. Each date box holds
+// exactly one paragraph, so a non-global match safely targets just that cell's.
+const CELL_PARAGRAPH_RE = /<w:p\b[\s\S]*?<\/w:p>/;
 
 /** Fail loudly if the form's field layout does not match the known template. */
 function validateFieldLayout(fragment: string): void {
@@ -139,6 +142,21 @@ function fillFieldsByIndex(fragment: string, values: Map<number, string>): strin
  * vMerge=restart cell is the "Date" header (skipped); the next 14 are date boxes,
  * and dates land in the top box of each pair. Fails loudly on a box-count mismatch.
  */
+// Builds the replacement paragraph for a filled Day/Date box. Every target box
+// gets the SAME centered, single-spaced paragraph so all 7 look identical
+// regardless of the template cell's original style (one box is Heading3/left,
+// the rest are plain/centered). A "dayPrefixed" value arrives as
+// "Sun\n06/14/26" and becomes the day stacked directly over the date via a hard
+// line break; a date-only value is a single centered line.
+function buildDateParagraph(value: string): string {
+  const runs = buildResultRuns(value, DATE_RUN_PR);
+  return (
+    "<w:p><w:pPr><w:jc w:val=\"center\"/>" +
+    "<w:spacing w:before=\"0\" w:after=\"0\" w:line=\"240\" w:lineRule=\"auto\"/>" +
+    `</w:pPr>${runs}</w:p>`
+  );
+}
+
 function injectDates(gridXml: string, dates: string[]): string {
   let restartSeen = 0;
   let boxIdx = -1;
@@ -153,8 +171,16 @@ function injectDates(gridXml: string, dates: string[]): string {
     boxIdx += 1;
     const di = DATE_BOX_TARGETS.indexOf(boxIdx);
     if (di === -1) return row; // the lower (blank) box of each pair
-    const run = `<w:r>${DATE_RUN_PR}<w:t xml:space="preserve">${escapeXml(dates[di] ?? "")}</w:t></w:r>`;
-    const newC0 = c0.replace("</w:p>", `${run}</w:p>`);
+    // Replace the cell's single (empty) paragraph entirely so every date box
+    // shares one consistent layout. Cell geometry (tcPr: width, borders,
+    // vMerge, vAlign) is preserved — only the paragraph content changes.
+    if (!CELL_PARAGRAPH_RE.test(c0)) {
+      throw new Dc6229DocxError(
+        `DC6-229 daily grid: date box ${boxIdx} has no paragraph to fill. Refusing to fill.`,
+      );
+    }
+    const para = buildDateParagraph(dates[di] ?? "");
+    const newC0 = c0.replace(CELL_PARAGRAPH_RE, () => para);
     injected += 1;
     return row.replace(c0, () => newC0);
   });

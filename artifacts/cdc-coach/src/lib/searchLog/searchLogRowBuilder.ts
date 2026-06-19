@@ -71,6 +71,23 @@ export function formatTimeWithOffset(startTime: string, offsetMinutes: number): 
   return `${hour12}:${minute.toString().padStart(2, "0")} ${suffix}`;
 }
 
+/**
+ * Add `minutes` to an HH:mm (24h) time-input value and return HH:mm. Used to
+ * auto-increment the manual-entry Time field by one minute after each search.
+ * A blank or unparseable value is returned unchanged.
+ */
+export function addMinutesToTimeInput(timeInput: string, minutes: number): string {
+  const m = timeInput.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return timeInput;
+  let total = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + minutes;
+  total = ((total % 1440) + 1440) % 1440;
+  const hh = Math.floor(total / 60)
+    .toString()
+    .padStart(2, "0");
+  const mm = (total % 60).toString().padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 /** Format one staff member as "RANK NAME" (e.g. "C/O Davis"); "" if no name. */
 export function formatStaffMember(member: StaffMember): string {
   const r = (member.rank ?? "").trim();
@@ -160,25 +177,37 @@ export function buildReviewRows(
   return resequenceTimes(rows, setup.startTime);
 }
 
+/** Values for one finished manual search entry (from the Manual Entry form). */
+export interface ManualRowInput {
+  date: string; // yyyy-mm-dd (input value)
+  time: string; // HH:mm (24h input value)
+  area: string;
+  type: string;
+  inmate: string;
+  officer: string; // already combined "[RANK] [NAME]"
+  discrepancies: string;
+  tablet: string;
+}
+
 /**
- * Create one blank manual review row seeded with the current setup defaults.
- * `timeOffset` advances the start time by N minutes (one per existing manual row)
- * so consecutive manual rows auto-increment; every field stays editable.
+ * Build one completed manual review row from the Manual Entry form. The date is
+ * formatted MM/DD/YY and the time HH:mm → "h:mm A/P" to match Bed Book rows;
+ * the user's inmate / officer / discrepancy text is preserved verbatim (trimmed).
  */
-export function createManualRow(setup: SetupFields, timeOffset: number): ReviewRow {
+export function buildManualRow(input: ManualRowInput): ReviewRow {
   return {
     id: nextRowId(),
     include: true,
     source: "manual",
     bedId: "",
-    date: formatDateMMDDYY(setup.dateOfSearch),
-    time: formatTimeWithOffset(setup.startTime, timeOffset),
-    area: "",
-    type: setup.searchType,
-    inmate: "",
-    officer: combineStaff(setup.staff),
-    discrepancies: setup.discrepancies,
-    tablet: setup.tabletMode === "Random" ? randomTablet() : setup.tabletMode,
+    date: formatDateMMDDYY(input.date),
+    time: formatTimeWithOffset(input.time, 0),
+    area: input.area.trim(),
+    type: input.type,
+    inmate: input.inmate.trim(),
+    officer: input.officer.trim(),
+    discrepancies: input.discrepancies.trim(),
+    tablet: input.tablet,
     inmateFit: false,
   };
 }

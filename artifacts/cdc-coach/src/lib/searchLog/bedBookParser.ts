@@ -18,6 +18,26 @@ function matchColumn(header: string, aliases: string[]): boolean {
   return aliases.some((a) => h === a);
 }
 
+/**
+ * Occupancy placeholders that are NOT real inmate names (so the bed/cell should
+ * be skipped). Robust to surrounding whitespace and decorative asterisks, e.g.
+ * "** VACANT **", "  UNDER MAINT  ", "UNDER MAINTENANCE".
+ */
+function isPlaceholderName(name: string): boolean {
+  const normalized = (name ?? "")
+    .replace(/\*/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+  if (normalized.length === 0) return true;
+  return (
+    normalized === "VACANT" ||
+    normalized.startsWith("UNDER MAINT") ||
+    normalized === "MAINT" ||
+    normalized === "MAINTENANCE"
+  );
+}
+
 /** Split a single CSV line honoring quotes and a custom delimiter. */
 function splitLine(line: string, delimiter: string): string[] {
   const out: string[] = [];
@@ -148,7 +168,11 @@ function gridToBedBook(
     const bedId = (row[header.bedIdCol] ?? "").toString().trim();
     const docnum = (row[header.docnumCol] ?? "").toString().trim();
     const inmateName = (row[header.inmateCol] ?? "").toString().trim();
-    if (!bedId && !docnum && !inmateName) continue;
+    // Skip rows with no cell/bed number associated with them.
+    if (!bedId) continue;
+    // Skip cells without an actual inmate name (empty, or occupancy
+    // placeholders like "VACANT" / "UNDER MAINT").
+    if (isPlaceholderName(inmateName)) continue;
     rows.push({ bedId, docnum, inmateName, sourceRow: r + 1 });
   }
 

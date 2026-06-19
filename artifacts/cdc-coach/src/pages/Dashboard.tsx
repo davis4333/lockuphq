@@ -8,6 +8,7 @@ import {
 import fdocSeal from "@assets/ChatGPT_Image_Jun_7,_2026,_03_31_51_AM_1780817532915.png";
 import searchLogIcon from "@assets/Search_Log_Icon_1781867877702.png";
 import dc6229Icon from "@assets/DC6-229_icon_1781868024454.png";
+import lockUpSlipIcon from "@assets/Lock_Up_Slip_Icon_1781868142271.png";
 
 // Custom image-based tile icon (fills the icon box edge-to-edge).
 function makeImageIcon(src: string) {
@@ -25,6 +26,7 @@ function makeImageIcon(src: string) {
 
 const SearchLogIcon = makeImageIcon(searchLogIcon);
 const Dc6229Icon = makeImageIcon(dc6229Icon);
+const LockUpSlipIcon = makeImageIcon(lockUpSlipIcon);
 
 // ─── Types ───────────────────────────────────────────────
 type Module = {
@@ -37,7 +39,7 @@ type Module = {
 
 // ─── Data ────────────────────────────────────────────────
 const MODULES: Module[] = [
-  { id: "lock-up-slip", title: "Lock-Up Slip", description: "Generate confinement placement narratives for incoming inmates.", icon: Lock, route: "/lock-up-slip" },
+  { id: "lock-up-slip", title: "Lock-Up Slip", description: "Generate confinement placement narratives for incoming inmates.", icon: LockUpSlipIcon, route: "/lock-up-slip" },
   { id: "strip-property", title: "Strip / Property Restriction", description: "Document property restriction placements.", icon: ShieldAlert, route: "/property-restriction" },
   { id: "search-log-autofill", title: "Search Log", description: "Upload Bed Book and fill original Search Log.", icon: SearchLogIcon, route: "/search-log" },
   { id: "dc6-229", title: "DC6-229 Daily Record", description: "Build a weekly Daily Record of Special Housing for each inmate.", icon: Dc6229Icon, route: "/dc6-229" },

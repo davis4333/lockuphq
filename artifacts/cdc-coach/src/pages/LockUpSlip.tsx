@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Copy, CheckCheck, AlertTriangle, FileText, ChevronDown, Search, X, Download, CalendarDays } from "lucide-react";
 import PageShell, { hudPanel, hudInput, hudLabel } from "@/components/PageShell";
 import { buildWeekDays, isSunday, previousSunday, parseLocalDate, toIso, numericDate } from "@/lib/dc6229/weekDates";
-import { stripDormLetter } from "@/lib/dc6229/cellNumber";
+import { formatCellNumber } from "@/lib/dc6229/cellNumber";
 import { fillDc6229Docx, Dc6229DocxError, type Dc6229FormData } from "@/lib/dc6229/dc6229DocxFiller";
 
 const DC6229_TEMPLATE_URL = `${import.meta.env.BASE_URL}dc6-229-template.docx`;
@@ -522,7 +522,7 @@ export default function LockUpSlip() {
       const form: Dc6229FormData = {
         inmateName: `${last}, ${first}`,
         fdc: fields.dcNumber.trim().toUpperCase(),
-        cellNumber: stripDormLetter(fields.bunkAssignment),
+        cellNumber: formatCellNumber(fields.bunkAssignment),
         status: confinementStatusCode(fields.confinementType),
         dates: week.map((d) => d.docx),
       };

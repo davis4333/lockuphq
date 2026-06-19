@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import {
-  Lock, ShieldAlert, UtensilsCrossed, FileText, ClipboardList,
-  MessageSquare, BookOpen, HelpCircle, AlertTriangle, ChevronRight,
-  ScrollText, CalendarRange,
-} from "lucide-react";
+import { Lock, AlertTriangle, ChevronRight } from "lucide-react";
 import fdocSeal from "@assets/ChatGPT_Image_Jun_7,_2026,_03_31_51_AM_1780817532915.png";
-import searchLogIcon from "@assets/Search_Log_Icon_1781867877702.png";
+import searchLogIcon from "@assets/generated_images/icon_search_log.png";
 import dc6229Icon from "@assets/DC6-229_icon_1781868024454.png";
 import lockUpSlipIcon from "@assets/Lock_Up_Slip_Icon_1781868142271.png";
 import stripIcon from "@assets/strip_icon_1781868322092.png";
+import mealRestrictionIcon from "@assets/generated_images/icon_meal_restriction.png";
+import incidentReportIcon from "@assets/generated_images/icon_incident_report.png";
+import drDescriptionIcon from "@assets/generated_images/icon_dr_description.png";
+import askCdcIcon from "@assets/generated_images/icon_ask_cdc.png";
+import askFdcIcon from "@assets/generated_images/icon_ask_fdc.png";
+import whatFormIcon from "@assets/generated_images/icon_what_form.png";
 
 // Custom image-based tile icon (fills the icon box edge-to-edge).
 function makeImageIcon(src: string) {
@@ -29,6 +31,12 @@ const SearchLogIcon = makeImageIcon(searchLogIcon);
 const Dc6229Icon = makeImageIcon(dc6229Icon);
 const LockUpSlipIcon = makeImageIcon(lockUpSlipIcon);
 const StripPropertyIcon = makeImageIcon(stripIcon);
+const MealRestrictionIcon = makeImageIcon(mealRestrictionIcon);
+const IncidentReportIcon = makeImageIcon(incidentReportIcon);
+const DrDescriptionIcon = makeImageIcon(drDescriptionIcon);
+const AskCdcIcon = makeImageIcon(askCdcIcon);
+const AskFdcIcon = makeImageIcon(askFdcIcon);
+const WhatFormIcon = makeImageIcon(whatFormIcon);
 
 // ─── Types ───────────────────────────────────────────────
 type Module = {
@@ -45,12 +53,12 @@ const MODULES: Module[] = [
   { id: "strip-property", title: "Strip / Property Restriction", description: "Document property restriction placements.", icon: StripPropertyIcon, route: "/property-restriction" },
   { id: "search-log-autofill", title: "Search Log", description: "Upload Bed Book and fill original Search Log.", icon: SearchLogIcon, route: "/search-log" },
   { id: "dc6-229", title: "DC6-229 Daily Record", description: "Build a weekly Daily Record of Special Housing for each inmate.", icon: Dc6229Icon, route: "/dc6-229" },
-  { id: "meal-restriction", title: "Meal Restriction / Loaf", description: "Generate special management meal documentation.", icon: UtensilsCrossed },
-  { id: "incident-report", title: "Incident Report Narrative", description: "Draft IR narrative descriptions.", icon: FileText },
-  { id: "dr-description", title: "DR Description", description: "Complete the description portion of a disciplinary report.", icon: ClipboardList },
-  { id: "ask-cdc", title: "Ask CDC", description: "Quick reference for CDC policy and procedures.", icon: MessageSquare },
-  { id: "ask-fdc", title: "Ask FDC Policy", description: "Look up FDC policy guidance and references.", icon: BookOpen },
-  { id: "what-form", title: "What Form Do I Need?", description: "Find the correct form for any confinement situation.", icon: HelpCircle },
+  { id: "meal-restriction", title: "Meal Restriction / Loaf", description: "Generate special management meal documentation.", icon: MealRestrictionIcon },
+  { id: "incident-report", title: "Incident Report Narrative", description: "Draft IR narrative descriptions.", icon: IncidentReportIcon },
+  { id: "dr-description", title: "DR Description", description: "Complete the description portion of a disciplinary report.", icon: DrDescriptionIcon },
+  { id: "ask-cdc", title: "Ask CDC", description: "Quick reference for CDC policy and procedures.", icon: AskCdcIcon },
+  { id: "ask-fdc", title: "Ask FDC Policy", description: "Look up FDC policy guidance and references.", icon: AskFdcIcon },
+  { id: "what-form", title: "What Form Do I Need?", description: "Find the correct form for any confinement situation.", icon: WhatFormIcon },
 ];
 
 const SYS_STATUS = [

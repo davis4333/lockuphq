@@ -1,0 +1,44 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "WsBKxfK2CqRRK0ULYtAFM"
+uri = "file://attached_assets/generated_images/icon_meal_restriction.png"
+type = "image"
+title = "meal restriction icon"
+
+[[generated]]
+id = "irgF-oUJPFCnrUvTX13m3"
+uri = "file://attached_assets/generated_images/icon_incident_report.png"
+type = "image"
+title = "incident report icon"
+
+[[generated]]
+id = "ewcSNycbvlaLRQVfKFvrt"
+uri = "file://attached_assets/generated_images/icon_dr_description.png"
+type = "image"
+title = "dr description icon"
+
+[[generated]]
+id = "KwKIGef4NmHizQa9GzUgo"
+uri = "file://attached_assets/generated_images/icon_ask_cdc.png"
+type = "image"
+title = "ask cdc icon"
+
+[[generated]]
+id = "DVvNfycvoYGMDnCQ_QOQG"
+uri = "file://attached_assets/generated_images/icon_ask_fdc.png"
+type = "image"
+title = "ask fdc policy icon"
+
+[[generated]]
+id = "07TCsQaatSWknq91mZ6I7"
+uri = "file://attached_assets/generated_images/icon_what_form.png"
+type = "image"
+title = "what form icon"
+
+[[generated]]
+id = "T4A6ET3Wg7EW3liKXO_-1"
+uri = "file://attached_assets/generated_images/icon_search_log.png"
+type = "image"
+title = "search log icon"

@@ -747,26 +747,6 @@ export default function SearchLogAutofill() {
         </section>
       )}
 
-      {/* Sticky action bar — appears once rows are generated */}
-      {rows.length > 0 && (
-        <div className="sticky bottom-3 z-20 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-400/45 bg-[rgba(4,11,34,0.94)] px-4 py-3 backdrop-blur-lg"
-          style={{ boxShadow: "0 8px 28px rgba(2,6,18,0.6)" }}>
-          <span className="text-[12px] text-blue-100/90">
-            <span className="font-bold text-white">{summary.included}</span> entries selected •{" "}
-            <span className="font-bold text-white">{summary.pages}</span>{" "}
-            {summary.pages === 1 ? "page" : "pages"} will be generated
-          </span>
-          <button
-            onClick={handleGenerate}
-            disabled={!canGenerate || generating}
-            className={btnBlue}
-            title={!confirmed ? "Confirm your review below to enable download" : undefined}
-          >
-            <Download className="h-4 w-4" />
-            {generating ? "Generating…" : "Generate & Download"}
-          </button>
-        </div>
-      )}
     </PageShell>
   );
 }

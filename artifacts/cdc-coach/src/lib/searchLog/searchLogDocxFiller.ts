@@ -177,6 +177,32 @@ function fillPage(pageTemplate: string, location: string, rows: DocxFillRow[]): 
 const PAGE_BREAK = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
 
 /**
+ * The blank form carries its "DC6-2001 (Revised 12/5/23)" form-number line in a
+ * first-page-only footer: the section sets <w:titlePg/> and references the footer
+ * with <w:footerReference w:type="first">. Continuation pages are non-first pages
+ * of the same section, so with no default footer they render blank and lose that
+ * line. Mirror the first-page footer as the default footer (same footer part) so
+ * every page shows the identical original footer.
+ *
+ * Idempotent and conservative: a no-op when there is no first-page footer or a
+ * default footer already exists. Only the section's <w:sectPr> is touched — the
+ * footer part itself and all page content are left exactly as the template has them.
+ */
+function mirrorFirstPageFooterToAllPages(sectionXml: string): string {
+  return sectionXml.replace(/<w:sectPr\b[\s\S]*?<\/w:sectPr>/, (sectPr) => {
+    const firstRef = sectPr.match(
+      /<w:footerReference\b[^>]*\bw:type="first"[^>]*\/>/,
+    );
+    if (!firstRef) return sectPr;
+    if (/<w:footerReference\b[^>]*\bw:type="default"/.test(sectPr)) return sectPr;
+    const defaultRef = firstRef[0].replace('w:type="first"', 'w:type="default"');
+    // Header/footer references must stay at the start of <w:sectPr>; the first-page
+    // reference already leads, so insert the default reference immediately after it.
+    return sectPr.replace(firstRef[0], firstRef[0] + defaultRef);
+  });
+}
+
+/**
  * Pure transform: take the original document.xml and produce a completed one.
  * - Clones the whole page (title + Location table + 19-row Search Log table +
  *   instruction text) once per 19 entries, joined by real page breaks.
@@ -208,7 +234,10 @@ export function buildFilledDocumentXml(documentXml: string, input: DocxFillInput
   }
 
   let body = pages.join(PAGE_BREAK);
-  let finalXml = prefix + body + suffix;
+  // Ensure the original first-page footer (the "DC6-2001 (Revised …)" line) also
+  // shows on every continuation page by mirroring it as the section's default footer.
+  const sectionSuffix = mirrorFirstPageFooterToAllPages(suffix);
+  let finalXml = prefix + body + sectionSuffix;
   finalXml = finalXml
     .replace(/<w:bookmarkStart\b[^>]*\/>/g, "")
     .replace(/<w:bookmarkEnd\b[^>]*\/>/g, "");

@@ -500,13 +500,15 @@ export default function LockUpSlip() {
   const canDownloadDc6229 = !!(
     fields.lastName.trim() &&
     fields.firstName.trim() &&
-    fields.dcNumber.trim()
+    fields.dcNumber.trim() &&
+    fields.bunkAssignment.trim() &&
+    fields.confinementType.trim()
   );
 
   async function handleDownloadDc6229() {
     setDc6229Error("");
     if (!canDownloadDc6229) {
-      setDc6229Error("Enter the last name, first name, and DC number first.");
+      setDc6229Error("Enter the last name, first name, DC number, bunk, and inmate status first.");
       return;
     }
     setDc6229Generating(true);
@@ -601,7 +603,7 @@ export default function LockUpSlip() {
       )}
       {!canDownloadDc6229 && !dc6229Error && (
         <p className="mt-2 text-center text-xs text-muted-foreground">
-          Enter last name, first name, and DC number to enable.
+          Enter last name, first name, DC number, bunk, and inmate status to enable.
         </p>
       )}
     </div>

@@ -183,7 +183,7 @@ export default function Dashboard() {
             <div className={`${panel} flex items-center gap-2.5 px-4 py-2 border-emerald-500/40`}
               style={{ boxShadow: "0 0 16px rgba(16,185,129,0.18)" }}>
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 cdc-status-dot shrink-0"
-                style={{ boxShadow: "0 0 10px rgba(52,211,153,1)" }} />
+                style={{ boxShadow: "0 0 10px rgba(52,211,153,1)", animationDelay: "-1.3s" }} />
               <div className="leading-tight">
                 <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-emerald-400/70">System Status</p>
                 <p className="text-xs font-black uppercase tracking-[0.12em] text-emerald-300" style={{ textShadow: "0 0 9px rgba(52,211,153,0.65)" }}>Operational</p>
@@ -325,7 +325,7 @@ export default function Dashboard() {
               <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-blue-200/8 to-transparent" />
               <p className={`relative ${micro} text-blue-200 mb-2 pb-1.5 border-b border-blue-500/25`}>System Status</p>
               <div className="relative space-y-2">
-                {SYS_STATUS.map(({ label, value }) => (
+                {SYS_STATUS.map(({ label, value }, i) => (
                   <div key={label} className="flex items-center justify-between gap-2">
                     <span className="text-[10px] uppercase tracking-[0.1em] text-slate-200 truncate">{label}</span>
                     <span className="flex items-center gap-1.5 shrink-0">
@@ -334,7 +334,7 @@ export default function Dashboard() {
                         {value}
                       </span>
                       <span className={`w-2 h-2 rounded-full ${value === "Active" || value === "Enabled" ? "bg-blue-300" : "bg-emerald-400 cdc-status-dot"}`}
-                        style={{ boxShadow: "0 0 10px currentColor" }} />
+                        style={{ boxShadow: "0 0 10px currentColor", animationDelay: `${-i * 0.5}s` }} />
                     </span>
                   </div>
                 ))}

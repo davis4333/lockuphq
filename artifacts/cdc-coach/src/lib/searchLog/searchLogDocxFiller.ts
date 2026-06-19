@@ -32,17 +32,17 @@ function escapeXml(value: string): string {
 }
 
 /** Build the run(s) that replace a FORMTEXT field's result, honoring line breaks. */
-function buildResultRuns(value: string): string {
+function buildResultRuns(value: string, runPr: string = RUN_PR): string {
   const text = value ?? "";
   if (text.length === 0) {
-    return `<w:r>${RUN_PR}<w:t xml:space="preserve"></w:t></w:r>`;
+    return `<w:r>${runPr}<w:t xml:space="preserve"></w:t></w:r>`;
   }
   const lines = text.split("\n");
   return lines
     .map((line, idx) => {
       const t = `<w:t xml:space="preserve">${escapeXml(line)}</w:t>`;
       const br = idx === 0 ? "" : "<w:br/>";
-      return `<w:r>${RUN_PR}${br}${t}</w:r>`;
+      return `<w:r>${runPr}${br}${t}</w:r>`;
     })
     .join("");
 }
@@ -51,9 +51,9 @@ const FIELD_RESULT_RE =
   /(<w:fldChar w:fldCharType="separate"\/><\/w:r>)([\s\S]*?)(<w:r\b[^>]*>(?:<w:rPr>[\s\S]*?<\/w:rPr>)?<w:fldChar w:fldCharType="end"\/><\/w:r>)/;
 
 /** Replace the first FORMTEXT field result inside the given XML fragment. */
-function fillFirstField(fragment: string, value: string): string {
+function fillFirstField(fragment: string, value: string, runPr: string = RUN_PR): string {
   if (!FIELD_RESULT_RE.test(fragment)) return fragment;
-  const runs = buildResultRuns(value);
+  const runs = buildResultRuns(value, runPr);
   return fragment.replace(FIELD_RESULT_RE, (_m, pre: string, _mid: string, post: string) => {
     return `${pre}${runs}${post}`;
   });
@@ -63,12 +63,20 @@ const TABLE_RE = /<w:tbl>[\s\S]*?<\/w:tbl>/g;
 const ROW_RE = /<w:tr\b[\s\S]*?<\/w:tr>/g;
 const CELL_RE = /<w:tc>[\s\S]*?<\/w:tc>/g;
 
-function fillDataRow(rowXml: string, values: string[]): string {
+// Column index of "Area/Bunk Searched" in a data row.
+const AREA_COL_INDEX = 2;
+// Bunk codes (e.g. "B1-101L") sit in a narrow column. Use a smaller font and a
+// non-breaking hyphen so the whole code stays readable on a single line instead
+// of wrapping at the "-" into "B1-" / "101L".
+const AREA_RUN_PR = '<w:rPr><w:sz w:val="16"/></w:rPr>';
+
+function fillDataRow(rowXml: string, values: string[], runPrs: (string | undefined)[] = []): string {
   let i = 0;
   return rowXml.replace(CELL_RE, (cell) => {
-    const v = values[i] ?? "";
+    const idx = i;
+    const v = values[idx] ?? "";
     i++;
-    return fillFirstField(cell, v);
+    return fillFirstField(cell, v, runPrs[idx] ?? RUN_PR);
   });
 }
 
@@ -80,16 +88,19 @@ function fillDataTable(tableXml: string, rows: DocxFillRow[]): string {
     const entry = rows[dataIdx];
     dataIdx++;
     if (!entry) return row; // leave remaining rows blank
-    return fillDataRow(row, [
+    const values = [
       entry.date,
       entry.time,
-      entry.area,
+      entry.area.replace(/-/g, "\u2011"), // keep the bunk code on one line
       entry.type,
       entry.inmate,
       entry.officer,
       entry.discrepancies,
       entry.tablet,
-    ]);
+    ];
+    const runPrs: (string | undefined)[] = [];
+    runPrs[AREA_COL_INDEX] = AREA_RUN_PR;
+    return fillDataRow(row, values, runPrs);
   });
 }
 

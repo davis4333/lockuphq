@@ -16,7 +16,6 @@ import PageShell, { hudPanel, hudInput, hudLabel } from "@/components/PageShell"
 import {
   SEARCH_TYPES,
   STAFF_RANKS,
-  TABLET_MODES,
   type TabletValue,
   ROWS_PER_PAGE,
   type BunkHandling,
@@ -60,15 +59,19 @@ const defaultSetup = (): SetupFields => ({
   tabletMode: "Random",
 });
 
-const TABLET_MODE_LABELS: Record<SetupFields["tabletMode"], string> = {
-  Y: "Y — all yes",
-  N: "N — all no",
-  Random: "Random Y / N",
-};
+// "Tablet Y/N" action menu in Setup. The first two set a single search; the next
+// two rewrite the whole Tablet column; the last fills it with a random Y/N mix.
+const TABLET_SETUP_OPTIONS: { value: string; label: string }[] = [
+  { value: "ONE_Y", label: "Y - Yes" },
+  { value: "ONE_N", label: "N - No" },
+  { value: "ALL_Y", label: "Y - Yes All" },
+  { value: "ALL_N", label: "N - No All" },
+  { value: "RANDOM", label: "Random Y/N" },
+];
 
-// Per-row Tablet dropdown. The first two are this-row values; the last three are
-// bulk shortcuts that rewrite the whole Tablet column. Their values are distinct
-// from "Y"/"N" so the controlled <select> always snaps back to the row's own value.
+// Per-row Tablet dropdown — same labels, but "Y"/"N" set THIS row (the controlled
+// value stays r.tablet so it snaps back after a bulk pick); ALL_*/RANDOM rewrite
+// the whole column like the Setup menu.
 const TABLET_ROW_OPTIONS: { value: string; label: string }[] = [
   { value: "Y", label: "Y - Yes" },
   { value: "N", label: "N - No" },
@@ -138,6 +141,7 @@ export default function SearchLogAutofill() {
   const [confirmed, setConfirmed] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState("");
+  const [tabletAction, setTabletAction] = useState<string>("ONE_Y");
 
   const isManual = entryMethod === "manual";
   const rows = isManual ? manualRows : bedBookRows;
@@ -351,22 +355,33 @@ export default function SearchLogAutofill() {
     });
     setConfirmed(false);
   }
-  function applyTablet() {
-    if (setup.tabletMode === "Random") randomizeTablet();
-    else setAllTablet(setup.tabletMode);
+  function setOneTablet(value: TabletValue) {
+    setActive((prev) => {
+      // "1 of the searches" = the first search that appears in the document
+      // (first included row); leave the rest untouched. If nothing is included
+      // there is no search to mark, so leave every row unchanged.
+      const idx = prev.findIndex((r) => r.include);
+      if (idx === -1) return prev;
+      return prev.map((r, i) => (i === idx ? { ...r, tablet: value } : r));
+    });
+    setConfirmed(false);
   }
-  // Per-row Tablet dropdown: "Y"/"N" set just this row; the bulk values rewrite
-  // the whole column. Generation isn't blocked, but reset confirmation either way.
+  // Setup "Tablet Y/N" menu: ONE_* set a single search, ALL_* rewrite the whole
+  // column, RANDOM fills a Y/N mix. Runs immediately on select and via "Apply".
+  function runTabletAction(action: string) {
+    if (action === "ONE_Y") setOneTablet("Y");
+    else if (action === "ONE_N") setOneTablet("N");
+    else if (action === "ALL_Y") setAllTablet("Y");
+    else if (action === "ALL_N") setAllTablet("N");
+    else if (action === "RANDOM") randomizeTablet();
+  }
+  // Per-row Tablet dropdown: "Y"/"N" set just this row; ALL_*/RANDOM rewrite the
+  // whole column. The controlled value stays r.tablet, so it snaps back to Y/N.
   function selectRowTablet(rowId: string, choice: string) {
-    if (choice === "Y" || choice === "N") {
-      updateRow(rowId, { tablet: choice });
-    } else if (choice === "ALL_Y") {
-      setAllTablet("Y");
-    } else if (choice === "ALL_N") {
-      setAllTablet("N");
-    } else if (choice === "RANDOM") {
-      randomizeTablet();
-    }
+    if (choice === "Y" || choice === "N") updateRow(rowId, { tablet: choice });
+    else if (choice === "ALL_Y") setAllTablet("Y");
+    else if (choice === "ALL_N") setAllTablet("N");
+    else if (choice === "RANDOM") randomizeTablet();
   }
 
   const hasRows = rows.length > 0;
@@ -492,16 +507,19 @@ export default function SearchLogAutofill() {
           </Field>
           <Field
             label="Tablet Y/N"
-            action={hasRows ? { label: "Apply", onClick: applyTablet } : undefined}
+            action={hasRows ? { label: "Apply", onClick: () => runTabletAction(tabletAction) } : undefined}
           >
             <select
               className={hudInput}
-              value={setup.tabletMode}
-              onChange={(e) => setSetupField("tabletMode", e.target.value as SetupFields["tabletMode"])}
+              value={tabletAction}
+              onChange={(e) => {
+                setTabletAction(e.target.value);
+                runTabletAction(e.target.value);
+              }}
             >
-              {TABLET_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {TABLET_MODE_LABELS[m]}
+              {TABLET_SETUP_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
                 </option>
               ))}
             </select>

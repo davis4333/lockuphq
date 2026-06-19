@@ -164,6 +164,23 @@ const CHARGE_SECTIONS: Section[] = [
 
 const ALL_CHARGES: Charge[] = CHARGE_SECTIONS.flatMap((s) => s.charges);
 
+// Non-charge placement reasons shown at the top of the picker. `clause` is the
+// exact wording dropped into the narrative after "placement in <confinement>"
+// so each reads naturally (e.g. it avoids a clumsy double "pending").
+const SPECIAL_REASONS = [
+  { label: "Protection Evaluation", clause: "pending Protection Evaluation" },
+  {
+    label: "After Hours Gain Pending Classification Review",
+    clause: "as an after hours gain pending classification review",
+  },
+] as const;
+
+const SPECIAL_REASON_LABELS: string[] = SPECIAL_REASONS.map((r) => r.label);
+
+function isSpecialReason(value: string): boolean {
+  return SPECIAL_REASON_LABELS.includes(value);
+}
+
 function chargeLabel(c: Charge) {
   return `${c.code} ${c.title}`;
 }
@@ -192,17 +209,19 @@ function ChargePicker({ value, onChange }: ChargePickerProps) {
       })).filter((s) => s.charges.length > 0)
     : CHARGE_SECTIONS;
 
-  const selectedCharge =
-    value === "Protection Evaluation"
-      ? null
-      : ALL_CHARGES.find((c) => chargeLabel(c) === value) ?? null;
+  const matchedSpecials = SPECIAL_REASONS.filter(
+    (r) => !query || r.label.toLowerCase().includes(query),
+  );
 
-  const displayLabel =
-    value === "Protection Evaluation"
-      ? "Protection Evaluation"
-      : selectedCharge
-      ? chargeLabel(selectedCharge)
-      : "Select charge or reason...";
+  const selectedCharge = isSpecialReason(value)
+    ? null
+    : ALL_CHARGES.find((c) => chargeLabel(c) === value) ?? null;
+
+  const displayLabel = isSpecialReason(value)
+    ? value
+    : selectedCharge
+    ? chargeLabel(selectedCharge)
+    : "Select charge or reason...";
 
   useEffect(() => {
     if (!open) return;
@@ -276,38 +295,24 @@ function ChargePicker({ value, onChange }: ChargePickerProps) {
           </div>
 
           <div className="max-h-72 overflow-y-auto">
-            {!query && (
+            {matchedSpecials.map((r) => (
               <button
+                key={r.label}
                 type="button"
-                onClick={() => select("Protection Evaluation")}
+                onClick={() => select(r.label)}
                 className={[
                   "w-full text-left px-4 py-2.5 text-sm transition-colors",
-                  value === "Protection Evaluation"
+                  value === r.label
                     ? "bg-blue-500/20 text-blue-200 font-medium"
                     : "text-blue-100 hover:bg-blue-500/10",
                 ].join(" ")}
               >
-                Protection Evaluation
+                {r.label}
               </button>
-            )}
+            ))}
 
-            {query && "protection evaluation".includes(query) && (
-              <button
-                type="button"
-                onClick={() => select("Protection Evaluation")}
-                className={[
-                  "w-full text-left px-4 py-2.5 text-sm transition-colors",
-                  value === "Protection Evaluation"
-                    ? "bg-blue-500/20 text-blue-200 font-medium"
-                    : "text-blue-100 hover:bg-blue-500/10",
-                ].join(" ")}
-              >
-                Protection Evaluation
-              </button>
-            )}
-
-            {filteredSections.length === 0 && (
-              <p className="px-4 py-4 text-sm text-muted-foreground text-center">No charges match your search.</p>
+            {filteredSections.length === 0 && matchedSpecials.length === 0 && (
+              <p className="px-4 py-4 text-sm text-muted-foreground text-center">No charges or reasons match your search.</p>
             )}
 
             {filteredSections.map((sec) => (
@@ -379,8 +384,8 @@ function formatCaptainName(raw: string): string {
 }
 
 function generateNarrative(fields: typeof defaultFields) {
-  const isProtection = fields.reason === "Protection Evaluation";
-  const pendingText = isProtection ? "Protection Evaluation" : fields.reason;
+  const special = SPECIAL_REASONS.find((r) => r.label === fields.reason);
+  const reasonClause = special ? special.clause : `pending ${fields.reason}`;
 
   const rawLast = fields.lastName.trim() || "[Last Name]";
   const last = rawLast.charAt(0).toUpperCase() + rawLast.slice(1).toLowerCase();
@@ -399,7 +404,7 @@ function generateNarrative(fields: typeof defaultFields) {
     ? `Inmate ${last} declined the opportunity to make three phone calls to advise a visitor that ${pronoun} would be unavailable for visitation.`
     : `Inmate ${last} was afforded the opportunity to make three phone calls to advise a visitor that ${pronoun} would be unavailable for visitation.`;
 
-  return `On ${formatDate(fields.date)}, at approximately ${formatTime(fields.time)} hours, Inmate ${nameDisplay}, DC# ${dcNum}, was advised of placement in ${confinement} pending ${pendingText}. Per Captain ${captain}, Inmate ${last} was placed in restraints and escorted to medical where a pre-confinement physical was completed. ${callLine} Inmate ${last} was escorted to confinement where ${pronoun} was searched, secured, and issued health and comfort items.${bunk} Inmate ${last}'s cashless ID card was deactivated. Inmate ${last}'s property was collected, searched, inventoried, and delivered/stored by respective dormitory staff.`;
+  return `On ${formatDate(fields.date)}, at approximately ${formatTime(fields.time)} hours, Inmate ${nameDisplay}, DC# ${dcNum}, was advised of placement in ${confinement} ${reasonClause}. Per Captain ${captain}, Inmate ${last} was placed in restraints and escorted to medical where a pre-confinement physical was completed. ${callLine} Inmate ${last} was escorted to confinement where ${pronoun} was searched, secured, and issued health and comfort items.${bunk} Inmate ${last}'s cashless ID card was deactivated. Inmate ${last}'s property was collected, searched, inventoried, and delivered/stored by respective dormitory staff.`;
 }
 
 const defaultFields = {

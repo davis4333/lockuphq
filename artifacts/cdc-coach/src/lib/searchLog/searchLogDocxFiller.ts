@@ -1,5 +1,12 @@
 import PizZip from "pizzip";
 import { ROWS_PER_PAGE } from "./types";
+import {
+  fitFontSize,
+  inmateOneLine,
+  NARROW_COL_CANDIDATES,
+  INMATE_COL_CANDIDATES,
+  SEARCH_LOG_INMATE_COL_TWIPS,
+} from "./searchLogTextFit";
 
 export class SearchLogDocxError extends Error {}
 
@@ -12,6 +19,9 @@ export interface DocxFillRow {
   officer: string;
   discrepancies: string;
   tablet: string;
+  // When true (grouped-cell rows), keep the inmate cell on ONE line and shrink
+  // only that cell's font (10→8→7→6pt) to fit; otherwise render multi-line at 10pt.
+  inmateFit?: boolean;
 }
 
 export interface DocxFillInput {
@@ -75,81 +85,38 @@ const CELL_RE = /<w:tc>[\s\S]*?<\/w:tc>/g;
 // non-breaking space/hyphen so the chosen size renders as one unbroken token.
 const NARROW_COLS = new Set([0, 1, 2, 3]); // date, time, area/bunk, type of search
 
-// Times New Roman advance widths in font design units (1 em = 2048 units).
-// Used to estimate a value's single-line width so we can pick the largest font
-// size that still fits the column. Bias toward the real metrics; unknown chars
-// fall back to a wide default so we under- rather than over-fill.
-const TNR_EM_UNITS = 2048;
-const TNR_DEFAULT_UNITS = 1024;
-const TNR_WIDTHS: Record<string, number> = (() => {
-  const m: Record<string, number> = {};
-  for (const d of "0123456789") m[d] = 1024;
-  const upper: Record<string, number> = {
-    A: 1479, B: 1366, C: 1366, D: 1479, E: 1251, F: 1139, G: 1479, H: 1479,
-    I: 682, J: 797, K: 1479, L: 1251, M: 1821, N: 1479, O: 1479, P: 1139,
-    Q: 1479, R: 1366, S: 1139, T: 1251, U: 1479, V: 1479, W: 1933, X: 1479,
-    Y: 1479, Z: 1251,
-  };
-  const lower: Record<string, number> = {
-    a: 909, b: 1024, c: 909, d: 1024, e: 909, f: 682, g: 1024, h: 1024,
-    i: 569, j: 569, k: 1024, l: 569, m: 1593, n: 1024, o: 1024, p: 1024,
-    q: 1024, r: 682, s: 797, t: 569, u: 1024, v: 1024, w: 1479, x: 1024,
-    y: 1024, z: 909,
-  };
-  Object.assign(m, upper, lower);
-  m[" "] = 512;
-  m["\u00A0"] = 512; // non-breaking space
-  m["-"] = 682;
-  m["\u2011"] = 682; // non-breaking hyphen
-  m["/"] = 569;
-  m[":"] = 569;
-  m["."] = 512;
-  m[","] = 512;
-  return m;
-})();
-
-const CELL_SIDE_MARGIN_TWIPS = 115; // Word default cell padding (~0.08in) per side
-const FIT_BUFFER_TWIPS = 10; // small cushion so a borderline value never overflows
-const FONT_SIZE_CANDIDATES = [20, 19, 18, 17, 16, 15, 14]; // half-points: 10pt down to 7pt
+// Font metrics + single-line fit estimation live in ./searchLogTextFit so the
+// review UI's overflow warning uses the exact same width math as the filler.
+const INMATE_COL = 4; // Inmate Name/FDC Number column index
+const CELL_DEFAULT_TWIPS_NARROW = 900;
 // Attribute order isn't guaranteed in OOXML, so match the whole <w:tcW> tag and
 // pull w:w out of it regardless of where it sits.
 const TCW_RE = /<w:tcW\b[^>]*?\bw:w="(\d+)"/;
 
-/** Estimate the rendered width (twips) of one line of text at the given size. */
-function estimateTextTwips(text: string, szHalfPoints: number): number {
-  let units = 0;
-  for (const ch of text) units += TNR_WIDTHS[ch] ?? TNR_DEFAULT_UNITS;
-  // em width in twips = points * 20 = (sz/2) * 20 = sz * 10
-  return (units * szHalfPoints * 10) / TNR_EM_UNITS;
+/** Cell width in twips, read from the cell's <w:tcW>; falls back to `dflt`. */
+function cellTwips(cell: string, dflt: number): number {
+  const m = cell.match(TCW_RE);
+  return m ? parseInt(m[1], 10) : dflt;
 }
 
-/**
- * Largest size (capped at 10pt to match the wide columns) at which `text` is
- * estimated to fit on one line of the cell; if even the smallest candidate
- * doesn't fit (pathologically long value), returns that floor size.
- */
-function fitNarrowRunPr(text: string, colTwips: number): string {
-  const usable = colTwips - 2 * CELL_SIDE_MARGIN_TWIPS - FIT_BUFFER_TWIPS;
-  for (const sz of FONT_SIZE_CANDIDATES) {
-    if (estimateTextTwips(text, sz) <= usable) {
-      return `<w:rPr><w:sz w:val="${sz}"/></w:rPr>`;
-    }
-  }
-  const floor = FONT_SIZE_CANDIDATES[FONT_SIZE_CANDIDATES.length - 1];
-  return `<w:rPr><w:sz w:val="${floor}"/></w:rPr>`;
+/** A run-properties fragment that sets only the font size (half-points). */
+function szRunPr(sz: number): string {
+  return `<w:rPr><w:sz w:val="${sz}"/></w:rPr>`;
 }
 
-function fillDataRow(rowXml: string, values: string[], adaptiveCols: Set<number>): string {
+function fillDataRow(rowXml: string, values: string[], fitInmate: boolean): string {
   let i = 0;
   return rowXml.replace(CELL_RE, (cell) => {
     const idx = i;
     const v = values[idx] ?? "";
     i++;
     let runPr = RUN_PR;
-    if (adaptiveCols.has(idx)) {
-      const m = cell.match(TCW_RE);
-      const colTwips = m ? parseInt(m[1], 10) : 900;
-      runPr = fitNarrowRunPr(v, colTwips);
+    if (NARROW_COLS.has(idx)) {
+      const sz = fitFontSize(v, cellTwips(cell, CELL_DEFAULT_TWIPS_NARROW), NARROW_COL_CANDIDATES);
+      runPr = szRunPr(sz);
+    } else if (idx === INMATE_COL && fitInmate) {
+      const sz = fitFontSize(v, cellTwips(cell, SEARCH_LOG_INMATE_COL_TWIPS), INMATE_COL_CANDIDATES);
+      runPr = szRunPr(sz);
     }
     return fillFirstField(cell, v, runPr);
   });
@@ -163,17 +130,19 @@ function fillDataTable(tableXml: string, rows: DocxFillRow[]): string {
     const entry = rows[dataIdx];
     dataIdx++;
     if (!entry) return row; // leave remaining rows blank
+    // Grouped-cell rows keep both inmates on one line; others may span lines.
+    const inmateVal = entry.inmateFit ? inmateOneLine(entry.inmate) : entry.inmate;
     const values = [
       entry.date,
       entry.time.replace(/ /g, "\u00A0"), // keep the time (e.g. "2:30 A") on one line
       entry.area.replace(/-/g, "\u2011"), // keep the bunk code on one line
       entry.type,
-      entry.inmate,
+      inmateVal,
       entry.officer,
       entry.discrepancies,
       entry.tablet,
     ];
-    return fillDataRow(row, values, NARROW_COLS);
+    return fillDataRow(row, values, !!entry.inmateFit);
   });
 }
 

@@ -1,0 +1,661 @@
+We need to update and polish the Search Log Autofill feature in Confinement Coach Lite.
+
+This is a master update request for the Search Log Autofill tool.
+
+Do not rebuild the feature from scratch.
+Do not recreate the Search Log document.
+Do not generate a fake Search Log.
+Do not switch to HTML-to-DOCX.
+Do not change the original DOCX template system unless directly needed for the listed fixes.
+Do not break the existing Generate & Download flow.
+The final output must still fill the exact original Search Log DOCX form provided by the user.
+
+The tool needs three clear ways to create Search Log rows:
+
+1. Upload Bed Book and group lower/upper bunks together by cell.
+2. Upload Bed Book and list lower/upper bunks separately.
+3. Manually input search rows without uploading a Bed Book.
+
+The user must be able to choose which method they want.
+
+Add a new top-level section near the top of the Search Log Autofill page:
+
+Search Log Entry Method
+
+Use a clean segmented selector, radio buttons, or selectable cards.
+
+Options:
+
+* Bed Book Upload
+* Manual Entry
+
+Default:
+Bed Book Upload
+
+When Bed Book Upload is selected, show the Bed Book upload workflow.
+When Manual Entry is selected, hide the Bed Book upload workflow and show the manual search-entry builder.
+Manual entry fields must remain hidden unless Manual Entry is selected.
+
+For Bed Book Upload mode, add this additional setting:
+
+Bunk Handling
+
+Options:
+
+1. Group lower/upper bunks together by cell
+2. List lower/upper bunks separately
+
+Label these clearly in the UI.
+
+Recommended UI text:
+
+Option 1:
+Group lower/upper bunks together by cell
+
+Helper text:
+Creates one Search Log row per cell. Lower and upper bunk inmates are listed together on one line.
+
+Option 2:
+List lower/upper bunks separately
+
+Helper text:
+Creates separate Search Log rows for each bunk, such as B1-106L and B1-106U.
+
+Mode 1 — Bed Book Upload with lower/upper bunks grouped together
+
+This mode is for Area searches where the user wants one Search Log row per cell.
+
+Example Bed Book source rows:
+B1-106L — ALLEN, RANDY 549290
+B1-106U — MCGHEE, COLBY T64164
+
+Correct Search Log output:
+Area/Bunk Searched:
+B1-106
+
+Inmate Name/FDC Number:
+ALLEN, RANDY 549290 / MCGHEE, COLBY T64164
+
+Grouping rule:
+
+* If Area/Bunk ends with L, remove the final L to create the normalized cell key.
+* If Area/Bunk ends with U, remove the final U to create the normalized cell key.
+* Use the normalized cell key as the Area/Bunk Searched value in the Search Log.
+* Group all inmates with the same normalized cell key into one Search Log row.
+* Keep all inmate names and DC numbers from the Bed Book.
+* Do not invent inmate data.
+* Do not rewrite names.
+* Do not alter DC numbers.
+* Do not remove inmates.
+
+Examples:
+B1-106L becomes B1-106.
+B1-106U becomes B1-106.
+B3-221L becomes B3-221.
+B3-221U becomes B3-221.
+
+Multiple inmate formatting:
+When two inmates are assigned to the same normalized cell, place both inmates in the same Inmate Name/FDC Number cell using this format:
+
+LAST, FIRST DCNUMBER / LAST, FIRST DCNUMBER
+
+Example:
+ALLEN, RANDY 549290 / MCGHEE, COLBY T64164
+
+Use “ / ” between inmates.
+Keep both names and both DC numbers on one line whenever possible.
+Do not use line breaks unless absolutely unavoidable.
+Do not abbreviate names automatically.
+Do not remove DC numbers.
+Do not create a second row just to make the text fit.
+
+Font fitting for grouped inmate names:
+When filling the original DOCX, automatically adjust the font size only inside the specific Inmate Name/FDC Number cell that needs it.
+
+Required behavior:
+
+* Start with the normal/original font size.
+* If the grouped inmate text is too long, reduce only that specific cell.
+* Step down through:
+
+  * 8 pt
+  * 7 pt
+  * 6 pt
+* Use 6 pt as the minimum font size.
+* Do not reduce the font size for the whole document.
+* Do not change the table layout.
+* Do not widen the column.
+* Do not increase row height.
+* Do not add rows.
+* Do not stretch the form.
+* Do not remove names or DC numbers.
+
+If the text still may not fit at 6 pt:
+
+* Show a warning in the review table.
+* Let the user manually edit the row before generating.
+* Do not automatically delete or abbreviate information.
+
+Suggested warning:
+“This grouped inmate field may be too long to fit on one line at 6 pt. Review before generating.”
+
+Time behavior for grouped mode:
+
+* Time increments by grouped cell row.
+* Since B1-106L and B1-106U become one B1-106 row, that cell receives one time.
+* The next unique cell receives the next minute.
+
+Example:
+Start time = 6:44 P
+
+B1-106 = 6:44 P
+B1-107 = 6:45 P
+B1-108 = 6:46 P
+
+Mode 2 — Bed Book Upload with lower/upper bunks listed separately
+
+This mode is for when the user wants every bunk documented as its own Search Log row.
+
+Example source rows:
+B1-106L — ALLEN, RANDY 549290
+B1-106U — MCGHEE, COLBY T64164
+
+Correct Search Log output:
+Row 1:
+Area/Bunk Searched:
+B1-106L
+
+Inmate Name/FDC Number:
+ALLEN, RANDY 549290
+
+Row 2:
+Area/Bunk Searched:
+B1-106U
+
+Inmate Name/FDC Number:
+MCGHEE, COLBY T64164
+
+Rules:
+
+* Do not normalize the displayed Area/Bunk value.
+* Keep B1-106L and B1-106U separate.
+* Keep each bunk’s inmate name/DC number on its own row.
+* Do not group inmates together in this mode.
+* Preserve the exact bunk labels from the Bed Book.
+* Do not invent or rewrite data.
+
+Time behavior for separate-bunk mode:
+Use smart cell-based time assignment by default.
+
+B1-106L and B1-106U are the same cell, so they should receive the same generated time unless the user edits them manually.
+
+Example:
+Start time = 6:44 P
+
+B1-106L = 6:44 P
+B1-106U = 6:44 P
+B1-107L = 6:45 P
+B1-107U = 6:45 P
+B1-108L = 6:46 P
+B1-108U = 6:46 P
+
+Internal timing key:
+
+* If Area/Bunk ends with L, remove the final L for timing only.
+* If Area/Bunk ends with U, remove the final U for timing only.
+* Keep the original Area/Bunk value displayed and exported exactly as-is.
+* Only use the normalized cell key internally for time grouping.
+
+Examples:
+B1-106L timing key = B1-106.
+B1-106U timing key = B1-106.
+B1-107L timing key = B1-107.
+B1-107U timing key = B1-107.
+
+The user must still be able to manually edit any time before generating.
+
+Search type rule for Bed Book modes:
+
+* Grouped cell mode is intended for Area searches.
+* Separate bunk mode can be used when the user wants each bunk individually documented.
+* If Type of Search is Pat or Strip, default behavior should favor one row per inmate/person, because those are person-specific searches.
+* The user should still be able to manually edit generated rows in the review table before generating.
+
+Mode 3 — Manual Entry
+
+Manual Entry mode allows the user to create Search Log rows without uploading a Bed Book.
+
+This is for situations where the user only completed a small number of searches, such as 5 searches, 10 searches, or selected areas.
+
+Manual Entry must be hidden unless the user selects Manual Entry as the Search Log Entry Method.
+
+When Manual Entry is selected:
+
+* Hide the Bed Book upload section.
+* Hide Bed Book-specific settings.
+* Show the manual search-entry builder.
+* The user should be able to add, edit, and remove manual search rows.
+
+Manual Entry section title:
+Manual Search Entries
+
+Add buttons:
+
+* Add Search Row
+* Apply Setup Defaults to All Rows
+* Clear Manual Rows
+
+Each manual search row should include:
+
+1. Date
+
+* Date picker.
+* Default to the main Date of Search from Search Log Setup if available.
+* User can edit per row.
+
+2. Time
+
+* Time picker.
+* Default to the main Start Time from Search Log Setup if available.
+* User can edit per row.
+* If multiple manual rows are added, optionally auto-increment the next row by 1 minute.
+* Keep every time editable.
+
+3. Area/Bunk Searched
+
+* Text input.
+* User manually types the area, cell, bunk, or location.
+
+Examples:
+B1-106L
+B1-106U
+B1-106
+Shower
+Dayroom
+Sallyport
+Center Gate
+
+4. Type of Search
+
+* Dropdown options:
+
+  * Area
+  * Pat
+  * Strip
+  * Other
+
+5. Inmate Name/FDC Number
+
+* Text input or textarea.
+* User manually types inmate name and DC number.
+* Allow multiple inmates if needed.
+* Do not auto-change the text.
+* Do not guess names.
+* Do not guess DC numbers.
+* Do not rewrite the user’s text.
+
+6. Name and Rank of Officer(s) Conducting Search
+   Manual entry should support officer/staff input.
+
+Preferred behavior:
+
+* Use the staff/officer value from the Search Log Setup section by default.
+* Still allow manual editing per row.
+
+If row-level staff input is used, each row should include:
+
+* Staff Name input
+* Staff Rank dropdown
+
+Rank dropdown options:
+
+* C/O
+* Sgt.
+* Lt.
+* Captain
+
+Format:
+[RANK] [STAFF NAME]
+
+Example:
+C/O Davis
+
+If the existing multi-staff feature is available, allow the manual row to use the combined staff string from setup.
+
+Example:
+C/O Davis, Sgt. Rivera, Lt. Johnson
+
+7. Discrepancies/Contraband Found
+
+* Text input.
+* Default to the Search Log Setup discrepancy value if available.
+* User can edit per row.
+* Example:
+  None
+
+8. Tablet Y/N
+
+* Dropdown with only:
+
+  * Y
+  * N
+
+9. Remove Row
+
+* Allows the user to remove that manual row.
+
+Manual Entry review behavior:
+Manual rows should flow into the same Review Generated Rows table used by Bed Book mode.
+
+The review table should not care where rows came from.
+Rows may come from:
+
+* Bed Book upload grouped by cell
+* Bed Book upload listed by bunk
+* Manual entry
+
+All rows should use the same internal Search Log row structure:
+
+* Date
+* Time
+* Area/Bunk Searched
+* Type of Search
+* Inmate Name/FDC Number
+* Name and Rank of Officer(s) Conducting Search
+* Discrepancies/Contraband Found
+* Tablet Y/N
+* Included/excluded status
+* Validation status
+
+The user should be able to edit every row before generating.
+
+Search Log Setup order and workflow:
+The workflow order should be:
+
+1. Search Log Setup
+2. Search Log Entry Method
+3. Upload Bed Book OR Manual Entry, depending on selected method
+4. Review Generated Rows
+5. Generate & Download
+
+Search Log Setup should appear before upload/manual entry.
+
+Setup fields:
+
+* Location
+* Date of Search
+* Start Time
+* Type of Search
+* Staff Members
+* Discrepancies/Contraband Found
+* Tablet Y/N
+
+The setup values should be used as defaults when generating rows.
+
+If the user changes setup values after rows already exist:
+
+* Existing Apply buttons should update the generated/review rows.
+* Do not silently overwrite manually edited rows unless the user clicks an Apply button.
+
+Multiple staff members:
+The setup screen should support multiple staff members.
+
+Add an Add Staff button.
+
+Each staff entry should include:
+
+* Staff Name input
+* Staff Rank dropdown
+* Remove button for extra staff rows
+
+The first staff row should remain visible by default.
+Allow at least 4 staff members.
+
+Rank dropdown options:
+
+* C/O
+* Sgt.
+* Lt.
+* Captain
+
+When filling the Search Log officer column, combine staff members into one comma-separated string.
+
+Examples:
+C/O Davis
+C/O Davis, Sgt. Rivera
+C/O Davis, Sgt. Rivera, Lt. Johnson
+
+Use the combined string in:
+Name and Rank of Officer(s) Conducting Search
+
+Do not save staff names permanently.
+
+Bed Book parsing rules:
+Keep existing Bed Book parsing behavior.
+
+The Bed Book may be:
+
+* .csv
+* .xlsx
+* .xls if practical
+
+CSV files may begin with:
+SEP=|
+
+If the file begins with SEP=|, automatically use | as the delimiter.
+
+Do not show a delimiter field in the UI.
+Delimiter handling should be internal only.
+
+If there is no SEP= line, auto-detect common delimiters:
+
+* comma
+* pipe
+* tab
+* semicolon
+
+Find the header row containing:
+
+* BED-ID
+* DOCNUM
+* INMATE-NAME
+
+Expected mapping:
+
+* BED-ID becomes Area/Bunk Searched.
+* DOCNUM is cleaned/extracted into the DC number.
+* INMATE-NAME becomes the inmate name.
+
+DC number extraction:
+
+* Prefer the rightmost pattern matching one letter followed by five digits, such as A12345.
+* Also allow six digits, such as 123456.
+* If no valid pattern is found, flag for review instead of guessing.
+
+Review table requirements:
+The Review Generated Rows section should work for all entry modes.
+
+It should display:
+
+* Include checkbox
+* Date
+* Time
+* Area/Bunk Searched
+* Type of Search
+* Inmate Name/FDC Number
+* Name and Rank of Officer(s) Conducting Search
+* Discrepancies/Contraband Found
+* Tablet Y/N
+* Validation Status
+
+The user must be able to:
+
+* Search/filter rows
+* Exclude rows
+* Edit any row manually
+* Bulk apply Date
+* Bulk apply Time sequence
+* Bulk apply Type of Search
+* Bulk apply Officer(s)
+* Bulk apply Discrepancies/Contraband Found
+* Bulk apply Tablet Y/N
+* Clear uploaded Bed Book data
+* Clear manual rows
+
+The review table should match the final DOCX as closely as possible.
+
+Professional UI polish:
+Make the page look clean, professional, and uniform.
+
+Requirements:
+
+* Manual entry fields should only appear when Manual Entry is selected.
+* Bed Book upload fields should only appear when Bed Book Upload is selected.
+* Bunk Handling should only appear in Bed Book Upload mode.
+* Setup fields should align evenly.
+* Inputs/selects should have consistent height.
+* Labels should have consistent spacing.
+* Multi-line labels should not push inputs out of alignment.
+* The review table should not have a horizontal scrollbar.
+* The full row should be visible without sideways scrolling.
+* The review section should use enough page width to be readable.
+* Sticky table headers should be used if the table scrolls vertically.
+* Long inmate names should wrap in the web review table if needed, but the DOCX grouped inmate field should attempt one-line fitting.
+* Keep the existing dark blue professional corrections-tool theme.
+
+Roster summary:
+Add a summary above the review table.
+
+Show:
+
+* Total entries
+* Included entries
+* Excluded entries
+* Unique cells
+* Search Log pages that will be generated
+* Current entry mode
+* Current bunk handling option, if Bed Book Upload mode is selected
+
+Example:
+Mode: Bed Book Upload
+Bunk Handling: Group lower/upper bunks together
+Total Entries: 112
+Included: 112
+Excluded: 0
+Unique Cells: 112
+Pages: 6
+
+This summary should update when:
+
+* Entry mode changes
+* Bunk handling changes
+* Rows are added/removed
+* Rows are included/excluded
+
+Generate & Download behavior:
+The Generate & Download Search Log button must work for every mode.
+
+If Bed Book Upload + grouped mode:
+
+* Generate from grouped cell rows.
+
+If Bed Book Upload + separate bunk mode:
+
+* Generate from individual bunk rows.
+
+If Manual Entry mode:
+
+* Generate from manually added rows.
+
+In all cases:
+
+* Fill the exact original Search Log DOCX template.
+* Use continuation pages if rows exceed one page.
+* Preserve formatting.
+* Do not recreate the document.
+* Do not change table layout.
+* Do not stretch rows.
+* Do not create a fake Search Log.
+
+DOCX continuation pages:
+Continuation pages should still work exactly as before.
+
+Process:
+
+* Fill the first original Search Log page.
+* Add another exact copy of the original page when needed.
+* Fill the next page.
+* Continue until all included rows are documented.
+* Preserve the official title, headers, table, footer/instruction text, and layout on every page.
+
+Generate section UI:
+Make the Generate & Download section look like a final action panel.
+
+It should include:
+
+* Title: Generate Search Log
+* Short review warning
+* Confirmation checkbox
+* Large primary button: Generate & Download Search Log
+
+Suggested warning:
+“Review all entries before official use. This tool only fills the original form with uploaded or manually entered information.”
+
+Validation:
+Warn if any included row is missing:
+
+* Date
+* Time
+* Area/Bunk Searched
+* Type of Search
+* Inmate Name/FDC Number
+* Officer/staff value
+* Tablet Y/N
+
+For Bed Book rows, also warn if:
+
+* BED-ID is missing
+* Inmate name is missing
+* DC number is missing or invalid
+* A grouped inmate string may be too long to fit on one line at 6 pt
+
+For Manual Entry rows, warn if required row fields are blank.
+
+Do not silently delete incomplete rows.
+Let the user fix, exclude, or confirm.
+
+Privacy/session rules:
+
+* Uploaded Bed Book files are used only for the current browser session.
+* Do not save uploaded Bed Book data to a database.
+* Do not save uploaded Bed Book data to localStorage.
+* Do not send Bed Book data to AI.
+* Do not send Bed Book data to external APIs.
+* Add or keep a Clear Uploaded Bed Book button.
+* Refreshing the page should clear uploaded roster data unless the app already has an approved session-only pattern.
+
+Acceptance criteria:
+
+* User can choose Bed Book Upload or Manual Entry.
+* Manual Entry fields are hidden unless Manual Entry is selected.
+* Bed Book upload fields are hidden unless Bed Book Upload is selected.
+* Bed Book Upload has a Bunk Handling option.
+* Bunk Handling option 1 groups lower/upper bunks into one cell row.
+* Bunk Handling option 2 lists lower/upper bunks separately.
+* Grouped mode displays B1-106 instead of B1-106L and B1-106U.
+* Grouped mode places both inmates in one Inmate Name/FDC Number field separated by “ / ”.
+* Grouped inmate text attempts to stay on one line in the DOCX.
+* DOCX font can shrink only in that cell to 8 pt, 7 pt, or 6 pt.
+* Separate bunk mode keeps B1-106L and B1-106U as separate rows.
+* Separate bunk mode gives lower/upper bunks in the same cell the same generated time by default.
+* Manual Entry mode allows the user to add search rows manually.
+* Manual rows include date, time, area/bunk searched, type of search, inmate name/FDC number, officer/staff info, discrepancies/contraband found, and Tablet Y/N.
+* Manual rows appear in the same review table.
+* All rows remain editable before generation.
+* Review table works for all entry modes.
+* Roster summary updates correctly.
+* Generate & Download works for all modes.
+* The final DOCX still fills the exact original Search Log form.
+* The document is not recreated.
+* Continuation pages still use the original Search Log page template.
+* The page looks professional, aligned, and easy to use.

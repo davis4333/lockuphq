@@ -3,6 +3,13 @@ export type StaffRank = "C/O" | "Sgt." | "Lt." | "Captain";
 export type TabletValue = "Y" | "N";
 export type TabletMode = "Y" | "N" | "Random";
 
+/** How review rows are created. */
+export type EntryMethod = "bedbook" | "manual";
+/** How Bed Book lower/upper bunks are turned into rows. */
+export type BunkHandling = "byCell" | "byBunk";
+/** Where a review row came from (drives validation rules). */
+export type RowSource = "bedbook" | "manual";
+
 export const SEARCH_TYPES: SearchType[] = ["Area", "Pat", "Strip", "Other"];
 export const STAFF_RANKS: StaffRank[] = ["C/O", "Sgt.", "Lt.", "Captain"];
 export const TABLET_VALUES: TabletValue[] = ["Y", "N"];
@@ -55,15 +62,19 @@ export interface SetupFields {
 export interface ReviewRow {
   id: string;
   include: boolean;
+  source: RowSource; // "bedbook" | "manual" — drives validation
   bedId: string;
   date: string; // formatted MM/DD/YY
   time: string; // formatted e.g. "4:45 P"
   area: string; // Area/Bunk Searched
   type: string; // Type of Search
-  inmate: string; // multi-line "LAST, FIRST DC#"
+  inmate: string; // multi-line "LAST, FIRST DC#" (grouped: " / "-joined, one line)
   officer: string; // "[RANK] [NAME]"
   discrepancies: string;
   tablet: string;
+  // Grouped-cell rows ask the DOCX filler to keep the inmate cell on one line and
+  // shrink only that cell's font (10→8→7→6pt) to fit; others render multi-line.
+  inmateFit?: boolean;
 }
 
 export interface ValidationFlag {

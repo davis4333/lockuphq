@@ -1,6 +1,8 @@
-import { formatInmateCell } from "./bedBookGrouper";
+import { formatInmateCell, normalizeCellKey } from "./bedBookGrouper";
 import { isValidDcNumber } from "./dcNumberExtractor";
+import { groupedInmateFitsAtMin } from "./searchLogTextFit";
 import type {
+  BunkHandling,
   GroupedEntry,
   ReviewRow,
   SetupFields,
@@ -112,14 +114,10 @@ export function validateStaff(staff: StaffMember[]): ValidationFlag[] {
 }
 
 /**
- * Normalize an Area/Bunk value to a timing cell key by dropping a single
- * trailing bunk letter (L = lower, U = upper). "B1-106L" and "B1-106U" both map
- * to "B1-106" so the two bunks in a cell share one search time. The original
- * Area/Bunk value is always kept for display/export — this key is internal only.
+ * Back-compat alias for `normalizeCellKey` (the page imports the timing-specific
+ * name). Both strip a trailing L/U so a cell's two bunks share one search time.
  */
-export function normalizeTimingCellKey(value: string): string {
-  return (value ?? "").trim().replace(/[LU]$/i, "");
-}
+export const normalizeTimingCellKey = normalizeCellKey;
 
 let rowSeq = 0;
 function nextRowId(): string {
@@ -127,29 +125,61 @@ function nextRowId(): string {
   return `slrow-${rowSeq}`;
 }
 
-/** Build review rows from grouped entries and the current setup fields. */
+/**
+ * Build Bed Book review rows from grouped entries, the current setup fields, and
+ * the chosen bunk handling. Grouped-cell rows put both bunks' inmates on one
+ * " / "-joined line and ask the DOCX filler to shrink only that cell to fit;
+ * separate-bunk rows keep one inmate per line at the normal size.
+ */
 export function buildReviewRows(
   groups: GroupedEntry[],
   setup: SetupFields,
+  handling: BunkHandling,
 ): ReviewRow[] {
   const date = formatDateMMDDYY(setup.dateOfSearch);
   const officer = combineStaff(setup.staff);
   const tablets = tabletValuesForMode(setup.tabletMode, groups.length);
+  const grouped = handling === "byCell";
   const rows: ReviewRow[] = groups.map((entry, idx) => ({
     id: nextRowId(),
     include: true,
+    source: "bedbook",
     bedId: entry.bedId,
     date,
     time: "",
     area: entry.bedId,
     type: setup.searchType,
-    inmate: formatInmateCell(entry),
+    inmate: formatInmateCell(entry, grouped ? " / " : "\n"),
     officer,
     discrepancies: setup.discrepancies,
     tablet: tablets[idx],
+    inmateFit: grouped,
   }));
   // Times are assigned per unique cell (upper/lower bunks share one time).
   return resequenceTimes(rows, setup.startTime);
+}
+
+/**
+ * Create one blank manual review row seeded with the current setup defaults.
+ * `timeOffset` advances the start time by N minutes (one per existing manual row)
+ * so consecutive manual rows auto-increment; every field stays editable.
+ */
+export function createManualRow(setup: SetupFields, timeOffset: number): ReviewRow {
+  return {
+    id: nextRowId(),
+    include: true,
+    source: "manual",
+    bedId: "",
+    date: formatDateMMDDYY(setup.dateOfSearch),
+    time: formatTimeWithOffset(setup.startTime, timeOffset),
+    area: "",
+    type: setup.searchType,
+    inmate: "",
+    officer: combineStaff(setup.staff),
+    discrepancies: setup.discrepancies,
+    tablet: setup.tabletMode === "Random" ? randomTablet() : setup.tabletMode,
+    inmateFit: false,
+  };
 }
 
 /**
@@ -163,7 +193,7 @@ export function resequenceTimes(rows: ReviewRow[], startTime: string): ReviewRow
   let offset = 0;
   return rows.map((row) => {
     if (!row.include) return row;
-    const key = normalizeTimingCellKey(row.area || row.bedId);
+    const key = normalizeCellKey(row.area || row.bedId);
     let time = timeByCell.get(key);
     if (time === undefined) {
       time = formatTimeWithOffset(startTime, offset);
@@ -176,17 +206,38 @@ export function resequenceTimes(rows: ReviewRow[], startTime: string): ReviewRow
 
 const DC_LINE = /\b([A-Za-z]\d{5}|\d{6})\b/;
 
-/** Validate one review row. Returns a list of warnings (empty = OK). */
+/**
+ * Validate one review row. Returns a list of warnings (empty = OK). Bed Book rows
+ * additionally require a BED-ID and valid DC numbers and warn on grouped-inmate
+ * overflow; manual rows only warn on blank required fields (area may be a free
+ * location like "Dayroom" and the user's inmate text is never rewritten).
+ */
 export function validateRow(row: ReviewRow): ValidationFlag[] {
   const flags: ValidationFlag[] = [];
   if (!row.area.trim()) flags.push({ field: "area", message: "Missing Area/Bunk" });
-  if (!row.bedId.trim()) flags.push({ field: "bedId", message: "Missing BED-ID" });
+  if (!row.date.trim()) flags.push({ field: "date", message: "Missing date" });
+  if (!row.time.trim()) flags.push({ field: "time", message: "Missing time" });
+  if (!row.type.trim()) flags.push({ field: "type", message: "Missing type of search" });
+  if (!row.officer.trim()) flags.push({ field: "officer", message: "Missing officer" });
+  if (!row.tablet.trim()) flags.push({ field: "tablet", message: "Missing tablet value" });
 
-  const lines = row.inmate.split("\n").map((l) => l.trim()).filter(Boolean);
-  if (lines.length === 0) {
+  // Inmate segments: grouped rows separate inmates with " / "; separate-bunk and
+  // manual rows may use newlines. Either way, validate each segment.
+  const inmateLines = row.inmate.split(/[\n/]/).map((l) => l.trim()).filter(Boolean);
+
+  if (row.source === "manual") {
+    if (inmateLines.length === 0) {
+      flags.push({ field: "inmate", message: "Missing inmate name / FDC number" });
+    }
+    return flags;
+  }
+
+  // Bed Book row.
+  if (!row.bedId.trim()) flags.push({ field: "bedId", message: "Missing BED-ID" });
+  if (inmateLines.length === 0) {
     flags.push({ field: "inmate", message: "Missing inmate name" });
   } else {
-    for (const line of lines) {
+    for (const line of inmateLines) {
       const dcMatch = line.match(DC_LINE);
       const namePart = dcMatch ? line.slice(0, dcMatch.index).trim() : line.trim();
       if (!namePart) flags.push({ field: "inmate", message: "Missing inmate name" });
@@ -197,12 +248,13 @@ export function validateRow(row: ReviewRow): ValidationFlag[] {
       }
     }
   }
-
-  if (!row.date.trim()) flags.push({ field: "date", message: "Missing date" });
-  if (!row.time.trim()) flags.push({ field: "time", message: "Missing time" });
-  if (!row.type.trim()) flags.push({ field: "type", message: "Missing type of search" });
-  if (!row.officer.trim()) flags.push({ field: "officer", message: "Missing officer" });
-  if (!row.tablet.trim()) flags.push({ field: "tablet", message: "Missing tablet value" });
+  if (row.inmateFit && row.inmate.trim() && !groupedInmateFitsAtMin(row.inmate)) {
+    flags.push({
+      field: "inmate",
+      message:
+        "This grouped inmate field may be too long to fit on one line at 6 pt. Review before generating",
+    });
+  }
   return flags;
 }
 

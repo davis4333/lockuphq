@@ -1,10 +1,12 @@
 export type SearchType = "Area" | "Pat" | "Strip" | "Other";
 export type StaffRank = "C/O" | "Sgt." | "Lt." | "Captain";
 export type TabletValue = "Y" | "N";
+export type TabletMode = "Y" | "N" | "Random";
 
 export const SEARCH_TYPES: SearchType[] = ["Area", "Pat", "Strip", "Other"];
 export const STAFF_RANKS: StaffRank[] = ["C/O", "Sgt.", "Lt.", "Captain"];
 export const TABLET_VALUES: TabletValue[] = ["Y", "N"];
+export const TABLET_MODES: TabletMode[] = ["Y", "N", "Random"];
 
 export const ROWS_PER_PAGE = 19;
 
@@ -42,6 +44,7 @@ export interface SetupFields {
   staffName: string;
   staffRank: StaffRank;
   discrepancies: string;
+  tabletMode: TabletMode;
 }
 
 export interface ReviewRow {

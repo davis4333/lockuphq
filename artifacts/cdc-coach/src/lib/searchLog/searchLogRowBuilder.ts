@@ -4,6 +4,7 @@ import type {
   GroupedEntry,
   ReviewRow,
   SetupFields,
+  TabletMode,
   TabletValue,
   ValidationFlag,
 } from "./types";
@@ -24,6 +25,15 @@ export function randomTabletValues(count: number): TabletValue[] {
     values[flipAt] = values[0] === "Y" ? "N" : "Y";
   }
   return values;
+}
+
+/**
+ * Tablet values for `count` rows per the chosen mode: all "Y", all "N", or a
+ * guaranteed mix when "Random".
+ */
+export function tabletValuesForMode(mode: TabletMode, count: number): TabletValue[] {
+  if (mode === "Random") return randomTabletValues(count);
+  return Array.from({ length: count }, () => mode);
 }
 
 /** Format a yyyy-mm-dd date-input value as MM/DD/YY. */
@@ -78,7 +88,7 @@ export function buildReviewRows(
 ): ReviewRow[] {
   const date = formatDateMMDDYY(setup.dateOfSearch);
   const officer = buildOfficer(setup.staffRank, setup.staffName);
-  const tablets = randomTabletValues(groups.length);
+  const tablets = tabletValuesForMode(setup.tabletMode, groups.length);
   return groups.map((entry, idx) => ({
     id: nextRowId(),
     include: true,

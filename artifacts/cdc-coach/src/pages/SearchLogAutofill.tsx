@@ -14,6 +14,7 @@ import {
   SEARCH_TYPES,
   STAFF_RANKS,
   TABLET_VALUES,
+  TABLET_MODES,
   type GroupedEntry,
   type ReviewRow,
   type SetupFields,
@@ -28,7 +29,8 @@ import {
   formatDateMMDDYY,
   formatDateMMDDYYDashed,
   buildOfficer,
-  randomTabletValues,
+  randomTablet,
+  tabletValuesForMode,
 } from "@/lib/searchLog/searchLogRowBuilder";
 import {
   fillSearchLogDocx,
@@ -46,7 +48,14 @@ const defaultSetup = (): SetupFields => ({
   staffName: "",
   staffRank: "C/O",
   discrepancies: "None",
+  tabletMode: "Random",
 });
+
+const TABLET_MODE_LABELS: Record<SetupFields["tabletMode"], string> = {
+  Y: "Y — all yes",
+  N: "N — all no",
+  Random: "Random Y / N",
+};
 
 const btnBlue =
   "inline-flex items-center justify-center gap-2 rounded-lg border border-blue-300/50 bg-blue-600/85 px-4 py-2.5 text-sm font-bold uppercase tracking-[0.08em] text-white transition-colors hover:bg-blue-500/90 disabled:cursor-not-allowed disabled:opacity-40";
@@ -181,10 +190,20 @@ export default function SearchLogAutofill() {
     setRows((prev) => prev.map((r) => ({ ...r, discrepancies: setup.discrepancies })));
     setConfirmed(false);
   }
-  function randomizeTablets() {
+  function applyTablet() {
     setRows((prev) => {
-      const tablets = randomTabletValues(prev.length);
-      return prev.map((r, i) => ({ ...r, tablet: tablets[i] }));
+      if (setup.tabletMode !== "Random") {
+        return prev.map((r) => ({ ...r, tablet: setup.tabletMode }));
+      }
+      // Guarantee the Y/N mix across the rows that will actually appear in the
+      // document (included rows); excluded rows just get any random value.
+      const includedCount = prev.filter((r) => r.include).length;
+      const mix = tabletValuesForMode("Random", includedCount);
+      let k = 0;
+      return prev.map((r) => ({
+        ...r,
+        tablet: r.include ? mix[k++] : randomTablet(),
+      }));
     });
     setConfirmed(false);
   }
@@ -387,11 +406,19 @@ export default function SearchLogAutofill() {
           </Field>
           <Field
             label="Tablet Y/N"
-            action={parseInfo ? { label: "Randomize", onClick: randomizeTablets } : undefined}
+            action={parseInfo ? { label: "Apply", onClick: applyTablet } : undefined}
           >
-            <div className={`${hudInput} flex items-center text-blue-200/70`}>
-              Random Y / N per row
-            </div>
+            <select
+              className={hudInput}
+              value={setup.tabletMode}
+              onChange={(e) => setSetupField("tabletMode", e.target.value as SetupFields["tabletMode"])}
+            >
+              {TABLET_MODES.map((m) => (
+                <option key={m} value={m}>
+                  {TABLET_MODE_LABELS[m]}
+                </option>
+              ))}
+            </select>
           </Field>
         </div>
         <p className="mt-3 flex items-center gap-2 text-[11px] text-amber-200/80">

@@ -18,7 +18,7 @@ import {
   STAFF_RANKS,
   TABLET_VALUES,
   type SearchType,
-  type StaffRank,
+  type StaffMember,
   type TabletValue,
   ROWS_PER_PAGE,
   type BunkHandling,
@@ -71,8 +71,7 @@ interface ManualDraft {
   area: string;
   type: SearchType;
   inmate: string;
-  staffName: string;
-  staffRank: StaffRank;
+  staff: StaffMember[];
   discrepancies: string;
   tablet: TabletValue;
 }
@@ -82,8 +81,7 @@ const defaultManualDraft = (): ManualDraft => ({
   area: "",
   type: "Area",
   inmate: "",
-  staffName: "",
-  staffRank: "C/O",
+  staff: [createStaffMember()],
   discrepancies: "None",
   tablet: "Y",
 });
@@ -336,9 +334,35 @@ export default function SearchLogAutofill() {
     setConfirmed(false);
   }
 
-  const manualOfficerPreview = [draft.staffRank, draft.staffName.trim()]
-    .filter(Boolean)
-    .join(" ");
+  // ── Manual entry staff editor (mirrors the Bed Book setup's staff list) ──
+  function addDraftStaff() {
+    setDraft((prev) =>
+      prev.staff.length >= MAX_STAFF
+        ? prev
+        : { ...prev, staff: [...prev.staff, createStaffMember()] },
+    );
+    setDraftError("");
+    setConfirmed(false);
+  }
+  function removeDraftStaff(id: string) {
+    setDraft((prev) =>
+      prev.staff.length <= 1
+        ? prev
+        : { ...prev, staff: prev.staff.filter((s) => s.id !== id) },
+    );
+    setDraftError("");
+    setConfirmed(false);
+  }
+  function updateDraftStaff(id: string, patch: Partial<Omit<StaffMember, "id">>) {
+    setDraft((prev) => ({
+      ...prev,
+      staff: prev.staff.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+    }));
+    setDraftError("");
+    setConfirmed(false);
+  }
+
+  const manualOfficerPreview = combineStaff(draft.staff);
 
   function addSearch() {
     // Validate every required field before adding — never add a row silently.
@@ -349,8 +373,7 @@ export default function SearchLogAutofill() {
     if (!draft.area.trim()) missing.push("Area/Bunk Searched");
     if (!draft.type) missing.push("Type of Search");
     if (!draft.inmate.trim()) missing.push("Inmate Name/FDC Number");
-    if (!draft.staffName.trim()) missing.push("Staff Name");
-    if (!draft.staffRank) missing.push("Staff Rank");
+    if (combineStaff(draft.staff).trim() === "") missing.push("Staff Name");
     if (!draft.tablet) missing.push("Tablet Y/N");
     if (missing.length > 0) {
       setDraftError(`Fill in ${missing.join(", ")} before adding this search.`);
@@ -890,27 +913,56 @@ export default function SearchLogAutofill() {
                 ))}
               </select>
             </Field>
-            <Field label="Staff Name *">
-              <input
-                className={hudInput}
-                placeholder="e.g. Davis"
-                value={draft.staffName}
-                onChange={(e) => setDraftField("staffName", e.target.value)}
-              />
-            </Field>
-            <Field label="Staff Rank *">
-              <select
-                className={hudInput}
-                value={draft.staffRank}
-                onChange={(e) => setDraftField("staffRank", e.target.value as StaffRank)}
-              >
-                {STAFF_RANKS.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
+            {/* Officers — full-width, mirrors the Bed Book setup's staff editor */}
+            <div className="flex flex-col sm:col-span-2 lg:col-span-3">
+              <label className={`${hudLabel} mb-0`}>Staff Members (Officer Column) *</label>
+              <div className="mt-1.5 space-y-2">
+                {draft.staff.map((m, idx) => (
+                  <div key={m.id} className="flex items-center gap-2">
+                    <div className="w-[116px] shrink-0">
+                      <select
+                        className={hudInput}
+                        value={m.rank}
+                        onChange={(e) =>
+                          updateDraftStaff(m.id, { rank: e.target.value as StaffMember["rank"] })
+                        }
+                      >
+                        {STAFF_RANKS.map((r) => (
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <input
+                      className={`${hudInput} flex-1`}
+                      placeholder={`Staff #${idx + 1} name${idx === 0 ? " (required)" : ""}`}
+                      value={m.name}
+                      onChange={(e) => updateDraftStaff(m.id, { name: e.target.value })}
+                    />
+                    <button
+                      onClick={() => removeDraftStaff(m.id)}
+                      disabled={draft.staff.length <= 1}
+                      className={`${btnGhost} shrink-0`}
+                      title={
+                        draft.staff.length <= 1
+                          ? "At least one staff member is required"
+                          : "Remove staff member"
+                      }
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 ))}
-              </select>
-            </Field>
+                <button
+                  onClick={addDraftStaff}
+                  disabled={draft.staff.length >= MAX_STAFF}
+                  className={btnGhost}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add Staff
+                </button>
+              </div>
+            </div>
             <Field label="Tablet Y/N *">
               <select
                 className={hudInput}
@@ -943,7 +995,7 @@ export default function SearchLogAutofill() {
             </Field>
           </div>
 
-          {draft.staffName.trim() && (
+          {manualOfficerPreview && (
             <p className="mt-3 text-[11px] text-blue-300/70">
               This search → Officer:{" "}
               <span className="text-blue-100/90">{manualOfficerPreview}</span>

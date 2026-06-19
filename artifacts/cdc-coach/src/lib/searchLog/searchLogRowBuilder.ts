@@ -4,8 +4,27 @@ import type {
   GroupedEntry,
   ReviewRow,
   SetupFields,
+  TabletValue,
   ValidationFlag,
 } from "./types";
+
+/** Pick a random "Y"/"N" — the tablet column just needs a value, mixed across rows. */
+export function randomTablet(): TabletValue {
+  return Math.random() < 0.5 ? "Y" : "N";
+}
+
+/**
+ * Random "Y"/"N" for `count` rows. With more than one row this guarantees a
+ * mix (at least one of each) so the document is never all-Y or all-N.
+ */
+export function randomTabletValues(count: number): TabletValue[] {
+  const values: TabletValue[] = Array.from({ length: count }, () => randomTablet());
+  if (count > 1 && values.every((v) => v === values[0])) {
+    const flipAt = Math.floor(Math.random() * count);
+    values[flipAt] = values[0] === "Y" ? "N" : "Y";
+  }
+  return values;
+}
 
 /** Format a yyyy-mm-dd date-input value as MM/DD/YY. */
 export function formatDateMMDDYY(dateInput: string): string {
@@ -59,6 +78,7 @@ export function buildReviewRows(
 ): ReviewRow[] {
   const date = formatDateMMDDYY(setup.dateOfSearch);
   const officer = buildOfficer(setup.staffRank, setup.staffName);
+  const tablets = randomTabletValues(groups.length);
   return groups.map((entry, idx) => ({
     id: nextRowId(),
     include: true,
@@ -70,7 +90,7 @@ export function buildReviewRows(
     inmate: formatInmateCell(entry),
     officer,
     discrepancies: setup.discrepancies,
-    tablet: setup.tablet,
+    tablet: tablets[idx],
   }));
 }
 

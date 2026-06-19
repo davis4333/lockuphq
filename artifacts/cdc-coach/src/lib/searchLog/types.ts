@@ -42,7 +42,6 @@ export interface SetupFields {
   staffName: string;
   staffRank: StaffRank;
   discrepancies: string;
-  tablet: TabletValue;
 }
 
 export interface ReviewRow {

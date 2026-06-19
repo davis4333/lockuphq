@@ -28,6 +28,7 @@ import {
   formatDateMMDDYY,
   formatDateMMDDYYDashed,
   buildOfficer,
+  randomTabletValues,
 } from "@/lib/searchLog/searchLogRowBuilder";
 import {
   fillSearchLogDocx,
@@ -45,7 +46,6 @@ const defaultSetup = (): SetupFields => ({
   staffName: "",
   staffRank: "C/O",
   discrepancies: "None",
-  tablet: "N",
 });
 
 const btnBlue =
@@ -181,8 +181,11 @@ export default function SearchLogAutofill() {
     setRows((prev) => prev.map((r) => ({ ...r, discrepancies: setup.discrepancies })));
     setConfirmed(false);
   }
-  function bulkTablet() {
-    setRows((prev) => prev.map((r) => ({ ...r, tablet: setup.tablet })));
+  function randomizeTablets() {
+    setRows((prev) => {
+      const tablets = randomTabletValues(prev.length);
+      return prev.map((r, i) => ({ ...r, tablet: tablets[i] }));
+    });
     setConfirmed(false);
   }
 
@@ -382,18 +385,13 @@ export default function SearchLogAutofill() {
               onChange={(e) => setSetupField("discrepancies", e.target.value)}
             />
           </Field>
-          <Field label="Tablet Y/N" action={parseInfo ? { label: "Apply", onClick: bulkTablet } : undefined}>
-            <select
-              className={hudInput}
-              value={setup.tablet}
-              onChange={(e) => setSetupField("tablet", e.target.value as SetupFields["tablet"])}
-            >
-              {TABLET_VALUES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+          <Field
+            label="Tablet Y/N"
+            action={parseInfo ? { label: "Randomize", onClick: randomizeTablets } : undefined}
+          >
+            <div className={`${hudInput} flex items-center text-blue-200/70`}>
+              Random Y / N per row
+            </div>
           </Field>
         </div>
         <p className="mt-3 flex items-center gap-2 text-[11px] text-amber-200/80">

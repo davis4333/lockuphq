@@ -553,6 +553,60 @@ export default function LockUpSlip() {
     fields.time &&
     fields.captain;
 
+  const dc6229Section = (
+    <div className="pt-4 mt-1 border-t border-blue-400/15">
+      <div className="mb-1.5 flex items-center gap-2">
+        <CalendarDays className="h-4 w-4 text-blue-300/80" />
+        <h3 className="text-[12px] font-bold uppercase tracking-[0.12em] text-blue-100">
+          Also Generate a DC6-229
+        </h3>
+      </div>
+      <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
+        Builds a Daily Record of Special Housing (DC6-229) from the name, DC number, bunk, and confinement type above. The 7 daily dates fill automatically for the current week — back to the most recent Sunday, or the prior week (ending Saturday) when today is Sunday.
+      </p>
+
+      {dc6229Week.length === 7 && (
+        <div className="mb-3 grid grid-cols-4 gap-1.5 sm:grid-cols-7">
+          {dc6229Week.map((d) => (
+            <div
+              key={d.iso}
+              className="rounded border border-blue-400/20 bg-[rgba(4,11,34,0.6)] px-1.5 py-1 text-center"
+            >
+              <div className="text-[8px] font-bold uppercase tracking-[0.1em] text-blue-300/60">{d.dayName}</div>
+              <div className="text-[11px] font-mono font-semibold text-blue-50">{d.date}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button
+        onClick={handleDownloadDc6229}
+        disabled={!canDownloadDc6229 || dc6229Generating}
+        className={[
+          "w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] transition-all duration-150",
+          canDownloadDc6229 && !dc6229Generating
+            ? "border border-blue-300/50 bg-blue-600/85 text-white hover:bg-blue-500 cursor-pointer"
+            : "border border-blue-400/15 bg-[rgba(4,11,34,0.6)] text-blue-300/40 cursor-not-allowed",
+        ].join(" ")}
+        style={canDownloadDc6229 && !dc6229Generating ? { boxShadow: "0 0 20px rgba(37,99,235,0.35)" } : undefined}
+      >
+        <Download className="h-4 w-4" />
+        {dc6229Generating ? "Generating…" : "Download DC6-229"}
+      </button>
+
+      {dc6229Error && (
+        <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-red-300/90">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {dc6229Error}
+        </p>
+      )}
+      {!canDownloadDc6229 && !dc6229Error && (
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          Enter last name, first name, and DC number to enable.
+        </p>
+      )}
+    </div>
+  );
+
   return (
     <PageShell
       title="Lock-Up Slip"
@@ -778,57 +832,7 @@ export default function LockUpSlip() {
             )}
           </div>
 
-          <div className="pt-4 mt-1 border-t border-blue-400/15">
-            <div className="mb-1.5 flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-blue-300/80" />
-              <h3 className="text-[12px] font-bold uppercase tracking-[0.12em] text-blue-100">
-                Also Generate a DC6-229
-              </h3>
-            </div>
-            <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
-              Builds a Daily Record of Special Housing (DC6-229) from the name, DC number, bunk, and confinement type above. The 7 daily dates fill automatically for the current week — back to the most recent Sunday, or the prior week (ending Saturday) when today is Sunday.
-            </p>
-
-            {dc6229Week.length === 7 && (
-              <div className="mb-3 grid grid-cols-4 gap-1.5 sm:grid-cols-7">
-                {dc6229Week.map((d) => (
-                  <div
-                    key={d.iso}
-                    className="rounded border border-blue-400/20 bg-[rgba(4,11,34,0.6)] px-1.5 py-1 text-center"
-                  >
-                    <div className="text-[8px] font-bold uppercase tracking-[0.1em] text-blue-300/60">{d.dayName}</div>
-                    <div className="text-[11px] font-mono font-semibold text-blue-50">{d.date}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <button
-              onClick={handleDownloadDc6229}
-              disabled={!canDownloadDc6229 || dc6229Generating}
-              className={[
-                "w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] transition-all duration-150",
-                canDownloadDc6229 && !dc6229Generating
-                  ? "border border-blue-300/50 bg-blue-600/85 text-white hover:bg-blue-500 cursor-pointer"
-                  : "border border-blue-400/15 bg-[rgba(4,11,34,0.6)] text-blue-300/40 cursor-not-allowed",
-              ].join(" ")}
-              style={canDownloadDc6229 && !dc6229Generating ? { boxShadow: "0 0 20px rgba(37,99,235,0.35)" } : undefined}
-            >
-              <Download className="h-4 w-4" />
-              {dc6229Generating ? "Generating…" : "Download DC6-229"}
-            </button>
-
-            {dc6229Error && (
-              <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-red-300/90">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {dc6229Error}
-              </p>
-            )}
-            {!canDownloadDc6229 && !dc6229Error && (
-              <p className="mt-2 text-center text-xs text-muted-foreground">
-                Enter last name, first name, and DC number to enable.
-              </p>
-            )}
-          </div>
+          {!narrative && dc6229Section}
         </div>
 
         {narrative && (
@@ -888,6 +892,8 @@ export default function LockUpSlip() {
                 Back to Dashboard
               </button>
             </div>
+
+            {dc6229Section}
           </div>
         )}
     </PageShell>

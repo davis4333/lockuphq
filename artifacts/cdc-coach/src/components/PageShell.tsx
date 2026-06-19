@@ -41,7 +41,7 @@ export default function PageShell({ title, subtitle, icon: Icon, maxWidthClass =
         style={{ background: "radial-gradient(ellipse at 50% 42%, transparent 56%, rgba(2,6,18,0.34) 90%, rgba(1,4,12,0.55) 100%)" }} />
 
       {/* ── Content ── */}
-      <div className="relative z-10 mx-auto max-w-3xl px-4 sm:px-6 pt-6 pb-10">
+      <div className={`relative z-10 mx-auto ${maxWidthClass} px-4 sm:px-6 pt-6 pb-10`}>
         {/* Back to command center */}
         <button
           onClick={() => navigate("/")}

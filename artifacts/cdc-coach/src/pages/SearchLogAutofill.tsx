@@ -8,6 +8,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   FileSpreadsheet,
+  Plus,
+  X,
 } from "lucide-react";
 import PageShell, { hudPanel, hudInput, hudLabel } from "@/components/PageShell";
 import {
@@ -15,6 +17,7 @@ import {
   STAFF_RANKS,
   TABLET_VALUES,
   TABLET_MODES,
+  ROWS_PER_PAGE,
   type GroupedEntry,
   type ReviewRow,
   type SetupFields,
@@ -25,10 +28,13 @@ import {
   buildReviewRows,
   resequenceTimes,
   validateRow,
+  validateStaff,
   findDuplicateBedIds,
   formatDateMMDDYY,
   formatDateMMDDYYDashed,
-  buildOfficer,
+  combineStaff,
+  createStaffMember,
+  normalizeTimingCellKey,
   randomTablet,
   tabletValuesForMode,
 } from "@/lib/searchLog/searchLogRowBuilder";
@@ -45,8 +51,7 @@ const defaultSetup = (): SetupFields => ({
   dateOfSearch: "",
   startTime: "",
   searchType: "Area",
-  staffName: "",
-  staffRank: "C/O",
+  staff: [createStaffMember()],
   discrepancies: "None",
   tabletMode: "Random",
 });
@@ -62,9 +67,19 @@ const btnBlue =
 const btnGhost =
   "inline-flex items-center justify-center gap-1.5 rounded-md border border-blue-400/35 bg-[rgba(4,11,34,0.7)] px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-blue-200/80 transition-colors hover:border-blue-300/60 hover:text-blue-100 disabled:cursor-not-allowed disabled:opacity-40";
 const cellInput =
-  "w-full rounded border border-blue-400/30 bg-[rgba(2,8,24,0.7)] px-1.5 py-1 text-[11px] text-blue-50 focus:outline-none focus:border-blue-300/70";
+  "w-full rounded border border-blue-400/30 bg-[rgba(2,8,24,0.7)] px-2 py-1.5 text-[12px] text-blue-50 focus:outline-none focus:border-blue-300/70";
+const cellArea = `${cellInput} resize-y leading-snug`;
 const th =
-  "px-2 py-2 text-left text-[9px] font-bold uppercase tracking-[0.1em] text-blue-200/70 whitespace-nowrap";
+  "px-2 py-2.5 text-left text-[10px] font-bold uppercase tracking-[0.08em] text-blue-200/70 align-bottom";
+
+const MAX_STAFF = 8;
+
+/** Rough textarea row estimate so long values wrap instead of overflowing. */
+function autoRows(value: string, perLine: number, cap = 4): number {
+  const byNewline = value.split("\n").length;
+  const byWrap = Math.ceil((value.trim().length || 1) / perLine);
+  return Math.min(cap, Math.max(1, byNewline, byWrap));
+}
 
 export default function SearchLogAutofill() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -73,9 +88,8 @@ export default function SearchLogAutofill() {
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [parseInfo, setParseInfo] = useState<{
     fileName: string;
-    delimiter: string;
-    headerRowIndex: number;
     totalDataRows: number;
+    groupedEntries: number;
     uniqueCells: number;
   } | null>(null);
   const [parseError, setParseError] = useState("");
@@ -98,6 +112,18 @@ export default function SearchLogAutofill() {
       includedRows.filter((r) => (rowFlags.get(r.id)?.length ?? 0) > 0).length,
     [includedRows, rowFlags],
   );
+  const staffFlags = useMemo(() => validateStaff(setup.staff), [setup.staff]);
+
+  // Roster summary (updates as rows are included/excluded).
+  const summary = useMemo(() => {
+    const total = rows.length;
+    const included = includedRows.length;
+    const uniqueCells = new Set(
+      includedRows.map((r) => normalizeTimingCellKey(r.area || r.bedId)),
+    ).size;
+    const pages = included > 0 ? Math.ceil(included / ROWS_PER_PAGE) : 0;
+    return { total, included, excluded: total - included, uniqueCells, pages };
+  }, [rows, includedRows]);
 
   const visibleRows = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -115,6 +141,31 @@ export default function SearchLogAutofill() {
     setConfirmed(false);
   }
 
+  // ── Staff editor ──
+  function addStaff() {
+    setSetup((prev) =>
+      prev.staff.length >= MAX_STAFF
+        ? prev
+        : { ...prev, staff: [...prev.staff, createStaffMember()] },
+    );
+    setConfirmed(false);
+  }
+  function removeStaff(id: string) {
+    setSetup((prev) =>
+      prev.staff.length <= 1
+        ? prev
+        : { ...prev, staff: prev.staff.filter((s) => s.id !== id) },
+    );
+    setConfirmed(false);
+  }
+  function updateStaff(id: string, patch: Partial<Omit<SetupFields["staff"][number], "id">>) {
+    setSetup((prev) => ({
+      ...prev,
+      staff: prev.staff.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+    }));
+    setConfirmed(false);
+  }
+
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     const file = files[0];
@@ -127,12 +178,14 @@ export default function SearchLogAutofill() {
       const grouped = groupByBedId(parsed);
       setGroups(grouped);
       setRows(buildReviewRows(grouped, setup));
+      const uniqueCells = new Set(
+        grouped.map((g) => normalizeTimingCellKey(g.bedId)),
+      ).size;
       setParseInfo({
         fileName: file.name,
-        delimiter: parsed.delimiter,
-        headerRowIndex: parsed.headerRowIndex,
         totalDataRows: parsed.totalDataRows,
-        uniqueCells: grouped.length,
+        groupedEntries: grouped.length,
+        uniqueCells,
       });
     } catch (err) {
       setGroups(null);
@@ -182,8 +235,8 @@ export default function SearchLogAutofill() {
     setConfirmed(false);
   }
   function bulkOfficer() {
-    const o = buildOfficer(setup.staffRank, setup.staffName);
-    setRows((prev) => prev.map((r) => ({ ...r, officer: o })));
+    const o = combineStaff(setup.staff);
+    setRows((prev) => prev.map((r) => (r.include ? { ...r, officer: o } : r)));
     setConfirmed(false);
   }
   function bulkDiscrepancies() {
@@ -255,12 +308,15 @@ export default function SearchLogAutofill() {
     }
   }
 
+  const officerPreview = combineStaff(setup.staff);
+  const staffIncomplete = staffFlags.length > 0;
+
   return (
     <PageShell
       title="Search Log Autofill"
       icon={ScrollText}
-      maxWidthClass="max-w-6xl"
-      subtitle="Upload a Bed Book roster, review the parsed cells and search details, then generate a completed Search Log by filling the original DC6-2001 Word form. The blank form, headers, and footer are never altered — only the data boxes are filled."
+      maxWidthClass="max-w-7xl"
+      subtitle="Enter the search details, upload a Bed Book roster, review the parsed cells, then generate a completed Search Log by filling the original DC6-2001 Word form. The blank form, headers, and footer are never altered — only the data boxes are filled."
     >
       {/* Privacy notice */}
       <div
@@ -275,9 +331,148 @@ export default function SearchLogAutofill() {
         </p>
       </div>
 
-      {/* Step 1 — Upload */}
+      {/* Step 1 — Setup */}
       <section className={`${hudPanel} mb-5 p-5`}>
-        <SectionTitle step="1" title="Upload Bed Book" />
+        <SectionTitle step="1" title="Search Log Setup" />
+        <div className="grid grid-cols-1 items-start gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Location *">
+            <input
+              className={hudInput}
+              placeholder="e.g. B-Dorm"
+              value={setup.location}
+              onChange={(e) => setSetupField("location", e.target.value)}
+            />
+          </Field>
+          <Field label="Date of Search" action={parseInfo ? { label: "Apply", onClick: bulkDate } : undefined}>
+            <input
+              type="date"
+              className={hudInput}
+              value={setup.dateOfSearch}
+              onChange={(e) => setSetupField("dateOfSearch", e.target.value)}
+            />
+          </Field>
+          <Field label="Start Time" action={parseInfo ? { label: "Apply", onClick: bulkTimes } : undefined}>
+            <input
+              type="time"
+              className={hudInput}
+              value={setup.startTime}
+              onChange={(e) => setSetupField("startTime", e.target.value)}
+            />
+          </Field>
+          <Field label="Type of Search" action={parseInfo ? { label: "Apply", onClick: bulkType } : undefined}>
+            <select
+              className={hudInput}
+              value={setup.searchType}
+              onChange={(e) => setSetupField("searchType", e.target.value as SetupFields["searchType"])}
+            >
+              {SEARCH_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Discrepancies / Contraband" action={parseInfo ? { label: "Apply", onClick: bulkDiscrepancies } : undefined}>
+            <input
+              className={hudInput}
+              value={setup.discrepancies}
+              onChange={(e) => setSetupField("discrepancies", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="Tablet Y/N"
+            action={parseInfo ? { label: "Apply", onClick: applyTablet } : undefined}
+          >
+            <select
+              className={hudInput}
+              value={setup.tabletMode}
+              onChange={(e) => setSetupField("tabletMode", e.target.value as SetupFields["tabletMode"])}
+            >
+              {TABLET_MODES.map((m) => (
+                <option key={m} value={m}>
+                  {TABLET_MODE_LABELS[m]}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          {/* Staff members — spans the full grid width */}
+          <div className="flex flex-col sm:col-span-2 lg:col-span-3">
+            <div className="flex min-h-[34px] items-end justify-between gap-2">
+              <label className={`${hudLabel} mb-0`}>Staff Members (Officer Column)</label>
+              {parseInfo && (
+                <button onClick={bulkOfficer} className={btnGhost} title="Apply combined officers to included rows">
+                  Apply Officer
+                </button>
+              )}
+            </div>
+            <div className="mt-1.5 space-y-2">
+              {setup.staff.map((m, idx) => (
+                <div key={m.id} className="flex items-center gap-2">
+                  <div className="w-[116px] shrink-0">
+                    <select
+                      className={hudInput}
+                      value={m.rank}
+                      onChange={(e) => updateStaff(m.id, { rank: e.target.value as SetupFields["staff"][number]["rank"] })}
+                    >
+                      {STAFF_RANKS.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <input
+                    className={`${hudInput} flex-1`}
+                    placeholder={`Staff #${idx + 1} name${idx === 0 ? " (required)" : ""}`}
+                    value={m.name}
+                    onChange={(e) => updateStaff(m.id, { name: e.target.value })}
+                  />
+                  <button
+                    onClick={() => removeStaff(m.id)}
+                    disabled={setup.staff.length <= 1}
+                    className={`${btnGhost} shrink-0`}
+                    title={setup.staff.length <= 1 ? "At least one staff member is required" : "Remove staff member"}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button onClick={addStaff} disabled={setup.staff.length >= MAX_STAFF} className={btnGhost}>
+                  <Plus className="h-3.5 w-3.5" /> Add Staff
+                </button>
+                {officerPreview && (
+                  <span className="text-[11px] text-blue-300/70">
+                    Officer column: <span className="text-blue-100/90">{officerPreview}</span>
+                  </span>
+                )}
+              </div>
+              {staffIncomplete && (
+                <p className="flex items-center gap-2 text-[11px] text-amber-200/85">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  {staffFlags[0].message}.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-4 flex items-center gap-2 text-[11px] text-amber-200/80">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          Times auto-fill from the Start Time — one minute per cell, with upper/lower bunks in the
+          same cell sharing a time. Review and confirm all generated times before official use.
+        </p>
+        {parseInfo && (
+          <button onClick={rebuildFromRoster} className={`${btnGhost} mt-3`}>
+            Reset rows from roster &amp; setup
+          </button>
+        )}
+      </section>
+
+      {/* Step 2 — Upload */}
+      <section className={`${hudPanel} mb-5 p-5`}>
+        <SectionTitle step="2" title="Upload Bed Book" />
         <label
           onDragOver={(e) => {
             e.preventDefault();
@@ -323,113 +518,12 @@ export default function SearchLogAutofill() {
               <span className="font-semibold">{parseInfo.fileName}</span>
             </span>
             <Stat label="Roster rows" value={parseInfo.totalDataRows} />
+            <Stat label="Entries" value={parseInfo.groupedEntries} />
             <Stat label="Unique cells" value={parseInfo.uniqueCells} />
-            <Stat
-              label="Delimiter"
-              value={parseInfo.delimiter === "\t" ? "TAB" : parseInfo.delimiter || "—"}
-            />
             <button onClick={clearRoster} className={`${btnGhost} ml-auto`}>
               <Trash2 className="h-3.5 w-3.5" /> Clear Uploaded Bed Book
             </button>
           </div>
-        )}
-      </section>
-
-      {/* Step 2 — Setup */}
-      <section className={`${hudPanel} mb-5 p-5`}>
-        <SectionTitle step="2" title="Search Log Setup" />
-        <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Location *">
-            <input
-              className={hudInput}
-              placeholder="e.g. B-Dorm"
-              value={setup.location}
-              onChange={(e) => setSetupField("location", e.target.value)}
-            />
-          </Field>
-          <Field label="Date of Search" action={parseInfo ? { label: "Apply", onClick: bulkDate } : undefined}>
-            <input
-              type="date"
-              className={hudInput}
-              value={setup.dateOfSearch}
-              onChange={(e) => setSetupField("dateOfSearch", e.target.value)}
-            />
-          </Field>
-          <Field label="Start Time" action={parseInfo ? { label: "Apply", onClick: bulkTimes } : undefined}>
-            <input
-              type="time"
-              className={hudInput}
-              value={setup.startTime}
-              onChange={(e) => setSetupField("startTime", e.target.value)}
-            />
-          </Field>
-          <Field label="Type of Search" action={parseInfo ? { label: "Apply", onClick: bulkType } : undefined}>
-            <select
-              className={hudInput}
-              value={setup.searchType}
-              onChange={(e) => setSetupField("searchType", e.target.value as SetupFields["searchType"])}
-            >
-              {SEARCH_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Staff Name">
-            <input
-              className={hudInput}
-              placeholder="e.g. Rivera"
-              value={setup.staffName}
-              onChange={(e) => setSetupField("staffName", e.target.value)}
-            />
-          </Field>
-          <Field label="Staff Rank" action={parseInfo ? { label: "Apply Officer", onClick: bulkOfficer } : undefined}>
-            <select
-              className={hudInput}
-              value={setup.staffRank}
-              onChange={(e) => setSetupField("staffRank", e.target.value as SetupFields["staffRank"])}
-            >
-              {STAFF_RANKS.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Discrepancies / Contraband" action={parseInfo ? { label: "Apply", onClick: bulkDiscrepancies } : undefined}>
-            <input
-              className={hudInput}
-              value={setup.discrepancies}
-              onChange={(e) => setSetupField("discrepancies", e.target.value)}
-            />
-          </Field>
-          <Field
-            label="Tablet Y/N"
-            action={parseInfo ? { label: "Apply", onClick: applyTablet } : undefined}
-          >
-            <select
-              className={hudInput}
-              value={setup.tabletMode}
-              onChange={(e) => setSetupField("tabletMode", e.target.value as SetupFields["tabletMode"])}
-            >
-              {TABLET_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {TABLET_MODE_LABELS[m]}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        <p className="mt-3 flex items-center gap-2 text-[11px] text-amber-200/80">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          Times auto-fill from the start time, +1 minute per row. Review and confirm all generated
-          times before official use.
-        </p>
-        {parseInfo && (
-          <button onClick={rebuildFromRoster} className={`${btnGhost} mt-3`}>
-            Reset rows from roster &amp; setup
-          </button>
         )}
       </section>
 
@@ -438,21 +532,10 @@ export default function SearchLogAutofill() {
         <section className={`${hudPanel} mb-5 p-5`}>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <SectionTitle step="3" title="Review &amp; Edit Entries" inline />
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-blue-300/70">
-                {includedRows.length} of {rows.length} included
-                {flaggedCount > 0 && (
-                  <span className="ml-2 text-amber-300/90">• {flaggedCount} flagged</span>
-                )}
-              </span>
-            </div>
-          </div>
-
-          <div className="mb-3 flex items-center gap-2">
-            <div className="relative flex-1 max-w-xs">
+            <div className="relative w-full max-w-xs">
               <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-blue-300/50" />
               <input
-                className={`${hudInput} pl-8 py-1.5 text-xs`}
+                className={`${hudInput} py-1.5 pl-8 text-xs`}
                 placeholder="Search rows…"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
@@ -460,17 +543,41 @@ export default function SearchLogAutofill() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-blue-400/25">
-            <table className="w-full border-collapse text-xs">
-              <thead className="bg-[rgba(2,8,24,0.8)]">
+          {/* Roster summary strip */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <SummaryChip label="Total Entries" value={summary.total} />
+            <SummaryChip label="Included" value={summary.included} tone="emerald" />
+            <SummaryChip label="Excluded" value={summary.excluded} tone={summary.excluded > 0 ? "amber" : undefined} />
+            <SummaryChip label="Unique Cells" value={summary.uniqueCells} />
+            <SummaryChip label="Pages" value={summary.pages} />
+            {flaggedCount > 0 && (
+              <SummaryChip label="Flagged" value={flaggedCount} tone="amber" />
+            )}
+          </div>
+
+          <div className="max-h-[62vh] overflow-y-auto overflow-x-hidden rounded-lg border border-blue-400/25">
+            <table className="w-full table-fixed border-collapse text-xs">
+              <colgroup>
+                <col style={{ width: "4%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "7%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "27%" }} />
+                <col style={{ width: "13%" }} />
+                <col style={{ width: "13%" }} />
+                <col style={{ width: "5%" }} />
+                <col style={{ width: "6%" }} />
+              </colgroup>
+              <thead className="sticky top-0 z-10 bg-[rgba(2,8,24,0.96)]">
                 <tr>
-                  <th className={th}>Incl.</th>
+                  <th className={`${th} text-center`}>Incl.</th>
                   <th className={th}>Date</th>
                   <th className={th}>Time</th>
                   <th className={th}>Area/Bunk</th>
                   <th className={th}>Type</th>
-                  <th className={`${th} min-w-[180px]`}>Inmate Name/FDC Number</th>
-                  <th className={th}>Officer</th>
+                  <th className={th}>Inmate Name/FDC Number</th>
+                  <th className={th}>Officer(s)</th>
                   <th className={th}>Discrep./Contraband</th>
                   <th className={th}>Tablet</th>
                   <th className={th}>Status</th>
@@ -485,7 +592,7 @@ export default function SearchLogAutofill() {
                       key={r.id}
                       className={`border-t border-blue-400/15 ${r.include ? "" : "opacity-45"}`}
                     >
-                      <td className="px-2 py-1 text-center align-top">
+                      <td className="px-2 py-2 text-center align-top">
                         <input
                           type="checkbox"
                           checked={r.include}
@@ -493,17 +600,17 @@ export default function SearchLogAutofill() {
                           className="h-3.5 w-3.5 accent-blue-500"
                         />
                       </td>
-                      <td className="px-1 py-1 align-top">
-                        <input className={`${cellInput} w-[72px]`} value={r.date} onChange={(e) => updateRow(r.id, { date: e.target.value })} />
+                      <td className="px-1.5 py-2 align-top">
+                        <input className={cellInput} value={r.date} onChange={(e) => updateRow(r.id, { date: e.target.value })} />
                       </td>
-                      <td className="px-1 py-1 align-top">
-                        <input className={`${cellInput} w-[64px]`} value={r.time} onChange={(e) => updateRow(r.id, { time: e.target.value })} />
+                      <td className="px-1.5 py-2 align-top">
+                        <input className={cellInput} value={r.time} onChange={(e) => updateRow(r.id, { time: e.target.value })} />
                       </td>
-                      <td className="px-1 py-1 align-top">
-                        <input className={`${cellInput} w-[80px]`} value={r.area} onChange={(e) => updateRow(r.id, { area: e.target.value })} />
+                      <td className="px-1.5 py-2 align-top">
+                        <input className={cellInput} value={r.area} onChange={(e) => updateRow(r.id, { area: e.target.value })} />
                       </td>
-                      <td className="px-1 py-1 align-top">
-                        <select className={`${cellInput} w-[68px]`} value={r.type} onChange={(e) => updateRow(r.id, { type: e.target.value })}>
+                      <td className="px-1.5 py-2 align-top">
+                        <select className={cellInput} value={r.type} onChange={(e) => updateRow(r.id, { type: e.target.value })}>
                           {SEARCH_TYPES.map((t) => (
                             <option key={t} value={t}>
                               {t}
@@ -511,22 +618,32 @@ export default function SearchLogAutofill() {
                           ))}
                         </select>
                       </td>
-                      <td className="px-1 py-1 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         <textarea
-                          rows={Math.max(1, r.inmate.split("\n").length)}
-                          className={`${cellInput} min-w-[180px] resize-y leading-snug`}
+                          rows={autoRows(r.inmate, 34)}
+                          className={cellArea}
                           value={r.inmate}
                           onChange={(e) => updateRow(r.id, { inmate: e.target.value })}
                         />
                       </td>
-                      <td className="px-1 py-1 align-top">
-                        <input className={`${cellInput} w-[96px]`} value={r.officer} onChange={(e) => updateRow(r.id, { officer: e.target.value })} />
+                      <td className="px-1.5 py-2 align-top">
+                        <textarea
+                          rows={autoRows(r.officer, 16)}
+                          className={cellArea}
+                          value={r.officer}
+                          onChange={(e) => updateRow(r.id, { officer: e.target.value })}
+                        />
                       </td>
-                      <td className="px-1 py-1 align-top">
-                        <input className={`${cellInput} w-[110px]`} value={r.discrepancies} onChange={(e) => updateRow(r.id, { discrepancies: e.target.value })} />
+                      <td className="px-1.5 py-2 align-top">
+                        <textarea
+                          rows={autoRows(r.discrepancies, 16)}
+                          className={cellArea}
+                          value={r.discrepancies}
+                          onChange={(e) => updateRow(r.id, { discrepancies: e.target.value })}
+                        />
                       </td>
-                      <td className="px-1 py-1 align-top">
-                        <select className={`${cellInput} w-[52px]`} value={r.tablet} onChange={(e) => updateRow(r.id, { tablet: e.target.value })}>
+                      <td className="px-1.5 py-2 align-top">
+                        <select className={cellInput} value={r.tablet} onChange={(e) => updateRow(r.id, { tablet: e.target.value })}>
                           {TABLET_VALUES.map((t) => (
                             <option key={t} value={t}>
                               {t}
@@ -534,7 +651,7 @@ export default function SearchLogAutofill() {
                           ))}
                         </select>
                       </td>
-                      <td className="px-2 py-1 align-top">
+                      <td className="px-2 py-2 align-top">
                         {flags.length === 0 && !isDup ? (
                           <span className="flex items-center gap-1 text-[10px] text-emerald-400/90">
                             <CheckCircle2 className="h-3 w-3" /> OK
@@ -546,8 +663,8 @@ export default function SearchLogAutofill() {
                               .join("; ")}
                             className="flex items-center gap-1 text-[10px] text-amber-300/90"
                           >
-                            <AlertTriangle className="h-3 w-3" />
-                            {(flags.length + (isDup ? 1 : 0))} warning
+                            <AlertTriangle className="h-3 w-3 shrink-0" />
+                            {flags.length + (isDup ? 1 : 0)} warning
                             {flags.length + (isDup ? 1 : 0) > 1 ? "s" : ""}
                           </span>
                         )}
@@ -567,7 +684,7 @@ export default function SearchLogAutofill() {
       {/* Step 4 — Generate */}
       {rows.length > 0 && (
         <section className={`${hudPanel} mb-2 p-5`}>
-          <SectionTitle step="4" title="Generate &amp; Download" />
+          <SectionTitle step="4" title="Generate Search Log" />
           <p className="mb-4 text-[11px] leading-relaxed text-blue-200/75">
             Review all entries before official use. This tool only fills the original form with
             uploaded or manually entered information. It does not verify that searches were
@@ -579,6 +696,14 @@ export default function SearchLogAutofill() {
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
               {flaggedCount} included {flaggedCount === 1 ? "row has" : "rows have"} validation
               warnings. Fix, exclude, or confirm before generating.
+            </p>
+          )}
+
+          {staffIncomplete && (
+            <p className="mb-3 flex items-center gap-2 rounded-md border border-amber-400/50 bg-[rgba(28,18,2,0.6)] px-3 py-2 text-[11px] text-amber-200/90">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              Officer / staff information is incomplete ({staffFlags[0].message}). You can still
+              generate, but the officer column may be blank or partial.
             </p>
           )}
 
@@ -598,7 +723,7 @@ export default function SearchLogAutofill() {
           <button
             onClick={handleGenerate}
             disabled={!canGenerate || generating}
-            className={btnBlue}
+            className={`${btnBlue} w-full py-3 text-base sm:w-auto sm:px-8`}
             style={canGenerate && !generating ? { boxShadow: "0 0 20px rgba(37,99,235,0.35)" } : undefined}
           >
             <Download className="h-4 w-4" />
@@ -620,6 +745,27 @@ export default function SearchLogAutofill() {
             </p>
           )}
         </section>
+      )}
+
+      {/* Sticky action bar — appears once rows are generated */}
+      {rows.length > 0 && (
+        <div className="sticky bottom-3 z-20 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-400/45 bg-[rgba(4,11,34,0.94)] px-4 py-3 backdrop-blur-lg"
+          style={{ boxShadow: "0 8px 28px rgba(2,6,18,0.6)" }}>
+          <span className="text-[12px] text-blue-100/90">
+            <span className="font-bold text-white">{summary.included}</span> entries selected •{" "}
+            <span className="font-bold text-white">{summary.pages}</span>{" "}
+            {summary.pages === 1 ? "page" : "pages"} will be generated
+          </span>
+          <button
+            onClick={handleGenerate}
+            disabled={!canGenerate || generating}
+            className={btnBlue}
+            title={!confirmed ? "Confirm your review below to enable download" : undefined}
+          >
+            <Download className="h-4 w-4" />
+            {generating ? "Generating…" : "Generate & Download"}
+          </button>
+        </div>
       )}
     </PageShell>
   );
@@ -658,28 +804,50 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <span className={hudLabel}>{label}</span>
+    <div className="flex flex-col">
+      <div className="flex min-h-[34px] items-end justify-between gap-2">
+        <label className={`${hudLabel} mb-0`}>{label}</label>
         {action && (
-          <button
-            onClick={action.onClick}
-            className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.1em] text-blue-300/70 hover:text-blue-100"
-          >
-            {action.label} →
+          <button onClick={action.onClick} className={btnGhost}>
+            {action.label}
           </button>
         )}
       </div>
-      {children}
+      <div className="mt-1.5">{children}</div>
     </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <span className="flex flex-col">
-      <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-blue-300/55">{label}</span>
-      <span className="text-sm font-semibold text-blue-100">{value}</span>
+    <span className="flex items-baseline gap-1.5 text-xs">
+      <span className="text-blue-300/55">{label}:</span>
+      <span className="font-semibold text-blue-100">{value}</span>
+    </span>
+  );
+}
+
+function SummaryChip({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string | number;
+  tone?: "emerald" | "amber";
+}) {
+  const toneClass =
+    tone === "emerald"
+      ? "border-emerald-400/40 text-emerald-200"
+      : tone === "amber"
+        ? "border-amber-400/45 text-amber-200"
+        : "border-blue-400/30 text-blue-100";
+  return (
+    <span
+      className={`inline-flex items-baseline gap-1.5 rounded-md border bg-[rgba(2,8,24,0.6)] px-3 py-1.5 ${toneClass}`}
+    >
+      <span className="text-[10px] uppercase tracking-[0.1em] opacity-70">{label}</span>
+      <span className="text-sm font-bold">{value}</span>
     </span>
   );
 }

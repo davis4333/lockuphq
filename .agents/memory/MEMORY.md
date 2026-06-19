@@ -1,1 +1,1 @@
-- [Search Log DOCX form-fill](search-log-docx-fill.md) — fill original legacy FORMTEXT Word forms via PizZip+regex; clone page per N rows, strip bookmarks, fail loudly on template mismatch.
+- [Playwright file uploads](playwright-file-upload.md) — testing subagent can't read disk; build a File in-page and assign to input.files via DataTransfer, then dispatch a change event.

@@ -69,42 +69,8 @@ function splitLine(line: string, delimiter: string): string[] {
   return out;
 }
 
-function detectDelimiter(sampleLine: string): string {
-  const candidates = ["|", "\t", ",", ";"];
-  let best = ",";
-  let bestCount = -1;
-  for (const c of candidates) {
-    const count = sampleLine.split(c).length - 1;
-    if (count > bestCount) {
-      bestCount = count;
-      best = c;
-    }
-  }
-  return best;
-}
-
-/** Turn a CSV/TSV string into a 2D grid of cells, honoring a leading SEP= line. */
-function csvToGrid(text: string): { grid: string[][]; delimiter: string } {
-  // Strip a UTF-8 BOM if present.
-  let body = text.replace(/^\uFEFF/, "");
-  const rawLines = body.split(/\r\n|\r|\n/);
-
-  let delimiter = "";
-  let startIdx = 0;
-
-  const first = (rawLines[0] ?? "").trim();
-  const sepMatch = first.match(/^sep\s*=\s*(.)/i);
-  if (sepMatch) {
-    delimiter = sepMatch[1];
-    if (delimiter === "\\" && first.toLowerCase().includes("\\t")) delimiter = "\t";
-    startIdx = 1;
-  }
-
-  if (!delimiter) {
-    const probe = rawLines.find((l) => l.trim().length > 0) ?? "";
-    delimiter = detectDelimiter(probe);
-  }
-
+/** Split raw lines into a grid for a fixed delimiter (blank lines kept as []). */
+function buildGrid(rawLines: string[], startIdx: number, delimiter: string): string[][] {
   const grid: string[][] = [];
   for (let i = startIdx; i < rawLines.length; i++) {
     const line = rawLines[i];
@@ -114,7 +80,65 @@ function csvToGrid(text: string): { grid: string[][]; delimiter: string } {
     }
     grid.push(splitLine(line, delimiter));
   }
-  return { grid, delimiter };
+  return grid;
+}
+
+/**
+ * Score a grid by how many of the three required headers (BED-ID, DOCNUM,
+ * INMATE-NAME) appear together in a single row. Used to pick the delimiter that
+ * best reveals the Bed Book header row.
+ */
+function bestHeaderScore(grid: string[][]): number {
+  let best = 0;
+  for (const row of grid) {
+    if (!row || row.length === 0) continue;
+    let bedId = false;
+    let docnum = false;
+    let inmate = false;
+    for (const cell of row) {
+      if (!bedId && matchColumn(cell, HEADER_ALIASES.bedId)) bedId = true;
+      else if (!docnum && matchColumn(cell, HEADER_ALIASES.docnum)) docnum = true;
+      else if (!inmate && matchColumn(cell, HEADER_ALIASES.inmateName)) inmate = true;
+    }
+    const score = (bedId ? 1 : 0) + (docnum ? 1 : 0) + (inmate ? 1 : 0);
+    if (score > best) best = score;
+    if (best === 3) return 3;
+  }
+  return best;
+}
+
+/**
+ * Turn a CSV/TSV string into a 2D grid of cells.
+ *
+ * Delimiter detection is internal (no UI control): a leading `SEP=` line always
+ * wins; otherwise we try comma, pipe, tab, and semicolon and keep whichever one
+ * best reveals the required Bed Book headers, breaking ties by column count.
+ */
+function csvToGrid(text: string): { grid: string[][]; delimiter: string } {
+  // Strip a UTF-8 BOM if present.
+  const body = text.replace(/^\uFEFF/, "");
+  const rawLines = body.split(/\r\n|\r|\n/);
+
+  const first = (rawLines[0] ?? "").trim();
+  const sepMatch = first.match(/^sep\s*=\s*(.)/i);
+  if (sepMatch) {
+    let delimiter = sepMatch[1];
+    if (delimiter === "\\" && first.toLowerCase().includes("\\t")) delimiter = "\t";
+    return { grid: buildGrid(rawLines, 1, delimiter), delimiter };
+  }
+
+  const candidates = [",", "|", "\t", ";"];
+  let best: { grid: string[][]; delimiter: string; score: number; cols: number } | null = null;
+  for (const c of candidates) {
+    const grid = buildGrid(rawLines, 0, c);
+    const score = bestHeaderScore(grid);
+    const cols = grid.reduce((max, row) => Math.max(max, row.length), 0);
+    if (!best || score > best.score || (score === best.score && cols > best.cols)) {
+      best = { grid, delimiter: c, score, cols };
+    }
+  }
+  // `best` is always set (candidates is non-empty); fall back to comma defensively.
+  return best ? { grid: best.grid, delimiter: best.delimiter } : { grid: buildGrid(rawLines, 0, ","), delimiter: "," };
 }
 
 interface HeaderLocation {

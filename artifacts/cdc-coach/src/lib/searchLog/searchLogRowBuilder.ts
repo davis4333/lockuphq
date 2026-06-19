@@ -4,6 +4,7 @@ import type {
   GroupedEntry,
   ReviewRow,
   SetupFields,
+  StaffMember,
   TabletMode,
   TabletValue,
   ValidationFlag,
@@ -68,11 +69,56 @@ export function formatTimeWithOffset(startTime: string, offsetMinutes: number): 
   return `${hour12}:${minute.toString().padStart(2, "0")} ${suffix}`;
 }
 
-export function buildOfficer(rank: string, name: string): string {
-  const r = (rank ?? "").trim();
-  const n = (name ?? "").trim();
-  if (!r && !n) return "";
+/** Format one staff member as "RANK NAME" (e.g. "C/O Davis"); "" if no name. */
+export function formatStaffMember(member: StaffMember): string {
+  const r = (member.rank ?? "").trim();
+  const n = (member.name ?? "").trim();
+  if (!n) return "";
   return [r, n].filter(Boolean).join(" ");
+}
+
+/** Combine staff members into the officer column: "C/O Davis, Sgt. Rivera". */
+export function combineStaff(staff: StaffMember[]): string {
+  return staff.map(formatStaffMember).filter(Boolean).join(", ");
+}
+
+let staffSeq = 0;
+/** Create a blank staff member with a stable id and a default rank. */
+export function createStaffMember(): StaffMember {
+  staffSeq += 1;
+  return { id: `staff-${staffSeq}`, name: "", rank: "C/O" };
+}
+
+/**
+ * Validate the staff list for the officer column. Flags staff rows that have a
+ * rank but no name, and reports when no usable officer string exists at all.
+ */
+export function validateStaff(staff: StaffMember[]): ValidationFlag[] {
+  const flags: ValidationFlag[] = [];
+  staff.forEach((member, idx) => {
+    const name = (member.name ?? "").trim();
+    const rank = (member.rank ?? "").trim();
+    if (!name && !rank) return; // empty row — ignored
+    if (!name) {
+      flags.push({ field: `staff-${idx}`, message: `Staff #${idx + 1} is missing a name` });
+    } else if (!rank) {
+      flags.push({ field: `staff-${idx}`, message: `Staff #${idx + 1} is missing a rank` });
+    }
+  });
+  if (combineStaff(staff).trim() === "") {
+    flags.push({ field: "staff", message: "At least one staff member name is required" });
+  }
+  return flags;
+}
+
+/**
+ * Normalize an Area/Bunk value to a timing cell key by dropping a single
+ * trailing bunk letter (L = lower, U = upper). "B1-106L" and "B1-106U" both map
+ * to "B1-106" so the two bunks in a cell share one search time. The original
+ * Area/Bunk value is always kept for display/export — this key is internal only.
+ */
+export function normalizeTimingCellKey(value: string): string {
+  return (value ?? "").trim().replace(/[LU]$/i, "");
 }
 
 let rowSeq = 0;
@@ -87,14 +133,14 @@ export function buildReviewRows(
   setup: SetupFields,
 ): ReviewRow[] {
   const date = formatDateMMDDYY(setup.dateOfSearch);
-  const officer = buildOfficer(setup.staffRank, setup.staffName);
+  const officer = combineStaff(setup.staff);
   const tablets = tabletValuesForMode(setup.tabletMode, groups.length);
-  return groups.map((entry, idx) => ({
+  const rows: ReviewRow[] = groups.map((entry, idx) => ({
     id: nextRowId(),
     include: true,
     bedId: entry.bedId,
     date,
-    time: formatTimeWithOffset(setup.startTime, idx),
+    time: "",
     area: entry.bedId,
     type: setup.searchType,
     inmate: formatInmateCell(entry),
@@ -102,15 +148,28 @@ export function buildReviewRows(
     discrepancies: setup.discrepancies,
     tablet: tablets[idx],
   }));
+  // Times are assigned per unique cell (upper/lower bunks share one time).
+  return resequenceTimes(rows, setup.startTime);
 }
 
-/** Re-sequence times for the included rows in display order, leaving excluded rows untouched. */
+/**
+ * Re-sequence times for the included rows in display order, leaving excluded
+ * rows untouched. Time advances by one minute per unique cell — both bunks in a
+ * cell (e.g. "B1-106L" and "B1-106U") receive the same time, since their Area
+ * normalizes to the same timing key.
+ */
 export function resequenceTimes(rows: ReviewRow[], startTime: string): ReviewRow[] {
+  const timeByCell = new Map<string, string>();
   let offset = 0;
   return rows.map((row) => {
     if (!row.include) return row;
-    const time = formatTimeWithOffset(startTime, offset);
-    offset += 1;
+    const key = normalizeTimingCellKey(row.area || row.bedId);
+    let time = timeByCell.get(key);
+    if (time === undefined) {
+      time = formatTimeWithOffset(startTime, offset);
+      timeByCell.set(key, time);
+      offset += 1;
+    }
     return { ...row, time };
   });
 }

@@ -29,7 +29,10 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Search Log timing is per *physical cell*, not per row: `normalizeTimingCellKey` strips a trailing `L`/`U` so a cell's upper & lower bunks share one search time. `resequenceTimes` advances +1 min per unique *included* cell and leaves excluded rows untouched.
+- The officer column is a multi-staff list (`SetupFields.staff: StaffMember[]`) combined as `"RANK NAME, RANK NAME"` via `combineStaff`. "Apply Officer" rewrites *included* rows only.
+- Bed Book delimiter detection is internal and header-aware (no UI control): a leading `SEP=` wins, otherwise comma/pipe/tab/semicolon are scored by which best reveals the BED-ID/DOCNUM/INMATE-NAME header row (tie-break by column count).
+- `PageShell` honors its `maxWidthClass` prop; the Search Log review uses `max-w-7xl` with a `table-fixed` + `colgroup` layout (sticky `thead`, vertical scroll) so the table never causes horizontal page scroll.
 
 ## Product
 
@@ -41,7 +44,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Two different "cell" counts exist and must stay labeled distinctly: **Entries** = grouped BED-IDs (one review row per bunk) vs **Unique cells** = physical cells after L/U merge (`normalizeTimingCellKey`). They differ (e.g. 6 bunks → 3 cells); never label both "cells" or the UI looks self-contradictory.
+- Never recreate or modify the DOCX filler (`searchLogDocxFiller.ts`), the `public/*-template.docx` government forms, or the continuation-page logic — only the data boxes get filled.
 
 ## Pointers
 

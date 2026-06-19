@@ -36,13 +36,18 @@ export interface GroupedEntry {
   inmates: GroupedInmate[];
 }
 
+export interface StaffMember {
+  id: string;
+  name: string;
+  rank: StaffRank;
+}
+
 export interface SetupFields {
   location: string;
   dateOfSearch: string; // yyyy-mm-dd (input value)
   startTime: string; // HH:mm (24h, input value)
   searchType: SearchType;
-  staffName: string;
-  staffRank: StaffRank;
+  staff: StaffMember[];
   discrepancies: string;
   tabletMode: TabletMode;
 }

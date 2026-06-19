@@ -1,0 +1,428 @@
+We need to polish and fix the Search Log Autofill feature in Confinement Coach Lite.
+
+This is a cleanup/final polish pass.
+
+Important:
+Do not rebuild the feature from scratch.
+Do not change the original DOCX filling system unless a listed fix directly requires it.
+Do not recreate the Search Log document.
+Do not change the Bed Book parsing logic unless a listed fix directly requires it.
+Do not break the working Generate & Download flow.
+
+The goal is to make the Search Log Autofill page look professional, clean, aligned, and easier to use while fixing the remaining workflow issues.
+
+Fix 1 — Flip the workflow order
+
+Current issue:
+The page currently starts with Upload Bed Book, then Search Log Setup.
+
+Required change:
+The user should fill out the Search Log setup information first, then upload the Bed Book.
+
+New section order:
+
+1. Search Log Setup
+2. Upload Bed Book
+3. Review Generated Rows
+4. Generate & Download
+
+Behavior:
+
+* The setup section appears first.
+* The upload section appears second.
+* The user enters location, date, start time, search type, staff information, and discrepancy/contraband information before uploading the Bed Book.
+* After the Bed Book is uploaded and parsed, the review rows should be generated using the setup information.
+* If setup fields are changed after upload, the existing Apply buttons should still update the generated rows.
+
+Update the numbered section labels to match the new order.
+
+Fix 2 — Add multiple staff members
+
+Current issue:
+The setup screen only supports one Staff Name and one Staff Rank.
+
+Required change:
+Add an “Add Staff” button near the Staff Name / Staff Rank area.
+
+UI behavior:
+
+* The first staff entry should be visible by default.
+* Each staff entry should have:
+
+  * Staff Name input
+  * Staff Rank dropdown
+  * Remove button for extra staff rows
+* The first staff row may remain required.
+* Allow at least 4 staff members.
+* Staff names should not be saved permanently.
+* Keep the existing visual theme and styling.
+
+Staff Rank dropdown options:
+
+* C/O
+* Sgt.
+* Lt.
+* Captain
+
+Formatting rule:
+When filling the Search Log officer column, combine all entered staff members into one string.
+
+Format each staff member as:
+[RANK] [NAME]
+
+Examples:
+One staff member:
+C/O Davis
+
+Two staff members:
+C/O Davis, Sgt. Rivera
+
+Three staff members:
+C/O Davis, Sgt. Rivera, Lt. Johnson
+
+Use comma separation between staff members.
+
+Apply behavior:
+
+* The existing Apply Officer button should apply the combined staff string to every included review row.
+* The review table should still allow manual row-by-row officer editing.
+* If staff members are changed and Apply Officer is clicked again, update all selected/included rows with the new combined staff string.
+
+Validation:
+
+* If no staff name is entered, flag officer/staff information as missing.
+* If a staff name is entered but rank is missing, flag that staff entry.
+* Do not block the whole UI, but warn before generation if officer/staff information is incomplete.
+
+Fix 3 — Remove the visible Delimiter field
+
+Current issue:
+There is a visible field labeled “Delimiter.” The user should not have to understand or type this.
+
+Required change:
+Remove the Delimiter field from the Search Log Autofill page entirely.
+
+Delimiter detection should be handled internally by the Bed Book parser.
+
+Parser behavior:
+
+* If the uploaded CSV starts with a line like SEP=|, automatically use | as the delimiter.
+* If the uploaded CSV does not contain a SEP= line, auto-detect common delimiters:
+
+  * comma
+  * pipe
+  * tab
+  * semicolon
+* Pick the delimiter that produces the best match for the required Bed Book headers:
+
+  * BED-ID
+  * DOCNUM
+  * INMATE-NAME
+
+Do not show delimiter controls in the UI.
+
+Fix 4 — Correct the time-generation logic for upper/lower bunks
+
+Current issue:
+The app currently increments time by +1 minute for every row.
+
+That is wrong when the same cell has upper and lower bunk entries.
+
+Example of wrong behavior:
+B1-106L = 6:44 P
+B1-106U = 6:45 P
+
+Correct behavior:
+B1-106L and B1-106U are the same cell.
+L means lower bunk.
+U means upper bunk.
+
+Both bunks in the same cell should receive the same time.
+
+Correct example:
+B1-106L = 6:44 P
+B1-106U = 6:44 P
+B1-107L = 6:45 P
+B1-107U = 6:45 P
+B1-108L = 6:46 P
+B1-108U = 6:46 P
+
+Required change:
+Update the auto-time logic so time increments by unique cell number, not by row.
+
+Create a normalized cell key for time assignment.
+
+Normalization rule:
+
+* If Area/Bunk ends in L, remove the final L for the timing key.
+* If Area/Bunk ends in U, remove the final U for the timing key.
+* Keep the original Area/Bunk value displayed and exported exactly as-is.
+* Only use the normalized key internally for time grouping.
+
+Examples:
+B1-106L → timing key B1-106
+B1-106U → timing key B1-106
+B1-107L → timing key B1-107
+B1-107U → timing key B1-107
+B3-221L → timing key B3-221
+B3-221U → timing key B3-221
+
+Time assignment behavior:
+
+* Start with the user-selected Start Time.
+* Assign that time to the first unique normalized cell.
+* Any rows with the same normalized cell key get the same time.
+* When the normalized cell key changes, increase the time by 1 minute.
+* Continue through the full roster this way.
+
+Important:
+
+* Do not combine L and U rows into one row.
+* Keep both rows visible and exported.
+* Only make them share the same time.
+
+If a cell only has one bunk listed, it still gets its assigned time and the next unique cell gets +1 minute.
+
+Review table behavior:
+
+* Auto-filled times should follow this cell-based timing logic.
+* The user must still be able to manually edit any time after auto-fill.
+* If the user clicks Apply Start Time again, regenerate the time sequence using this corrected logic.
+
+DOCX generation:
+
+* Do not change the DOCX filling structure.
+* Do not recreate the document.
+* Do not change continuation-page logic.
+* Only change the time assignment values before the rows are written into the original Search Log DOCX.
+
+Acceptance criteria:
+
+* B1-106L and B1-106U have the same time.
+* B1-107L and B1-107U have the same time.
+* Time only increases when moving to the next cell number.
+* Original bunk labels with L and U remain visible in Area/Bunk Searched.
+* Final generated DOCX uses the corrected times.
+
+Fix 5 — Align the Search Log Setup fields professionally
+
+Current issue:
+Some setup fields are vertically misaligned. Multi-line labels push some inputs lower than others, making the screen look unprofessional.
+
+Required change:
+Make the Search Log Setup section a clean, uniform grid.
+
+Fields that need consistent alignment:
+
+* Location
+* Date of Search
+* Start Time
+* Type of Search
+* Staff Name / Staff Members
+* Staff Rank
+* Discrepancies / Contraband
+
+Layout requirements:
+
+* Labels should align evenly at the top of each field group.
+* Input/select boxes should begin at the same vertical height within each row.
+* All input/select boxes should have the same height.
+* Field groups should use consistent spacing/gap.
+* Apply links/buttons should align consistently with their related labels.
+* Multi-line labels should not push the input lower than neighboring fields.
+* The section should look professional, uniform, and polished.
+
+Recommended implementation:
+Use a CSS grid for setup fields.
+
+Each field group should be a flex column.
+Reserve a consistent label/header area height for every field group.
+
+Example:
+
+* label/header row has consistent min-height
+* input/select box has consistent height
+* spacing between label and input is consistent
+
+This is a UI polish fix only.
+
+Do not change:
+
+* Bed Book parser
+* DOCX filler
+* Search Log template
+* Continuation-page logic
+
+Fix 6 — Remove horizontal scrolling from the review table
+
+Current issue:
+The review table is too wide and creates a horizontal scrollbar. The right side gets cut off, making the tool feel unfinished.
+
+Required change:
+Make the review table fit inside the visible page/card width without sideways scrolling.
+
+No sideways scrollbar should appear.
+
+Layout requirements:
+
+* The full review row should be visible.
+* Right-side columns should not be cut off.
+* The table should remain readable and editable.
+* The table may scroll vertically, but not horizontally.
+
+Recommended implementation:
+Use a responsive table layout instead of a fixed-width table.
+
+Possible fixes:
+
+1. Set the table/container to width: 100%.
+2. Remove min-width values that force the table wider than the card.
+3. Use table-layout: fixed where appropriate.
+4. Use smaller column widths for short fields:
+
+   * Include checkbox
+   * Date
+   * Time
+   * Area/Bunk
+   * Type
+5. Allow longer fields to shrink/wrap:
+
+   * Inmate Name/FDC Number
+   * Officer(s)
+   * Discrepancies/Contraband Found
+6. Use text wrapping instead of horizontal overflow.
+7. Use compact inputs/selects inside table cells.
+8. Make textareas auto-size or wrap without expanding the whole table sideways.
+
+Recommended column sizing:
+
+* Include checkbox: very small fixed width
+* Date: small fixed width
+* Time: small fixed width
+* Area/Bunk: small fixed width
+* Type: small fixed width
+* Inmate Name/FDC Number: largest flexible column
+* Officer(s): medium width
+* Discrepancies/Contraband Found: medium width
+
+The Inmate Name/FDC Number column should get the most room.
+
+If the spreadsheet-style table still cannot fit cleanly on smaller screens, use a responsive stacked/card style for smaller widths. On desktop, it should fit across the card without sideways scrolling.
+
+Fix 7 — Make the review area wider and more professional
+
+Current issue:
+The review section looks cramped and narrow. The rows are tiny and the whole section feels like a raw developer table.
+
+Required change:
+Polish the review screen so it looks like a professional corrections workflow tool.
+
+Visual improvements:
+
+* Make the review card/area wider.
+* Let the review section use more of the available desktop page width.
+* The review section can be wider than the setup cards if needed.
+* Increase row height slightly.
+* Add consistent padding inside cells.
+* Keep text readable.
+* Avoid tiny squeezed inputs.
+* Inputs/selects should look uniform and aligned.
+* Long inmate names should wrap or fit cleanly without breaking the table.
+
+Add sticky table headers:
+
+* The review table may scroll vertically.
+* The table header should stay visible while scrolling.
+* Header labels should remain readable and aligned with their columns.
+
+Fix 8 — Add a roster summary above the review table
+
+Add a clean summary strip above the review table.
+
+The summary should show:
+
+* Total entries
+* Included entries
+* Excluded entries
+* Unique cells
+* Search Log pages that will be generated
+
+Example:
+Total Entries: 214
+Included: 214
+Excluded: 0
+Unique Cells: 214
+Pages: 12
+
+This summary should update when rows are included/excluded.
+
+Fix 9 — Clean up the Generate & Download area
+
+Current issue:
+The Generate & Download section should look more like a final action panel.
+
+Required change:
+Make the Generate & Download area cleaner and more official-looking.
+
+It should include:
+
+* Clear title: Generate Search Log
+* Short review warning
+* Confirmation checkbox
+* Large primary button: Generate & Download Search Log
+
+Make the Generate & Download button stand out as the final action.
+
+Optional:
+Add a sticky bottom action bar that appears after rows are generated.
+
+Sticky action bar example:
+214 entries selected • 12 pages will be generated    [Generate & Download]
+
+If added, it should not cover content or feel cluttered.
+
+Fix 10 — Remove leftover development/testing clutter
+
+If there are any tiny unclear testing/status buttons or labels near the bottom of the page, clean them up.
+
+Anything not needed for the normal user workflow should be removed from the main page or moved behind a developer-only/debug area.
+
+The page should feel finished and production-ready.
+
+Fix 11 — Preserve document generation exactly
+
+These UI changes must not break the working Search Log DOCX output.
+
+Keep:
+
+* Original DOCX template filling
+* Continuation pages
+* Existing row export behavior
+* Location/date/time/type/officer/discrepancy data writing
+* Final DOCX download
+
+Do not:
+
+* Recreate the document
+* Generate a fake Search Log
+* Change the official table layout
+* Break continuation pages
+* Break Bed Book parsing
+
+Final acceptance criteria:
+
+* Search Log Setup appears before Upload Bed Book.
+* Upload Bed Book appears second.
+* Delimiter field is gone.
+* Multiple staff members can be added and combined into the officer field.
+* Setup fields are aligned and uniform.
+* Upper/lower bunks in the same cell share the same generated time.
+* Time only increases when moving to the next cell number.
+* Review table has no horizontal scrollbar.
+* Full row is visible without sideways scrolling.
+* Review table is wider, cleaner, and easier to read.
+* Sticky headers work in the review table.
+* Roster summary appears above the review table.
+* Generate & Download section looks polished.
+* Existing DOCX generation still works.
+* The final downloaded file still fills the exact original Search Log DOCX.

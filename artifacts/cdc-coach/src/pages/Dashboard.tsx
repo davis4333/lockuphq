@@ -182,7 +182,7 @@ export default function Dashboard() {
 
             <div className={`${panel} flex items-center gap-2.5 px-4 py-2 border-emerald-500/40`}
               style={{ boxShadow: "0 0 16px rgba(16,185,129,0.18)" }}>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 cdc-status-dot shrink-0"
                 style={{ boxShadow: "0 0 10px rgba(52,211,153,1)" }} />
               <div className="leading-tight">
                 <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-emerald-400/70">System Status</p>
@@ -333,7 +333,7 @@ export default function Dashboard() {
                         style={{ textShadow: value === "Active" || value === "Enabled" ? "0 0 9px rgba(147,197,253,0.6)" : "0 0 9px rgba(52,211,153,0.65)" }}>
                         {value}
                       </span>
-                      <span className={`w-2 h-2 rounded-full ${value === "Active" || value === "Enabled" ? "bg-blue-300" : "bg-emerald-400"}`}
+                      <span className={`w-2 h-2 rounded-full ${value === "Active" || value === "Enabled" ? "bg-blue-300" : "bg-emerald-400 cdc-status-dot"}`}
                         style={{ boxShadow: "0 0 10px currentColor" }} />
                     </span>
                   </div>

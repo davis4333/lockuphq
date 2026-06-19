@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Lock, AlertTriangle, ChevronRight } from "lucide-react";
 import fdocSeal from "@assets/ChatGPT_Image_Jun_7,_2026,_03_31_51_AM_1780817532915.png";
-import searchLogIcon from "@assets/generated_images/icon_search_log.png";
+import searchLogIcon from "@assets/search_log_icon_(2)_1781869060675.png";
 import dc6229Icon from "@assets/DC6-229_icon_1781868024454.png";
 import lockUpSlipIcon from "@assets/Lock_Up_Slip_Icon_1781868142271.png";
 import stripIcon from "@assets/strip_icon_1781868322092.png";

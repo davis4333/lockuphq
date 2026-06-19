@@ -260,9 +260,11 @@
   70%, 100% { opacity: 0;    transform: scale(4.5); }
 }
 
-/* Status indicator lights — slow, strong glow + dim pulse (staggered per dot via animation-delay) */
-.cdc-status-dot { animation: cdc-status-dot 2.2s ease-in-out infinite; will-change: opacity, transform, box-shadow; }
+/* Status indicator lights — green LED breathing from low power to high power.
+   Animates the dot's own fill + a big glow swing (most visible at any zoom).
+   Staggered per dot via inline animation-delay so they're out of phase. */
+.cdc-status-dot { animation: cdc-status-dot 2.4s ease-in-out infinite; will-change: background-color, box-shadow; }
 @keyframes cdc-status-dot {
-  0%, 100% { opacity: 1;    transform: scale(1.2);  box-shadow: 0 0 14px 3px rgba(52,211,153,0.95); }
-  50%      { opacity: 0.28; transform: scale(0.65); box-shadow: 0 0 3px 0 rgba(52,211,153,0.15); }
+  0%, 100% { background-color: #064e3b; box-shadow: 0 0 1px 0 rgba(16,185,129,0.25); }   /* low power */
+  50%      { background-color: #6ee7b7; box-shadow: 0 0 16px 5px rgba(52,211,153,0.95); } /* high power */
 }

@@ -159,8 +159,8 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 mt-1.5 flex-wrap pl-0 lg:pl-[11px]">
               <span className="text-[10px] text-blue-300/70 uppercase tracking-[0.2em]">OCI • Training Sandbox •</span>
               <span className="flex items-center gap-1 text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"
-                  style={{ boxShadow: "0 0 8px rgba(52,211,153,1)" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 cdc-status-dot inline-block"
+                  style={{ boxShadow: "0 0 8px rgba(52,211,153,1)", animationDelay: "-0.8s" }} />
                 Online
               </span>
               <span className="hidden sm:block flex-1 h-px bg-gradient-to-r from-blue-500/40 to-transparent ml-2" />

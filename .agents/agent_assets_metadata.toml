@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "WsBKxfK2CqRRK0ULYtAFM"
@@ -42,3 +41,15 @@ id = "T4A6ET3Wg7EW3liKXO_-1"
 uri = "file://attached_assets/generated_images/icon_search_log.png"
 type = "image"
 title = "search log icon"
+
+[[outputs]]
+id = "y6_AUDsW9HTq4NX8OxaMS"
+uri = "file://exports/DC6-221 Cell Inspection - Sample.pdf"
+type = "pdf"
+title = "DC6-221 Cell Inspection (filled sample)"
+
+[[outputs]]
+id = "hPwed6xbSEt1ROoR2ISC4"
+uri = "file://exports/Confinement Rules - Sample.pdf"
+type = "pdf"
+title = "Confinement Rules (filled sample)"

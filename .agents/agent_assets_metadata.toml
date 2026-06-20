@@ -53,3 +53,9 @@ id = "hPwed6xbSEt1ROoR2ISC4"
 uri = "file://exports/Confinement Rules - Sample.pdf"
 type = "pdf"
 title = "Confinement Rules (no wrapping)"
+
+[[outputs]]
+id = "hFo1Uh_1iOeeRvYvI2kLx"
+uri = "file://exports/DC6-221 Cell Inspection - Sample.docx"
+type = "word_document"
+title = "DC6-221 Cell Inspection (Sample)"

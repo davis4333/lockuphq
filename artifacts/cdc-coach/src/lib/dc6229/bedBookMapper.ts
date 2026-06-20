@@ -11,10 +11,10 @@ import type { Dc6229Record } from "./types";
 
 export class Dc6229ParseError extends Error {}
 
-// Status lives in column H on the standard Bed Book export. We prefer a labeled
-// header if one exists, otherwise fall back to the fixed column position (H = 7).
+// Status lives in column I on the standard Bed Book export. We prefer a labeled
+// header if one exists, otherwise fall back to the fixed column position (I = 8).
 const STATUS_ALIASES = ["status", "stat", "housing status", "sh status", "status code"];
-const STATUS_FALLBACK_COL = 7;
+const STATUS_FALLBACK_COL = 8;
 
 function norm(value: string): string {
   return (value ?? "").toString().trim().toLowerCase();

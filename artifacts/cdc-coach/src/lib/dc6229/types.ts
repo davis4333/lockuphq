@@ -27,7 +27,7 @@ export interface Dc6229Record {
   fdc: string;
   /** Whether the FDC number matches a valid pattern (letter+5 or 6 digits). */
   fdcValid: boolean;
-  /** Column H — housing status (free text). */
+  /** Column I — housing status (free text). */
   status: string;
 }
 

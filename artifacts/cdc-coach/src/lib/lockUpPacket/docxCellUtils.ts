@@ -207,9 +207,14 @@ export function markWordInCell(cellXml: string, word: string): string {
 
   // `before`/`word`/`after` are slices of already-escaped <w:t> content, so they
   // are re-emitted as-is (NOT re-escaped, which would double-escape entities).
+  // Mark with underline ONLY (no bold). Bold widens the glyphs, which can push a
+  // tight condition/discrepancy cell (e.g. "GOOD/ SAT/ POOR") to wrap an extra
+  // line and grow every row's height — that cascade is exactly the page reflow we
+  // must avoid. Underline adds zero width and zero height, so wrapping (and thus
+  // pagination) stays byte-for-byte identical to the blank template.
   const makeRun = (txt: string, mark: boolean): string => {
     if (txt === "") return "";
-    const inner = mark ? `<w:b/>${rprInner}<w:u w:val="single"/>` : rprInner;
+    const inner = mark ? `${rprInner}<w:u w:val="single"/>` : rprInner;
     const rpr = inner ? `<w:rPr>${inner}</w:rPr>` : "";
     return `<w:r>${rpr}<w:t xml:space="preserve">${txt}</w:t></w:r>`;
   };

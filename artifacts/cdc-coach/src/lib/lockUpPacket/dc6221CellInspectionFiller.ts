@@ -24,6 +24,7 @@ import {
   injectFittedRunIntoEmptyParagraph,
   appendFittedRunAfterAnchor,
   markWordInCell,
+  markWordInCellFitOneLine,
 } from "./docxCellUtils";
 
 export class Dc6221DocxError extends Error {
@@ -188,7 +189,7 @@ export async function fillDc6221Docx(
         `DC6-221 item row ${i + 1} is "${itemName}", expected "${ITEM_ORDER[i]}". Template may have changed.`,
       );
     }
-    cells[1] = markWordInCell(cells[1], "SAT");
+    cells[1] = markWordInCellFitOneLine(cells[1], "SAT");
     cells[2] = markWordInCell(cells[2], "N/A");
     newTable = newTable.replace(rowXml, rebuildRow(rowXml, cells));
   }

@@ -4,8 +4,10 @@
  * These operate on the raw `word/document.xml` string of an ORIGINAL government
  * form (never a recreated one). They only ever:
  *   - inject a single run into an otherwise-empty cell paragraph, or
- *   - underline+bold an existing word already printed in a cell ("SAT", "N/A"),
- *   - append user text immediately after an existing printed run.
+ *   - strike through an existing word already printed in a cell ("SAT", "N/A"),
+ *   - append user text immediately after an existing printed run, or
+ *   - (DC6-221 condition box only, user-authorized) shrink one cell's printed
+ *     text to a single fitted font size so it stays on one physical line.
  * They never alter cell widths, borders, row heights, page size, or signatures.
  *
  * All cell/row splitting assumes NON-nested tables (true for the DC6-221 and
@@ -218,6 +220,90 @@ export function markWordInCell(cellXml: string, word: string): string {
     const inner = mark ? `${rprInner}<w:strike/>` : rprInner;
     const rpr = inner ? `<w:rPr>${inner}</w:rPr>` : "";
     return `<w:r>${rpr}<w:t xml:space="preserve">${txt}</w:t></w:r>`;
+  };
+
+  const newRuns = makeRun(before, false) + makeRun(word, true) + makeRun(after, false);
+  const newP = open + pPr + newRuns + "</w:p>";
+  return cellXml.replace(pXml, newP);
+}
+
+// Candidate font ladder (half-points) for forcing a printed condition cell's
+// "GOOD/ SAT/ POOR" onto ONE physical line. The template prints it at 7pt
+// (sz 14), which wraps to two lines in the narrow 1440-twip box, so we step DOWN
+// from there. 4pt (sz 8) is the hard floor; values never truncate.
+const CONDITION_FIT_CANDIDATES = [14, 13, 12, 11, 10, 9, 8];
+
+/**
+ * Strike `word` in a cell AND shrink the cell's printed text font just enough to
+ * keep the ENTIRE cell text on one physical line within its real `w:tcW`
+ * (used for the DC6-221 "GOOD/ SAT/ POOR" condition box, which the template
+ * prints at a size that wraps to two lines). Every run is re-emitted at the
+ * single fitted size (existing `w:sz`/`w:szCs` are replaced, not duplicated);
+ * the marked word additionally gets `<w:strike/>`. Width math is the shared
+ * Times-New-Roman metric, so this never widens; it only ever shrinks, so row
+ * height can only stay the same or decrease (never causing page reflow).
+ */
+export function markWordInCellFitOneLine(cellXml: string, word: string): string {
+  const pMatch = /<w:p\b[^>]*>[\s\S]*?<\/w:p>/.exec(cellXml);
+  if (!pMatch) throw new Error("markWordFit: cell has no paragraph");
+  const pXml = pMatch[0];
+
+  const openMatch = /^<w:p\b[^>]*>/.exec(pXml);
+  if (!openMatch) throw new Error("markWordFit: malformed paragraph");
+  const open = openMatch[0];
+
+  let rest = pXml.slice(open.length, pXml.length - "</w:p>".length);
+  let pPr = "";
+  const pprMatch = /^<w:pPr>[\s\S]*?<\/w:pPr>/.exec(rest);
+  if (pprMatch) {
+    pPr = pprMatch[0];
+    rest = rest.slice(pPr.length);
+  }
+
+  const full = [...rest.matchAll(/<w:t(?: [^>]*)?>([\s\S]*?)<\/w:t>/g)]
+    .map((m) => m[1])
+    .join("");
+  const idx = full.indexOf(word);
+  if (idx === -1) {
+    throw new Error(`markWordFit: "${word}" not found in cell text "${full}"`);
+  }
+  const before = full.slice(0, idx);
+  const after = full.slice(idx + word.length);
+
+  // Base run properties from the cell's first run, with any existing size removed
+  // (we set the fitted size ourselves). The whole concatenated `full` is unescaped
+  // here only for width measurement; runs re-emit the already-escaped slices.
+  const rprMatch = /<w:rPr>([\s\S]*?)<\/w:rPr>/.exec(rest);
+  const baseInner = (rprMatch ? rprMatch[1] : "")
+    .replace(/<w:sz\b[^>]*\/>/g, "")
+    .replace(/<w:szCs\b[^>]*\/>/g, "");
+
+  // The shared Times-New-Roman metric runs ~15% optimistic against LibreOffice/
+  // Word for this tiny printed text in a 1440-twip box, so apply a safety factor
+  // before choosing the largest candidate that still fits one line. (Verified
+  // empirically: "GOOD/ SAT/ POOR" needs 6pt here; 6.5pt still wraps.)
+  const FIT_SAFETY = 1.15;
+  const tcw = cellTcwTwips(cellXml);
+  const FLOOR = CONDITION_FIT_CANDIDATES[CONDITION_FIT_CANDIDATES.length - 1];
+  let sz = FLOOR;
+  if (tcw != null) {
+    const usable = usableCellTwips(tcw);
+    for (const cand of CONDITION_FIT_CANDIDATES) {
+      if (estimateTextTwips(full, cand) * FIT_SAFETY <= usable) {
+        sz = cand;
+        break;
+      }
+    }
+  } else {
+    sz = CONDITION_FIT_CANDIDATES[0];
+  }
+  const szXml = `<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/>`;
+
+  // rPr child order (CT_RPr): strike BEFORE sz/szCs.
+  const makeRun = (txt: string, mark: boolean): string => {
+    if (txt === "") return "";
+    const inner = mark ? `${baseInner}<w:strike/>${szXml}` : `${baseInner}${szXml}`;
+    return `<w:r><w:rPr>${inner}</w:rPr><w:t xml:space="preserve">${txt}</w:t></w:r>`;
   };
 
   const newRuns = makeRun(before, false) + makeRun(word, true) + makeRun(after, false);

@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Copy, CheckCheck, AlertTriangle, FileText, ChevronDown, Search, X, Download, CalendarDays } from "lucide-react";
+import { ArrowLeft, Copy, CheckCheck, AlertTriangle, FileText, ChevronDown, Search, X, Download, FolderArchive } from "lucide-react";
 import PageShell, { hudPanel, hudInput, hudLabel } from "@/components/PageShell";
 import { buildWeekDays, isSunday, previousSunday, parseLocalDate, toIso, numericDate } from "@/lib/dc6229/weekDates";
 import { formatCellNumber } from "@/lib/dc6229/cellNumber";
-import { fillDc6229Docx, Dc6229DocxError, type Dc6229FormData } from "@/lib/dc6229/dc6229DocxFiller";
+import { generateLockUpPacket } from "@/lib/lockUpPacket/lockUpPacketGenerator";
 
 const DC6229_TEMPLATE_URL = `${import.meta.env.BASE_URL}dc6-229-template.docx`;
+const DC6221_TEMPLATE_URL = `${import.meta.env.BASE_URL}dc6-221-template.docx`;
+const RULES_TEMPLATE_URL = `${import.meta.env.BASE_URL}confinement-rules-template.docx`;
 
 type Charge = { code: string; title: string };
 type Section = { section: string; charges: Charge[] };
@@ -455,25 +457,26 @@ function confinementStatusCode(confinementType: string): string {
   return (m ? m[1] : confinementType ?? "").trim();
 }
 
-function dashedWeekLabel(iso: string): string {
-  const d = parseLocalDate(iso);
-  return d ? numericDate(d).replace(/\//g, "-") : "UNDATED";
-}
-
 export default function LockUpSlip() {
   const [, navigate] = useLocation();
   const [fields, setFields] = useState(defaultFields);
   const [narrative, setNarrative] = useState("");
   const [copied, setCopied] = useState(false);
   const narrativeRef = useRef<HTMLDivElement>(null);
-  const [dc6229Generating, setDc6229Generating] = useState(false);
-  const [dc6229Error, setDc6229Error] = useState("");
+  const [packetGenerating, setPacketGenerating] = useState(false);
+  const [packetError, setPacketError] = useState("");
+  const [officerName, setOfficerName] = useState("");
+  const [officerRank, setOfficerRank] = useState("");
+  const [includeDc6229, setIncludeDc6229] = useState(true);
+  const [includeDc6221, setIncludeDc6221] = useState(true);
+  const [includeRules, setIncludeRules] = useState(true);
+  const [packetConfirmed, setPacketConfirmed] = useState(false);
   const dc6229Week = useMemo(() => buildWeekDays(autoDc6229WeekStartIso(), "dayPrefixed"), []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     setFields((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setNarrative("");
-    setDc6229Error("");
+    setPacketError("");
   }
 
   function handleReasonChange(val: string) {
@@ -497,52 +500,71 @@ export default function LockUpSlip() {
     });
   }
 
-  const canDownloadDc6229 = !!(
+  const slipReady = !!(
+    fields.reason &&
     fields.lastName.trim() &&
     fields.firstName.trim() &&
     fields.dcNumber.trim() &&
-    fields.bunkAssignment.trim() &&
-    fields.confinementType.trim()
+    fields.date &&
+    fields.time &&
+    fields.captain
+  );
+  // The DC6-229 and DC6-221 both need a bunk/cell value to place after the form's printed "B".
+  const cellReady = !(includeDc6229 || includeDc6221) || !!fields.bunkAssignment.trim();
+  const dc6229Ready = !includeDc6229 || !!fields.confinementType.trim();
+  const rulesReady = !includeRules || !!(officerName.trim() && officerRank.trim());
+  const anyFormSelected = includeDc6229 || includeDc6221 || includeRules;
+  const canGeneratePacket = !!(
+    slipReady && cellReady && dc6229Ready && rulesReady && anyFormSelected && packetConfirmed
   );
 
-  async function handleDownloadDc6229() {
-    setDc6229Error("");
-    if (!canDownloadDc6229) {
-      setDc6229Error("Enter the last name, first name, DC number, bunk, and inmate status first.");
+  async function handleDownloadPacket() {
+    setPacketError("");
+    if (!canGeneratePacket) {
+      setPacketError("Complete the required fields above and confirm your review before generating.");
       return;
     }
-    setDc6229Generating(true);
+    setPacketGenerating(true);
     try {
-      const weekStartIso = autoDc6229WeekStartIso();
-      const week = buildWeekDays(weekStartIso, "dayPrefixed");
-      if (week.length !== 7) {
-        setDc6229Error("Could not build the 7 week dates. Try again.");
+      const week = buildWeekDays(autoDc6229WeekStartIso(), "dayPrefixed");
+      if (includeDc6229 && week.length !== 7) {
+        setPacketError("Could not build the 7 week dates for the DC6-229. Try again.");
         return;
       }
       const last = capitalizeWord(fields.lastName) || "Last";
       const first = capitalizeWord(fields.firstName) || "First";
-      const form: Dc6229FormData = {
+      const dateObj = parseLocalDate(fields.date);
+      const printedDate = dateObj ? numericDate(dateObj) : "";
+      const result = await generateLockUpPacket({
         inmateName: `${last}, ${first}`,
+        inmateLast: last,
         fdc: fields.dcNumber.trim().toUpperCase(),
         cellNumber: formatCellNumber(fields.bunkAssignment),
-        status: confinementStatusCode(fields.confinementType),
-        dates: week.map((d) => d.docx),
-      };
-      const blob = await fillDc6229Docx(`${DC6229_TEMPLATE_URL}?v=${Date.now()}`, { forms: [form] });
-      const name = `DC6-229 Daily Record - ${last}, ${first} - Week of ${dashedWeekLabel(weekStartIso)}.docx`;
-      const url = URL.createObjectURL(blob);
+        confinementStatus: confinementStatusCode(fields.confinementType),
+        date: printedDate,
+        officerName: officerName.trim(),
+        officerRank: officerRank.trim(),
+        narrative: narrative || generateNarrative(fields),
+        weekDocxDates: week.map((d) => d.docx),
+        include: { dc6229: includeDc6229, dc6221: includeDc6221, rules: includeRules },
+        templates: {
+          dc6229Url: `${DC6229_TEMPLATE_URL}?v=${Date.now()}`,
+          dc6221Url: `${DC6221_TEMPLATE_URL}?v=${Date.now()}`,
+          rulesUrl: `${RULES_TEMPLATE_URL}?v=${Date.now()}`,
+        },
+      });
+      const url = URL.createObjectURL(result.blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = name;
+      a.download = result.filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      if (err instanceof Dc6229DocxError) setDc6229Error(err.message);
-      else setDc6229Error(`DC6-229 generation failed: ${String(err)}`);
+      setPacketError(err instanceof Error ? err.message : `Packet generation failed: ${String(err)}`);
     } finally {
-      setDc6229Generating(false);
+      setPacketGenerating(false);
     }
   }
 
@@ -555,55 +577,131 @@ export default function LockUpSlip() {
     fields.time &&
     fields.captain;
 
-  const dc6229Section = (
+  const packetForms: { key: string; label: string; checked: boolean; set: (v: boolean) => void }[] = [
+    { key: "dc6229", label: "DC6-229 Daily Record", checked: includeDc6229, set: setIncludeDc6229 },
+    { key: "dc6221", label: "DC6-221 Cell Inspection", checked: includeDc6221, set: setIncludeDc6221 },
+    { key: "rules", label: "Confinement Rules", checked: includeRules, set: setIncludeRules },
+  ];
+
+  const packetSection = (
     <div className="pt-4 mt-1 border-t border-blue-400/15">
       <div className="mb-1.5 flex items-center gap-2">
-        <CalendarDays className="h-4 w-4 text-blue-300/80" />
+        <FolderArchive className="h-4 w-4 text-blue-300/80" />
         <h3 className="text-[12px] font-bold uppercase tracking-[0.12em] text-blue-100">
-          Also Generate a DC6-229
+          Lock-Up Packet
         </h3>
       </div>
       <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
-        Builds a Daily Record of Special Housing (DC6-229) from the name, DC number, bunk, and confinement type above. The 7 daily dates fill automatically for the current week — back to the most recent Sunday, or the prior week (ending Saturday) when today is Sunday.
+        Bundle this inmate's Lock-Up Slip narrative with the selected confinement forms into one ZIP. Each form is filled directly on its original government Word document using the name, DC number, bunk, and confinement type entered above. Signature lines are always left blank.
       </p>
 
-      {dc6229Week.length === 7 && (
-        <div className="mb-3 grid grid-cols-4 gap-1.5 sm:grid-cols-7">
-          {dc6229Week.map((d) => (
-            <div
-              key={d.iso}
-              className="rounded border border-blue-400/20 bg-[rgba(4,11,34,0.6)] px-1.5 py-1 text-center"
+      <div className="mb-4">
+        <span className={hudLabel}>Packet Forms</span>
+        <div className="mt-1.5 space-y-2">
+          {packetForms.map((f) => (
+            <label
+              key={f.key}
+              className="flex items-center gap-2.5 cursor-pointer text-sm text-blue-50"
             >
-              <div className="text-[8px] font-bold uppercase tracking-[0.1em] text-blue-300/60">{d.dayName}</div>
-              <div className="text-[11px] font-mono font-semibold text-blue-50">{d.date}</div>
-            </div>
+              <input
+                type="checkbox"
+                checked={f.checked}
+                onChange={(e) => {
+                  f.set(e.target.checked);
+                  setPacketError("");
+                }}
+                className="h-4 w-4 accent-blue-500"
+              />
+              {f.label}
+            </label>
           ))}
+        </div>
+      </div>
+
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className={hudLabel}>Officer Name</label>
+          <input
+            value={officerName}
+            onChange={(e) => {
+              setOfficerName(e.target.value);
+              setPacketError("");
+            }}
+            placeholder="e.g. J. Smith"
+            className={hudInput}
+          />
+        </div>
+        <div>
+          <label className={hudLabel}>Officer Rank</label>
+          <select
+            value={officerRank}
+            onChange={(e) => {
+              setOfficerRank(e.target.value);
+              setPacketError("");
+            }}
+            className={hudInput}
+          >
+            <option value="">Select rank…</option>
+            <option value="C/O">C/O</option>
+            <option value="Sgt.">Sgt.</option>
+            <option value="Lt.">Lt.</option>
+            <option value="Captain">Captain</option>
+          </select>
+        </div>
+      </div>
+
+      {includeDc6229 && dc6229Week.length === 7 && (
+        <div className="mb-4">
+          <span className={hudLabel}>DC6-229 Week (auto)</span>
+          <div className="mt-1.5 grid grid-cols-4 gap-1.5 sm:grid-cols-7">
+            {dc6229Week.map((d) => (
+              <div
+                key={d.iso}
+                className="rounded border border-blue-400/20 bg-[rgba(4,11,34,0.6)] px-1.5 py-1 text-center"
+              >
+                <div className="text-[8px] font-bold uppercase tracking-[0.1em] text-blue-300/60">{d.dayName}</div>
+                <div className="text-[11px] font-mono font-semibold text-blue-50">{d.date}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
+      <label className="mb-3 flex items-start gap-2.5 cursor-pointer rounded-lg border border-amber-400/40 bg-[rgba(28,18,2,0.5)] px-3 py-2.5 text-xs text-amber-100/90 leading-relaxed">
+        <input
+          type="checkbox"
+          checked={packetConfirmed}
+          onChange={(e) => setPacketConfirmed(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 accent-amber-500"
+        />
+        I confirm the inmate name, DC number, bunk/cell, dates, and officer details above are correct. These fill official documents — review every entry before generating.
+      </label>
+
       <button
-        onClick={handleDownloadDc6229}
-        disabled={!canDownloadDc6229 || dc6229Generating}
+        onClick={handleDownloadPacket}
+        disabled={!canGeneratePacket || packetGenerating}
         className={[
           "w-full flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] transition-all duration-150",
-          canDownloadDc6229 && !dc6229Generating
+          canGeneratePacket && !packetGenerating
             ? "border border-blue-300/50 bg-blue-600/85 text-white hover:bg-blue-500 cursor-pointer"
             : "border border-blue-400/15 bg-[rgba(4,11,34,0.6)] text-blue-300/40 cursor-not-allowed",
         ].join(" ")}
-        style={canDownloadDc6229 && !dc6229Generating ? { boxShadow: "0 0 20px rgba(37,99,235,0.35)" } : undefined}
+        style={canGeneratePacket && !packetGenerating ? { boxShadow: "0 0 20px rgba(37,99,235,0.35)" } : undefined}
       >
         <Download className="h-4 w-4" />
-        {dc6229Generating ? "Generating…" : "Download DC6-229"}
+        {packetGenerating ? "Generating…" : "Generate & Download Full Lock-Up Packet"}
       </button>
 
-      {dc6229Error && (
+      {packetError && (
         <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-red-300/90">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {dc6229Error}
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {packetError}
         </p>
       )}
-      {!canDownloadDc6229 && !dc6229Error && (
+      {!canGeneratePacket && !packetError && (
         <p className="mt-2 text-center text-xs text-muted-foreground">
-          Enter last name, first name, DC number, bunk, and inmate status to enable.
+          {!anyFormSelected
+            ? "Select at least one packet form to include."
+            : <>Enter the inmate &amp; placement details{includeRules ? ", officer name and rank," : ""} then check the confirmation box to enable.</>}
         </p>
       )}
     </div>
@@ -834,7 +932,7 @@ export default function LockUpSlip() {
             )}
           </div>
 
-          {!narrative && dc6229Section}
+          {!narrative && packetSection}
         </div>
 
         {narrative && (
@@ -895,7 +993,7 @@ export default function LockUpSlip() {
               </button>
             </div>
 
-            {dc6229Section}
+            {packetSection}
           </div>
         )}
     </PageShell>

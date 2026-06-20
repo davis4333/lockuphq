@@ -20,7 +20,7 @@ import {
   getCells,
   cellText,
   rebuildRow,
-  injectRunIntoEmptyParagraph,
+  injectFittedRunIntoEmptyParagraph,
 } from "./docxCellUtils";
 
 export class ConfinementRulesDocxError extends Error {
@@ -131,9 +131,9 @@ export async function fillConfinementRulesDocx(
         `The inmate acknowledgment row has ${cells.length} cells; expected 7.`,
       );
     }
-    cells[0] = injectRunIntoEmptyParagraph(cells[0], data.inmateName);
-    cells[4] = injectRunIntoEmptyParagraph(cells[4], data.fdc);
-    cells[6] = injectRunIntoEmptyParagraph(cells[6], data.date);
+    cells[0] = injectFittedRunIntoEmptyParagraph(cells[0], data.inmateName);
+    cells[4] = injectFittedRunIntoEmptyParagraph(cells[4], data.fdc);
+    cells[6] = injectFittedRunIntoEmptyParagraph(cells[6], data.date);
     newTable = newTable.replace(rows[INMATE_ROW], rebuildRow(rows[INMATE_ROW], cells));
   }
 
@@ -145,9 +145,9 @@ export async function fillConfinementRulesDocx(
         `The officer acknowledgment row has ${cells.length} cells; expected 7.`,
       );
     }
-    cells[0] = injectRunIntoEmptyParagraph(cells[0], data.officerName);
-    cells[4] = injectRunIntoEmptyParagraph(cells[4], data.officerRank);
-    cells[6] = injectRunIntoEmptyParagraph(cells[6], data.date);
+    cells[0] = injectFittedRunIntoEmptyParagraph(cells[0], data.officerName);
+    cells[4] = injectFittedRunIntoEmptyParagraph(cells[4], data.officerRank);
+    cells[6] = injectFittedRunIntoEmptyParagraph(cells[6], data.date);
     newTable = newTable.replace(rows[OFFICER_ROW], rebuildRow(rows[OFFICER_ROW], cells));
   }
 

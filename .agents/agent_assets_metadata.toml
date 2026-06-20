@@ -46,10 +46,10 @@ title = "search log icon"
 id = "y6_AUDsW9HTq4NX8OxaMS"
 uri = "file://exports/DC6-221 Cell Inspection - Sample.pdf"
 type = "pdf"
-title = "DC6-221 Cell Inspection (filled sample)"
+title = "DC6-221 Cell Inspection (no wrapping)"
 
 [[outputs]]
 id = "hPwed6xbSEt1ROoR2ISC4"
 uri = "file://exports/Confinement Rules - Sample.pdf"
 type = "pdf"
-title = "Confinement Rules (filled sample)"
+title = "Confinement Rules (no wrapping)"

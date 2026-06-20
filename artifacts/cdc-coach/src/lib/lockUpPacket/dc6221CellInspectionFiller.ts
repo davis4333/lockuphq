@@ -21,9 +21,9 @@ import {
   getCells,
   cellText,
   rebuildRow,
-  injectRunIntoEmptyParagraph,
+  injectFittedRunIntoEmptyParagraph,
+  appendFittedRunAfterAnchor,
   markWordInCell,
-  escapeXml,
 } from "./docxCellUtils";
 
 export class Dc6221DocxError extends Error {
@@ -135,12 +135,14 @@ export async function fillDc6221Docx(
   // --- Header: Inmate Name (cell 1) + Number (cell 4) ---
   {
     const cells = [...row0Cells];
-    cells[1] = injectRunIntoEmptyParagraph(cells[1], data.inmateName);
-    cells[4] = injectRunIntoEmptyParagraph(cells[4], data.number);
+    cells[1] = injectFittedRunIntoEmptyParagraph(cells[1], data.inmateName);
+    cells[4] = injectFittedRunIntoEmptyParagraph(cells[4], data.number);
     newTable = newTable.replace(rows[0], rebuildRow(rows[0], cells));
   }
 
   // --- Cell number (after printed "B") + date entered ---
+  // Each value is appended as its OWN run, font-shrunk so the printed label plus
+  // the value stay on one physical line in these narrow boxes.
   {
     const cells = [...row2Cells];
     if (data.cellNumber.trim()) {
@@ -150,9 +152,10 @@ export async function fillDc6221Docx(
           'Could not locate the printed "B" anchor in the DC6-221 cell-number box.',
         );
       }
-      cells[0] = cells[0].replace(
+      cells[0] = appendFittedRunAfterAnchor(
+        cells[0],
         "    B</w:t>",
-        `    B${escapeXml(data.cellNumber.trim())}</w:t>`,
+        data.cellNumber.trim(),
       );
     }
     if (data.dateEntered.trim()) {
@@ -161,9 +164,10 @@ export async function fillDc6221Docx(
           'Could not locate the "Entered:" anchor in the DC6-221 date box.',
         );
       }
-      cells[1] = cells[1].replace(
+      cells[1] = appendFittedRunAfterAnchor(
+        cells[1],
         "Entered:</w:t>",
-        `Entered: ${escapeXml(data.dateEntered.trim())}</w:t>`,
+        ` ${data.dateEntered.trim()}`,
       );
     }
     newTable = newTable.replace(rows[2], rebuildRow(rows[2], cells));

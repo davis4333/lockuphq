@@ -42,7 +42,11 @@ export interface LockUpPacketInput {
   fdc: string;
   /** Cell number AFTER the form's printed "B" (e.g. "1-106L"). */
   cellNumber: string;
-  /** Confinement status code for the DC6-229 (e.g. "AC"). */
+  /**
+   * Free-text status code for the DC6-229's Status field (e.g. "A5", "CM1", "C1").
+   * Deliberately SEPARATE from the slip's AC/DC confinement category — never derive
+   * this from Administrative/Disciplinary Confinement.
+   */
   confinementStatus: string;
   /** Date entered / acknowledgment date, formatted for print (e.g. "06/20/26"). */
   date: string;

@@ -1,0 +1,114 @@
+Update the Lock Up Slip tab packet section.
+
+This is a targeted change only.
+
+Do not rebuild the Lock Up Slip tab.
+Do not change the Lock Up Slip form generation unless needed for this field.
+Do not change DC6-221.
+Do not change Confinement Rules.
+Do not recreate any DOCX forms.
+Do not change the dashboard.
+
+Issue:
+In the Lock Up Slip packet section, the DC6-229 form needs its own Status field.
+
+The current setup may be confusing AC/DC with status.
+
+Important distinction:
+
+* AC = Administrative Confinement
+* DC = Disciplinary Confinement
+* AC/DC is the confinement category/type and may still be used on the Lock Up Slip where appropriate.
+* AC/DC is NOT the same as the Status field on the DC6-229.
+
+The DC6-229 has a separate field labeled Status. That field should be filled with the inmate’s actual confinement/status code, such as:
+A5
+A6
+A7
+A8
+A9
+CM1
+CM2
+C1
+or whatever the officer types.
+
+Required change:
+Add a new text input field in the Lock Up Slip tab packet section.
+
+Field label:
+DC6-229 Status
+
+Alternative acceptable label:
+Confinement Status for DC6-229
+
+Helper text:
+“Example: A5, A6, A7, A8, A9, CM1, CM2, C1. This fills the Status field on the DC6-229 only.”
+
+Field behavior:
+
+* This must be a free-text input, not a dropdown.
+* Do not limit the user to a fixed list.
+* Do not auto-convert this to AC or DC.
+* Do not guess the status.
+* Whatever the user types should be placed into the Status field on the DC6-229.
+* Preserve the typed value exactly except for trimming extra leading/trailing spaces.
+
+DC6-229 filling behavior:
+When generating the DC6-229 from the Lock Up Slip packet:
+
+* Fill the DC6-229 Status field with the value from the new “DC6-229 Status” input.
+* Do not use the Lock Up Slip AC/DC selection for this field.
+* Do not use Administrative Confinement / Disciplinary Confinement as the DC6-229 Status value.
+* Do not overwrite the DC6-229 Status field with AC or DC.
+
+Lock Up Slip behavior:
+
+* Keep AC/DC behavior for the Lock Up Slip exactly as it already works.
+* AC/DC can still be used where the Lock Up Slip needs confinement type/category.
+* This new status field is only for the DC6-229 Status blank.
+
+Multiple inmate behavior:
+If the Lock Up Slip packet can generate forms for multiple inmates, add this field in a way that supports both:
+
+1. A default “DC6-229 Status” setup field.
+2. A per-inmate editable DC6-229 Status column in the packet review table.
+
+Workflow:
+
+* User types a default DC6-229 Status.
+* That default applies to selected inmates.
+* User can edit the status per inmate if needed before generating.
+* If a per-inmate status is edited, use that row’s value for that inmate’s DC6-229.
+
+Review table:
+If DC6-229 is selected for packet generation, show a column:
+DC6-229 Status
+
+The user should be able to edit that status per inmate.
+
+Validation:
+If DC6-229 is selected and DC6-229 Status is blank:
+
+* Show a warning.
+* Do not silently fill it with AC/DC.
+* Let the user either type a status, leave it blank intentionally after confirmation, or exclude the DC6-229.
+
+Suggested warning:
+“DC6-229 Status is blank. This is separate from AC/DC confinement category.”
+
+DOCX rule:
+Continue using the exact original DC6-229 DOCX template.
+Do not recreate the form.
+Do not change the form layout.
+Only fill the existing Status field on the DC6-229 with the new DC6-229 Status value.
+
+Acceptance criteria:
+
+* Lock Up Slip tab has a new free-text field labeled DC6-229 Status or Confinement Status for DC6-229.
+* User can type values like A5, A6, A7, A8, A9, CM1, CM2, C1.
+* The typed value fills the Status field on the DC6-229.
+* AC/DC remains separate and is not used as the DC6-229 Status.
+* Lock Up Slip AC/DC behavior is not broken.
+* If multiple inmates are generated, each inmate can have an editable DC6-229 Status before download.
+* DC6-229 still uses the exact original DOCX template.
+* No official form is recreated.

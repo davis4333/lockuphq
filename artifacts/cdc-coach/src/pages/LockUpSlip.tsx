@@ -451,12 +451,6 @@ function autoDc6229WeekStartIso(): string {
   return ws;
 }
 
-/** The parenthetical code of a confinement type, e.g. "...(AC)" -> "AC". */
-function confinementStatusCode(confinementType: string): string {
-  const m = /\(([^)]+)\)/.exec(confinementType ?? "");
-  return (m ? m[1] : confinementType ?? "").trim();
-}
-
 export default function LockUpSlip() {
   const [, navigate] = useLocation();
   const [fields, setFields] = useState(defaultFields);
@@ -471,6 +465,10 @@ export default function LockUpSlip() {
   const [includeDc6221, setIncludeDc6221] = useState(true);
   const [includeRules, setIncludeRules] = useState(true);
   const [packetConfirmed, setPacketConfirmed] = useState(false);
+  // DC6-229 Status is a FREE-TEXT confinement/status code (e.g. "A5", "CM1") that
+  // fills ONLY the DC6-229's Status field. It is deliberately separate from the
+  // Lock-Up Slip's AC/DC confinement category (fields.confinementType).
+  const [dc6229Status, setDc6229Status] = useState("");
   const dc6229Week = useMemo(() => buildWeekDays(autoDc6229WeekStartIso(), "dayPrefixed"), []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -511,11 +509,14 @@ export default function LockUpSlip() {
   );
   // The DC6-229 and DC6-221 both need a bunk/cell value to place after the form's printed "B".
   const cellReady = !(includeDc6229 || includeDc6221) || !!fields.bunkAssignment.trim();
-  const dc6229Ready = !includeDc6229 || !!fields.confinementType.trim();
+  // A blank DC6-229 Status is a non-blocking warning only — the user may type a
+  // code, leave it blank intentionally, or exclude the DC6-229. It is NEVER filled
+  // from AC/DC. (The review-confirm checkbox covers the "after confirmation" step.)
+  const dc6229StatusBlank = includeDc6229 && !dc6229Status.trim();
   const rulesReady = !includeRules || !!(officerName.trim() && officerRank.trim());
   const anyFormSelected = includeDc6229 || includeDc6221 || includeRules;
   const canGeneratePacket = !!(
-    slipReady && cellReady && dc6229Ready && rulesReady && anyFormSelected && packetConfirmed
+    slipReady && cellReady && rulesReady && anyFormSelected && packetConfirmed
   );
 
   async function handleDownloadPacket() {
@@ -540,7 +541,7 @@ export default function LockUpSlip() {
         inmateLast: last,
         fdc: fields.dcNumber.trim().toUpperCase(),
         cellNumber: formatCellNumber(fields.bunkAssignment),
-        confinementStatus: confinementStatusCode(fields.confinementType),
+        confinementStatus: dc6229Status.trim(),
         date: printedDate,
         officerName: officerName.trim(),
         officerRank: officerRank.trim(),
@@ -649,6 +650,30 @@ export default function LockUpSlip() {
           </select>
         </div>
       </div>
+
+      {includeDc6229 && (
+        <div className="mb-4">
+          <label className={hudLabel}>DC6-229 Status</label>
+          <input
+            value={dc6229Status}
+            onChange={(e) => {
+              setDc6229Status(e.target.value);
+              setPacketError("");
+            }}
+            placeholder="e.g. A5, A6, A7, A8, A9, CM1, CM2, C1"
+            className={hudInput}
+          />
+          <p className="mt-1 text-xs leading-relaxed text-blue-300/60">
+            Example: A5, A6, A7, A8, A9, CM1, CM2, C1. This fills the Status field on the
+            DC6-229 only — separate from the AC/DC confinement category.
+          </p>
+          {dc6229StatusBlank && (
+            <p className="mt-1 text-xs leading-relaxed text-amber-300/90">
+              DC6-229 Status is blank. This is separate from AC/DC confinement category.
+            </p>
+          )}
+        </div>
+      )}
 
       {includeDc6229 && dc6229Week.length === 7 && (
         <div className="mb-4">

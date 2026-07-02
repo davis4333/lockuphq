@@ -1,2 +1,1 @@
-- [cdc-coach Dashboard layout](dashboard-layout.md) — only the module grid scrolls; a bounded spacer keeps tiles off the FDC seal; fixed app-shell gated to xl.
-- [Verifying DOCX fillers](docx-filler-verification.md) — how to verify cdc-coach DOCX form-fill output end-to-end without LibreOffice.
+- [DR Writer frozen pipeline](dr-writer-frozen-pipeline.md) — LOCKUPHQ DR Writer lib is copied-verbatim + server-only key; browser must use the types-only entry, never the barrel.

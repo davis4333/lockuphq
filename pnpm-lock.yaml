@@ -172,6 +172,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/dr-writer':
+        specifier: workspace:*
+        version: link:../../lib/dr-writer
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -342,6 +345,9 @@ importers:
       '@workspace/api-client-react':
         specifier: workspace:*
         version: link:../../lib/api-client-react
+      '@workspace/dr-writer':
+        specifier: workspace:*
+        version: link:../../lib/dr-writer
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -643,6 +649,12 @@ importers:
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+
+  lib/dr-writer:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.2
 
   scripts:
     devDependencies:

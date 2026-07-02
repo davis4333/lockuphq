@@ -417,8 +417,8 @@ export default function DrWriter61() {
 
   return (
     <PageShell
-      title="DR Writer — Charge 6-1"
-      subtitle="Draft a disciplinary report narrative for disobeying a verbal or written order (Charge 6-1). Enter the facts you observed firsthand, check them, then generate a narrative to review and certify."
+      title="DR WRITER - PROTOTYPE"
+      subtitle="Draft a disciplinary report narrative PROTOTYPE"
       icon={FileText}
       maxWidthClass="max-w-4xl"
     >

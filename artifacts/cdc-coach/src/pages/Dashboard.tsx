@@ -70,6 +70,12 @@ const SYS_STATUS = [
   { label: "Security Protocol", value: "Enabled" },
 ];
 
+// ─── Shared style tokens (static — defined once, not per render) ──
+const panel = "rounded-lg border border-blue-400/45 bg-[rgba(4,11,34,0.84)] backdrop-blur-lg";
+const micro = "text-[9px] font-bold uppercase tracking-[0.18em]";
+const ambHead = "text-[8.5px] font-bold uppercase tracking-[0.22em] text-blue-200/55";
+const ambLine = "text-[8.5px] uppercase tracking-[0.16em] text-blue-300/35 font-mono";
+
 // ─── Main Component ───────────────────────────────────────
 export default function Dashboard() {
   const [, navigate] = useLocation();
@@ -86,11 +92,6 @@ export default function Dashboard() {
 
   const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "America/New_York" });
   const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" }).toUpperCase();
-
-  const panel = "rounded-lg border border-blue-400/45 bg-[rgba(4,11,34,0.84)] backdrop-blur-lg";
-  const micro = "text-[9px] font-bold uppercase tracking-[0.18em]";
-  const ambHead = "text-[8.5px] font-bold uppercase tracking-[0.22em] text-blue-200/55";
-  const ambLine = "text-[8.5px] uppercase tracking-[0.16em] text-blue-300/35 font-mono";
 
   const handleLaunch = (mod: Module) => {
     if (mod.route) {

@@ -1,0 +1,77 @@
+This is the LOCKUPHQ DR Writer — a complete, tested application (blueprint
+at ./LOCKUPHQ_DR_WRITER_MASTER_BLUEPRINT_V2_5.md, source of truth). It is
+NOT public-launch ready — this is a controlled test deployment for a small
+group of trusted officers/staff to try out on synthetic data only. Do not
+add features, do not touch engine/, the state machine, gates, validators,
+or the benchmark. This is hosting/ops work only.
+
+First actions before doing anything:
+1. Read the blueprint.
+2. Run npm run test:engine:all and confirm it's green. Paste the results.
+3. Confirm git log shows Phase 1-9 work committed, working tree clean.
+
+Build, in order:
+
+1. PRODUCTION CONFIG (Replit)
+   - Move all secrets (ANTHROPIC_API_KEY, session signing secrets, any
+     other credentials) into Replit Secrets. Confirm none are hardcoded
+     or committed in the repo — check git history too.
+   - AI_MODE should be live for this deployment (real Claude calls) —
+     confirm it's set via Replit Secrets/env, not hardcoded.
+   - Confirm the audit log and persisted state (data/app-server/ or
+     wherever it lands) write to storage that survives Replit
+     redeploys/restarts, not ephemeral disk. Tell me explicitly what
+     you're using and whether it persists.
+   - Confirm the server reads process.env.PORT (Replit-assigned port),
+     not a hardcoded port.
+   - Document required env vars in .env.example (no real values).
+
+2. TRUSTED-TESTER ACCESS (no public signup)
+   - Keep the existing auth exactly as built (roles, session/lock/
+     expiry rules unchanged).
+   - I need to provision accounts myself for a short list of known
+     testers — confirm the admin-account creation path works via
+     ADMIN_USERNAME/ADMIN_PASSWORD env vars set BEFORE first boot
+     (per the blueprint's Phase 9 hardening — this is one-shot, only
+     fires when no users.json exists yet).
+   - No public registration route, no "sign up" link anywhere in the UI.
+   - Confirm cross-user isolation holds with real accounts.
+
+3. DEPLOYMENT TYPE
+   - Use Replit Deployments (Reserved VM / Always On), not Autoscale —
+     this app has a single-writer local file store and in-memory
+     sessions; autoscale would split-brain the store or drop sessions.
+     Confirm this is set correctly.
+   - Confirm the app doesn't sleep mid-use.
+
+4. BASIC HARDENING
+   - Rate limiting on auth and AI-triggering endpoints (extraction,
+     question generation, narrative generation) — mainly to catch bugs
+     or loops burning API credits at this stage, not to defend against
+     public attack traffic.
+   - Confirm a backup approach exists for the audit log / persisted
+     state, even a simple one, since this is proving the audit trail
+     works.
+   - Basic visibility into SYSTEM_HOLD and kill-switch events — tell me
+     what Replit gives natively vs. what would need building.
+
+5. PRIVACY / DATA-PATH NOTICE
+   - A simple page or in-app notice testers see before their first
+     incident: incident notes are sent to Anthropic's API for
+     processing, what's stored, how long, who can see the audit log.
+   - Testers use SYNTHETIC data only for now — make sure this is stated
+     clearly to them in the app itself, not just in an email from me.
+
+Constraints:
+- Do not modify engine/, gates, validators, benchmark, or test files.
+- All existing suites (Section 14, Phase 5, Phase 7, Phase 8, Phase 9,
+  charge 6-1 197/197) must still pass unchanged.
+- Staged, reviewable steps — tell me what you're doing before you do
+  anything destructive or hard to reverse.
+
+Done = the app is reachable at a stable Replit URL, I can log in as
+admin and provision a handful of trusted testers myself, all existing
+suites still pass, the privacy notice is live, and you've told me
+exactly what's left for me to do (which env vars to set and when,
+Replit tier/billing, anything else) before I can actually hand this
+to testers.

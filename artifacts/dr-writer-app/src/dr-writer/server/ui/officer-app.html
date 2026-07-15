@@ -305,12 +305,25 @@ function renderHome() {
     ' — ' + esc(personName(r.subject_person_id)) + '<div class="hint">Status: ' + esc(r.lifecycle) + ' · Last saved: ' + esc(r.updated_at) + '</div></div>' +
     '<button data-open="' + esc(r.report_id) + '" class="primary">Open</button></div>'
   ).join('') || '<p class="hint">No reports yet.</p>';
+  const canWork = state.session.role === 'officer' || state.session.role === 'supervisor';
+  const addInmateCard = canWork
+    ? '<div class="card"><h2>Add a new inmate</h2>' +
+      '<p class="hint">Add the inmate this report is about, then start the report below.</p>' +
+      '<label for="ai-last">Last name</label><input id="ai-last" type="text" placeholder="e.g. Doe" />' +
+      '<label for="ai-first">First name</label><input id="ai-first" type="text" placeholder="e.g. John" />' +
+      '<label for="ai-initial">Middle initial (optional)</label><input id="ai-initial" type="text" maxlength="1" placeholder="e.g. A" />' +
+      '<label for="ai-dc">DC number</label><input id="ai-dc" type="text" placeholder="e.g. A12345" />' +
+      '<div class="btn-row"><button id="ai-go" class="primary">Add inmate</button></div></div>'
+    : '';
   const newReportCard = state.session.role === 'officer'
     ? '<div class="card"><h2>Start a new report</h2>' +
-      '<label for="nr-subject">Which inmate is this report about?</label><select id="nr-subject">' + options + '</select>' +
-      '<div class="btn-row"><button id="nr-go" class="primary">Start report (Charge 6-1)</button></div></div>'
+      (inmates.length === 0
+        ? '<p class="hint">No inmates yet — add one above first.</p>'
+        : '<label for="nr-subject">Which inmate is this report about?</label><select id="nr-subject">' + options + '</select>' +
+          '<div class="btn-row"><button id="nr-go" class="primary">Start report (Charge 6-1)</button></div>') +
+      '</div>'
     : '';
-  return newReportCard + '<div class="card"><h2>Your reports</h2>' + items + '</div>';
+  return addInmateCard + newReportCard + '<div class="card"><h2>Your reports</h2>' + items + '</div>';
 }
 
 function wireHome() {
@@ -325,6 +338,32 @@ function wireHome() {
     state.reportId = data.report.report_id;
     state.screen = 'report';
     await refreshView();
+  });
+  const addInmate = document.getElementById('ai-go');
+  if (addInmate) addInmate.onclick = () => act(async () => {
+    const lastName = document.getElementById('ai-last').value.trim();
+    const firstName = document.getElementById('ai-first').value.trim();
+    const initial = document.getElementById('ai-initial').value.trim();
+    const dcNumber = document.getElementById('ai-dc').value.trim();
+    if (!lastName) { state.banner = { kind: 'error', text: 'Last name is required to add an inmate.' }; render(); return; }
+    if (!dcNumber) { state.banner = { kind: 'error', text: 'DC number is required to add an inmate.' }; render(); return; }
+    const personId = 'P-INM-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    await api('POST', '/api/persons', {
+      person_id: personId,
+      report_id: null,
+      incident_group_id: null,
+      person_type: 'inmate',
+      first_name: firstName || null,
+      last_name: lastName,
+      initial: initial || null,
+      rank_or_role: null,
+      dc_number: dcNumber,
+      identity_source: 'officer-entry',
+      confirmation_status: 'confirmed',
+      ambiguity_status: 'unambiguous',
+    });
+    state.banner = { kind: 'okay', text: 'Inmate added. Select them below to start a report.' };
+    await loadHome();
   });
   document.querySelectorAll('[data-open]').forEach((b) => {
     b.onclick = () => act(async () => {

@@ -53,7 +53,9 @@ const MODULES: Module[] = [
   { id: "strip-property", title: "Strip / Property Restriction", description: "Document property restriction placements.", icon: StripPropertyIcon, route: "/property-restriction" },
   { id: "search-log-autofill", title: "Search Log", description: "Upload Bed Book and fill original Search Log.", icon: SearchLogIcon, route: "/search-log" },
   { id: "dc6-229", title: "DC6-229 Daily Record", description: "Build a weekly Daily Record of Special Housing for each inmate.", icon: Dc6229Icon, route: "/dc6-229" },
-  { id: "dr-writer-6-1", title: "DR Writer", description: "Draft a disciplinary report narrative with the guided adaptive writer.", icon: DrDescriptionIcon, route: "/dr-writer-6-1" },
+  // DR Writer tab temporarily disabled (hidden from the dashboard) until further notice.
+  // Re-enable by uncommenting this entry and the "/dr-writer-6-1" route in App.tsx.
+  // { id: "dr-writer-6-1", title: "DR Writer", description: "Draft a disciplinary report narrative with the guided adaptive writer.", icon: DrDescriptionIcon, route: "/dr-writer-6-1" },
   { id: "meal-restriction", title: "Meal Restriction / Loaf", description: "Generate special management meal documentation.", icon: MealRestrictionIcon },
   { id: "incident-report", title: "Incident Report Narrative", description: "Draft IR narrative descriptions.", icon: IncidentReportIcon },
   { id: "dr-description", title: "DR Description", description: "Complete the description portion of a disciplinary report.", icon: DrDescriptionIcon },

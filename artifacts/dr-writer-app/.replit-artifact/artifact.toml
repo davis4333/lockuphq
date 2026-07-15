@@ -21,10 +21,8 @@ args = ["node", "--experimental-strip-types", "artifacts/dr-writer-app/src/dr-wr
 PORT = "8000"
 BASE_PATH = "/dr-writer-app"
 AI_MODE = "live"
-DR_WRITER_DATA_DIR = "/dev/shm/dr-writer-app"
 
 [services.env]
 PORT = "8000"
 BASE_PATH = "/dr-writer-app"
 AI_MODE = "live"
-DR_WRITER_DATA_DIR = "/dev/shm/dr-writer-app"

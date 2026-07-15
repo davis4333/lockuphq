@@ -47,3 +47,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# DR Writer runtime data (reports, audit log, users) — persisted on disk during testing, never committed
+artifacts/dr-writer-app/data/

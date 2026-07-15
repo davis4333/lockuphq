@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "PORT=8000 BASE_PATH=/dr-writer-app AI_MODE=live DR_WRITER_DATA_DIR=/dev/shm/dr-writer-app node --experimental-strip-types src/dr-writer/server/appServer.ts",
+    "dev": "PORT=8000 BASE_PATH=/dr-writer-app AI_MODE=live node --experimental-strip-types src/dr-writer/server/appServer.ts",
     "start": "node --experimental-strip-types src/dr-writer/server/appServer.ts"
   },
   "engines": {

@@ -18,7 +18,7 @@
 
 import { createServer } from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { readFileSync, rmSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SecureService } from '../engine/service/secureService.ts';
@@ -586,14 +586,33 @@ export function resolveAiMode(envMode: string | undefined, argv: string[]): 'stu
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(__filename);
 if (isMain) {
-  // PII-safe hosting: the data dir is ephemeral (RAM-backed tmpfs by default)
-  // and wiped on every boot, so no report/inmate data survives a restart and
-  // nothing is written to durable disk.
+  // ===========================================================================
+  // ⚠️  PERSISTENCE ENABLED — TESTING PHASE ONLY (synthetic fixtures only)  ⚠️
+  // ===========================================================================
+  // The boot-time data-dir WIPE HAS BEEN INTENTIONALLY REMOVED so that reports
+  // and the append-only, hash-chained audit log SURVIVE restarts and redeploys
+  // during the trusted-tester phase. This lets us review completed reports and
+  // the audit trail after several days of testing instead of losing everything
+  // on every ship.
+  //
+  // This is ONLY safe because the app can currently reference nothing but
+  // SYNTHETIC FIXTURE inmates (e.g. "Sam Synthetic", "Robin Sibling"). No real
+  // inmate PII can be entered, so nothing sensitive is written to disk. It also
+  // assumes a Reserved VM (single instance) with a durable, NON-tmpfs
+  // DR_WRITER_DATA_DIR — autoscale or a /dev/shm data dir would erase or split
+  // the data regardless of this flag.
+  //
+  // 🚨🚨🚨  DO NOT SHIP REAL INMATE DATA WITHOUT RESTORING THE WIPE  🚨🚨🚨
+  // Before ANY real-PII capability is enabled (a real add-inmate flow, a roster
+  // import, live subject data, etc.), this MUST be reverted so real inmate data
+  // never persists on local disk. Restore the boot wipe here:
+  //
+  //     import { rmSync } from 'node:fs';
+  //     rmSync(dataDir, { recursive: true, force: true });
+  //
+  // (or migrate to encrypted/managed storage with a retention policy). Leaving
+  // persistence on with real PII is a data-handling violation, not just a bug.
+  // ===========================================================================
   const dataDir = process.env['DR_WRITER_DATA_DIR'] || resolve(__dirname, '../../../data/app-server');
-  try {
-    rmSync(dataDir, { recursive: true, force: true });
-  } catch {
-    // best-effort wipe; a fresh dir is created by the store on boot
-  }
   startServer(dataDir);
 }

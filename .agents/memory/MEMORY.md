@@ -1,4 +1,5 @@
 - [DR Writer frozen pipeline](dr-writer-frozen-pipeline.md) — LOCKUPHQ DR Writer lib is copied-verbatim + server-only key; browser must use the types-only entry, never the barrel.
+- [DR Writer persistence](dr-writer-persistence.md) — testing-phase persistence ON (wipe removed, durable disk, Reserved VM only); wipe MUST return before real PII; deployConfig not an agent callback.
 - [DR Writer roster + ephemeral hosting](dr-writer-hosting-roster.md) — persons come only from a bundled test fixture re-seeded each boot; add-inmate is client wiring to POST /api/persons, not an engine change; autoscale tmpfs = reports don't persist/share.
 - [Hand-authored artifact](hand-authored-artifact.md) — register a non-scaffoldable API artifact by seeding artifact.toml via shell, then verifyAndReplaceArtifactToml (auto-creates the workflow).
 - [LOCKUPHQ standalone handoff](lockuphq-standalone-handoff.md) — full standalone app: zero npm deps, local file store (Reserved VM only), admin bootstrap on fresh data dir; scan ALL files for committed keys, not just .env.

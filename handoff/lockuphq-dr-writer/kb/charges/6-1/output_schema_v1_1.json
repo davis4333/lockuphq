@@ -1,0 +1,266 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "schema_version": "1.1",
+  "charge": "6-1",
+  "title": "LOCKUPHQ DR Writer — Charge 6-1 Output Schema v1.1",
+  "description": "Output schema for FDOC Charge 6-1 (Disobeying verbal or written order) DC6-112F Section II Statement of Facts narrative module.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "charge",
+    "status",
+    "red_blockers",
+    "yellow_warnings",
+    "cleaned_facts",
+    "narrative",
+    "flagged_sections",
+    "ai_disclosure",
+    "officer_review_checklist"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.1"
+    },
+    "charge": {
+      "type": "string",
+      "const": "6-1"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["RED", "YELLOW", "GREEN"],
+      "description": "RED = missing required facts, no narrative generated. YELLOW = all required facts present but one or more are weak or vague, marked draft generated. GREEN = all facts present and specific, clean certifiable draft generated."
+    },
+    "red_blockers": {
+      "type": "array",
+      "description": "List of missing required facts that block generation. Empty array if status is YELLOW or GREEN.",
+      "items": {
+        "type": "object",
+        "required": ["missing_fact", "follow_up_question"],
+        "properties": {
+          "missing_fact": {
+            "type": "string",
+            "description": "What required fact is missing or invalid."
+          },
+          "follow_up_question": {
+            "type": "string",
+            "description": "Plain-English question to present to the officer to obtain the missing fact."
+          }
+        }
+      }
+    },
+    "yellow_warnings": {
+      "type": "array",
+      "description": "List of weak or vague facts that require officer review. Empty array if status is RED (no generation) or GREEN (no issues).",
+      "items": {
+        "type": "object",
+        "required": ["warning", "affected_paragraph", "suggested_clarification", "example_stronger_answer"],
+        "properties": {
+          "warning": {
+            "type": "string",
+            "description": "Description of the weak or vague fact."
+          },
+          "affected_paragraph": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6,
+            "description": "Internal fact-category tag (1=opening/scene, 2=order/response, 3=operational impact, 4=ability to comply/force, 5=charge advisory, 6=confinement/OIC) — not an output paragraph index. The narrative is a single continuous paragraph; see docs/lockuphq_dr_writer_master_prompt_corrected.md."
+          },
+          "suggested_clarification": {
+            "type": "string",
+            "description": "One follow-up question to ask the officer."
+          },
+          "example_stronger_answer": {
+            "type": "string",
+            "description": "One example of a stronger, more specific answer."
+          }
+        }
+      }
+    },
+    "cleaned_facts": {
+      "description": "Officer-provided facts after normalization (rank abbreviations, time format, name case, etc.). Null if status is RED.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": [
+            "incident_date",
+            "incident_time",
+            "officer_rank",
+            "officer_name",
+            "officer_post",
+            "dorm_area",
+            "officer_activity",
+            "incident_location",
+            "inmate_last_name",
+            "dc_number",
+            "narrative_reference_style",
+            "inmate_behavior_before_order",
+            "order_type",
+            "exact_order",
+            "total_orders_given",
+            "acknowledgment_type",
+            "inmate_said_nothing",
+            "physical_behavior",
+            "operational_impact",
+            "ability_to_comply",
+            "force_used",
+            "uof_documentation_status",
+            "confinement_status",
+            "oic_rank",
+            "oic_last_name"
+          ],
+          "properties": {
+            "incident_date": { "type": "string" },
+            "incident_time": {
+              "type": "string",
+              "description": "Normalized to HHMM hours format. Example: '1800 hours'."
+            },
+            "officer_rank": {
+              "type": "string",
+              "description": "Fully spelled out. Example: 'Sergeant', 'Lieutenant', 'Captain'."
+            },
+            "officer_name": {
+              "type": "string",
+              "description": "Title case."
+            },
+            "officer_post": { "type": "string" },
+            "dorm_area": { "type": "string" },
+            "officer_activity": { "type": "string" },
+            "incident_location": {
+              "type": "string",
+              "description": "Exact specific location (e.g., 'cell E3107', 'the Wing 2 dayroom')."
+            },
+            "inmate_last_name": {
+              "type": "string",
+              "description": "Title case."
+            },
+            "inmate_first_name": {
+              "type": ["string", "null"],
+              "description": "Title case. Null if unavailable."
+            },
+            "dc_number": { "type": "string" },
+            "narrative_reference_style": {
+              "type": "string",
+              "enum": ["he/him", "she/her", "they/them", "last-name-only"]
+            },
+            "inmate_behavior_before_order": {
+              "type": "string",
+              "description": "Observational language only. What the officer saw before any order was given."
+            },
+            "order_type": {
+              "type": "string",
+              "enum": ["verbal", "written", "both"]
+            },
+            "exact_order": {
+              "type": "string",
+              "description": "The command itself only. No first-person phrasing ('I told him to...')."
+            },
+            "total_orders_given": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "acknowledgment_type": {
+              "type": "string",
+              "enum": [
+                "eye_contact",
+                "verbal_response",
+                "eye_contact_and_verbal_response",
+                "physical_reaction",
+                "actions_showed_awareness",
+                "within_hearing_distance",
+                "unknown"
+              ]
+            },
+            "inmate_quote": {
+              "type": ["string", "null"],
+              "description": "Exact words only. Null if inmate said nothing or quote is unavailable."
+            },
+            "inmate_said_nothing": {
+              "type": "boolean",
+              "description": "True if officer explicitly confirms inmate made no verbal response."
+            },
+            "inmate_tone": {
+              "type": ["string", "null"],
+              "description": "How the inmate sounded. Null if inmate said nothing."
+            },
+            "physical_behavior": {
+              "type": "string",
+              "description": "Observable actions only. Visual and auditory separated."
+            },
+            "operational_impact": {
+              "type": "string",
+              "description": "Effect of conduct on area operations. Must reference dorm/wing/area, never cell number."
+            },
+            "ability_to_comply": {
+              "type": "string",
+              "enum": ["no_issue", "issue_with_explanation"]
+            },
+            "ability_to_comply_explanation": {
+              "type": ["string", "null"]
+            },
+            "force_used": {
+              "type": "string",
+              "enum": ["no", "yes"],
+              "description": "v1.1 split field. Was any force used during this incident?"
+            },
+            "force_explanation": {
+              "type": ["string", "null"],
+              "description": "Required when force_used is 'yes'. Must be null when force_used is 'no'."
+            },
+            "uof_documentation_status": {
+              "type": "string",
+              "enum": ["not_applicable", "completed", "not_confirmed"],
+              "description": "not_applicable when force_used is 'no'. completed only when officer explicitly confirms. not_confirmed when force was used but officer has not confirmed documentation."
+            },
+            "confinement_status": {
+              "type": "string",
+              "enum": ["placed", "remained", "none"]
+            },
+            "oic_rank": {
+              "type": "string",
+              "description": "Fully spelled out. Example: 'Sergeant', 'Lieutenant', 'Captain'."
+            },
+            "oic_last_name": {
+              "type": "string",
+              "description": "Title case."
+            },
+            "witness_staff": {
+              "type": ["string", "null"]
+            },
+            "camera_coverage": {
+              "type": ["string", "null"]
+            },
+            "additional_facts": {
+              "type": ["string", "null"]
+            }
+          }
+        }
+      ]
+    },
+    "narrative": {
+      "type": ["string", "null"],
+      "description": "Generated narrative — a single continuous paragraph (no \\n\\n, no section headers, no paragraph breaks). Null when status is RED. May contain inline [REVIEW — reason] flags when status is YELLOW."
+    },
+    "flagged_sections": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "const": 1
+      },
+      "maxItems": 1,
+      "description": "Boolean-style marker, not a paragraph index: [] if the narrative contains no [REVIEW] flags, [1] if it contains any. Empty array when status is GREEN or RED."
+    },
+    "ai_disclosure": {
+      "type": "string",
+      "const": "This narrative was formatted with AI assistance using LOCKUPHQ DR Writer v1.1, Charge 6-1. All factual content was provided by the reporting officer. The officer has reviewed and certified the accuracy of this report."
+    },
+    "officer_review_checklist": {
+      "type": "array",
+      "description": "Pre-certification checklist. Always appended after every generated narrative regardless of status.",
+      "items": { "type": "string" },
+      "minItems": 12,
+      "maxItems": 12
+    }
+  }
+}

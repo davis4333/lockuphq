@@ -1,1 +1,2 @@
 - [DR Writer frozen pipeline](dr-writer-frozen-pipeline.md) — LOCKUPHQ DR Writer lib is copied-verbatim + server-only key; browser must use the types-only entry, never the barrel.
+- [LOCKUPHQ standalone handoff](lockuphq-standalone-handoff.md) — full standalone app: zero npm deps, local file store (Reserved VM only), admin bootstrap on fresh data dir; scan ALL files for committed keys, not just .env.

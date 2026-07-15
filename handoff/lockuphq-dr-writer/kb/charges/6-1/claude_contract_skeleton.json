@@ -1,0 +1,29 @@
+{
+  "version": "step-01-skeleton",
+  "model_target": "Claude Sonnet 4.6",
+  "purpose": "Translate officer-provided facts into the locked 6-1 report format.",
+  "input_contract": {
+    "knowledge_base": "6-1 charge module + common guardrails",
+    "officer_answers": "structured JSON from intake",
+    "gate_result": "red/yellow/green pre-check"
+  },
+  "output_contract": {
+    "if_red": {
+      "status": "blocked",
+      "red_blockers": [],
+      "report": null
+    },
+    "if_yellow_or_green": {
+      "status": "draft_generated",
+      "yellow_warnings": [],
+      "report": "six paragraph narrative"
+    }
+  },
+  "hard_rules": [
+    "Use the locked format.",
+    "Preserve only officer-provided facts.",
+    "Do not invent missing facts.",
+    "Return blockers if required facts are missing.",
+    "Do not include chain-of-thought or hidden reasoning in final output."
+  ]
+}

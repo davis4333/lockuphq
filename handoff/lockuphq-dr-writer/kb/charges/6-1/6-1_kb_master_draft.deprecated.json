@@ -1,0 +1,55 @@
+{
+  "deprecated": true,
+  "deprecated_reason": "Replaced by gate_rules.json, cleanup_rules.json, output_schema_v1_1.json, and prompt_contract.md as of Step 3A. This pre-Step-3A draft is no longer authoritative. Do not use.",
+  "version": "step-02A-draft",
+  "status": "draft_for_review",
+  "charge": {
+    "code": "6-1",
+    "title": "Disobeying verbal or written order",
+    "full_description": "Disobeying verbal or written order — any order given to an inmate or inmates by a staff member or other authorized person.",
+    "max_penalty_reference": "30 DC + 60 GT per current public rule listing"
+  },
+  "authority_hierarchy": [
+    "official_rules_and_policy",
+    "charge_module_guardrails",
+    "sanitized_dr_style_examples"
+  ],
+  "locked_format": {
+    "paragraphs": [
+      "opening_assignment_scene_inmate_behavior_before_order",
+      "order_repetition_acknowledgment_refusal_physical_behavior",
+      "operational_impact",
+      "ability_to_comply_and_force",
+      "rule_connection_and_charge_advisory",
+      "administrative_confinement_and_oic_closing"
+    ]
+  },
+  "red_blockers_summary": [
+    "missing_date",
+    "missing_time",
+    "missing_inmate_identity_or_dc_number",
+    "missing_specific_location",
+    "missing_specific_order",
+    "missing_order_type",
+    "missing_order_count",
+    "missing_received_or_acknowledged_order_fact",
+    "missing_physical_behavior",
+    "missing_ability_to_comply_answer",
+    "missing_force_answer",
+    "missing_oic_rank_or_name",
+    "multiple_charges_mixed",
+    "request_to_invent_or_embellish"
+  ],
+  "yellow_warnings_summary": [
+    "quote_sounds_like_summary",
+    "vague_order_count",
+    "vague_operational_impact",
+    "conclusory_physical_behavior",
+    "vague_inmate_before_order_behavior",
+    "missing_tone_when_inmate_spoke",
+    "vague_witness_information",
+    "opinion_or_motive_language",
+    "oic_rank_or_name_incomplete"
+  ],
+  "claude_response_modes": ["RED", "YELLOW", "GREEN"]
+}

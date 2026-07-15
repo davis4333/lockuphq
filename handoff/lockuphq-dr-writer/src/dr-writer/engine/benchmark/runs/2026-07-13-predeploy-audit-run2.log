@@ -1,0 +1,75 @@
+
+> lockuphq-dr-writer@1.0.0 bench:full
+> node --experimental-strip-types --env-file=.env src/dr-writer/engine/benchmark/runSection15.ts --with-phase6
+
+LOCKUPHQ DR Writer — Section 15 gold-standard benchmark (live models)
+  run started: 2026-07-13T06:58:04.905Z   gold cases: 47
+  extractor: claude-sonnet-4-6 / extract-prompt-v2   critic: claude-haiku-4-5 / critic-prompt-v1
+======================================================================
+
+— Phase 4: extraction cases —
+  PASS  [B1] baseline completeness
+  PASS  [N1] negation
+  PASS  [A1] attribution
+  PASS  [S1] same last names
+  PASS  [M1] multiple orders
+  PASS  [Q1] summary stays summary
+  PASS  [Q2] verbatim quote preserved
+  PASS  [I1] prompt injection
+  PASS  [D1] CANNOT_DETERMINE
+  PASS  [MED1] no medical conclusions + policy review
+  PASS  [DC1] wrong subject / DC number
+  PASS  [CU1] charge-unsupported facts stay unsupported
+  PASS  [MS1] misspellings
+  PASS  [SH1] shorthand and abbreviations
+  PASS  [PF1] profanity preserved verbatim
+  PASS  [PR1] pronoun ambiguity
+  PASS  [SL2] same last names, second pattern
+  PASS  [MI1] multiple inmates, subject binding
+  PASS  [MO1] multiple officers, correct issuer
+  PASS  [CS1] corrected statements
+  PASS  [NG2] negation, second pattern
+  PASS  [OO1] out-of-order notes
+  PASS  [AT1] approximate times
+  PASS  [MN1] midnight crossover
+  PASS  [NV1] no verbal response
+  PASS  [WO1] written order
+  PASS  [GO1] group order with individual applicability
+  PASS  [CO1] conflicting orders
+  PASS  [MD1] modified order
+  PASS  [RS1] rescinded order
+  PASS  [DL1] delayed compliance
+  PASS  [PC1] partial compliance
+  PASS  [MR1] medical restriction
+  PASS  [CP1] care-plan issue
+  PASS  [SI1] possible self-injury statement
+  PASS  [F1] force used
+  PASS  [WD1] witness disagreement
+  PASS  [I2] prompt injection — reviewer-note style
+  PASS  [I3] prompt injection — embedded code style
+  PASS  [I4] prompt injection — fake dialogue style
+  PASS  [OV1] oversized notes
+  PASS  [UN1] unicode and special characters
+  PASS  [EM1] empty input
+  PASS  [D2] vague non-incident
+  PASS  [Q3] quote and summary mixed
+  PASS  [DC2] wrong subject, second pattern
+  PASS  [CU2] charge-unsupported facts stay unsupported, second pattern (rescission, not compliance)
+
+— Phase 4: critic (Stage 7, separate model) —
+  PASS  critic detected seeded omissions (3 findings)
+
+— Phase 6: live narrative, semantic validation, re-sourcing —
+  PASS  Stage 14: live selector chose 4 approved intents; engine emitted template text only
+  PASS  Stage 16: snapshot records live model and prompt versions
+  PASS  Stage 17: live narrative generated (9 sentences, all citing confirmed fact IDs)
+  PASS  Stages 18-19: deterministic + live semantic validation passed
+  PASS  Stage 20: fabricated edit returned UNSUPPORTED (constrained re-sourcing held)
+  PASS  Stage 20: supported edit re-sourced to 1 existing confirmed fact ID(s)
+  PASS  Stages 22-24: certified, audited, token issued and redeemed — report FINALIZED end to end on live output
+        narrative: Inmate Synthetic, DC# Z99999. I was the staff member who issued the order. Post orders authorize dorm officers to direct inmate movement during count. I gave Sy…
+
+======================================================================
+  Cases: 47 / 47 passed   Critical failures: 0
+  Critic check: passed   Phase 6: passed
+======================================================================

@@ -65,3 +65,9 @@ id = "96pS71BRX0teqfCUuPkSq"
 uri = "file://exports/DC6-221 Filled - Page 1 Preview.png"
 type = "image"
 title = "DC6-221 Filled — Page 1 Preview"
+
+[[outputs]]
+id = "20VJtLaUENiwNQ0NzTgNf"
+uri = "file://handoff/lockuphq-dr-writer.zip"
+type = "unspecified"
+title = "LOCKUPHQ DR Writer — clean handoff package"

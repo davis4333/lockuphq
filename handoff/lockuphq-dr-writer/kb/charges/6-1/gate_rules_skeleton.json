@@ -1,0 +1,32 @@
+{
+  "version": "step-01-skeleton",
+  "red_blockers": [
+    "missing_date",
+    "missing_time",
+    "missing_inmate_identity",
+    "missing_officer_assignment",
+    "missing_exact_location",
+    "missing_inmate_behavior_before_order",
+    "missing_order_type",
+    "missing_exact_order",
+    "missing_total_order_count",
+    "missing_acknowledgment_or_receipt",
+    "missing_response_or_confirmed_silence",
+    "missing_physical_behavior",
+    "missing_operational_impact",
+    "missing_ability_to_comply_answer",
+    "missing_force_answer",
+    "missing_oic_rank_or_name"
+  ],
+  "yellow_warnings": [
+    "quote_sounds_like_summary",
+    "order_too_vague",
+    "behavior_too_conclusory",
+    "impact_too_vague",
+    "acknowledgment_weak",
+    "tone_missing",
+    "witness_evidence_vague",
+    "possible_motive_or_guessing"
+  ],
+  "green_condition": "All required facts are present and specific enough to fill the locked six-paragraph format without invention."
+}

@@ -1,0 +1,51 @@
+{
+  "version": "step-01",
+  "last_checked": "2026-06-27",
+  "sources": [
+    {
+      "id": "FLRULES_33_601_314",
+      "rule": "33-601.314",
+      "title": "Rules of Prohibited Conduct and Penalties for Infractions",
+      "source_type": "official_rule_gateway",
+      "url": "https://flrules.org/gateway/ruleno.asp?Section=0&id=33-601.314",
+      "use": "Version identity and official rule tracking for charge source."
+    },
+    {
+      "id": "CORNELL_33_601_304",
+      "rule": "33-601.304",
+      "title": "Preparation of Disciplinary Reports",
+      "source_type": "readable_rule_mirror",
+      "url": "https://www.law.cornell.edu/regulations/florida/Fla-Admin-Code-Ann-R-33-601-304",
+      "use": "Readable rule text for one-violation rule and statement-of-facts requirements."
+    },
+    {
+      "id": "CORNELL_33_601_308",
+      "rule": "33-601.308",
+      "title": "Disciplinary Team, Hearing Officer Findings and Action",
+      "source_type": "readable_rule_mirror",
+      "url": "https://www.law.cornell.edu/regulations/florida/Fla-Admin-Code-Ann-R-33-601-308",
+      "use": "Readable rule text for findings requiring specific facts and evidence."
+    },
+    {
+      "id": "CORNELL_33_602_220",
+      "rule": "33-602.220",
+      "title": "Administrative Confinement",
+      "source_type": "readable_rule_mirror",
+      "url": "https://www.law.cornell.edu/regulations/florida/Fla-Admin-Code-Ann-R-33-602-220",
+      "use": "Administrative confinement definition and pending disciplinary charge context."
+    },
+    {
+      "id": "FL_DOS_ADMIN_CODE_REGISTER",
+      "rule": "Florida Administrative Code / Florida Administrative Register",
+      "title": "Administrative Code and Register",
+      "source_type": "official_state_program",
+      "url": "https://dos.fl.gov/offices/administrative-code-and-register/",
+      "use": "Official state program context for rules and register publication."
+    }
+  ],
+  "notes": [
+    "FLRules is preferred for official rule identity/version tracking.",
+    "Readable mirrors are used for practical rule text extraction but must be checked against official sources during final validation.",
+    "Facility/local preferences must be labeled separately from statewide FAC requirements."
+  ]
+}

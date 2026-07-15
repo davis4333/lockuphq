@@ -1,0 +1,1916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LockUpHQ DR Assist — Charge 6-1 Demo</title>
+  <link rel="stylesheet" href="charge-6-1-static-form.css" />
+</head>
+<body>
+
+<!-- ── HEADER ──────────────────────────────────────────────────────── -->
+<header class="header">
+  <span class="header-logo">LockUpHQ DR Assist</span>
+  <span class="header-sep">|</span>
+  <span class="header-charge">Charge 6-1 — Disobeying Verbal or Written Order</span>
+  <span class="mock-badge">Demo Mode</span>
+</header>
+
+<!-- ── SAFETY BANNER ────────────────────────────────────────────────── -->
+<div class="safety-banner">
+  <strong>DEMO ONLY — Use fake/practice facts only.</strong>
+  Do not enter real inmate names, DC numbers, case numbers, or real incident details.
+</div>
+
+<!-- ── MAIN LAYOUT ───────────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- LEFT: FORM COLUMN -->
+  <div class="form-column">
+
+    <!-- ── Quick-start sample fill ── -->
+    <div class="quick-start">
+      <span class="quick-start-label">Demo samples:</span>
+      <button class="btn btn-ghost btn-sm" id="btn-load-green" type="button">Load GREEN practice case</button>
+      <button class="btn btn-ghost btn-sm" id="btn-load-yellow" type="button">Load YELLOW practice case</button>
+      <span class="quick-start-hint">Fills fake practice facts — click Check Facts next</span>
+    </div>
+
+    <!-- ── Section 1: Incident Basics ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">1</div>
+        <span class="card-title">Incident Basics</span>
+      </div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field">
+            <label for="incident_date">What date did this happen? <span class="req">*</span></label>
+            <input type="date" id="incident_date" name="incident_date" />
+            <p class="helper">Use the practice incident date.</p>
+          </div>
+          <div class="field">
+            <label for="incident_time">What time did this happen? <span class="req">*</span></label>
+            <input type="text" id="incident_time" name="incident_time" placeholder="e.g. 1400 or 2:00 PM" />
+            <p class="helper">Use a clear time. Do not use vague entries like "after chow."</p>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="dorm_area">What dorm, wing, or area was involved? <span class="req">*</span></label>
+            <input type="text" id="dorm_area" name="dorm_area" placeholder="e.g. E Dorm" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Where exactly did it happen? <span class="req">*</span></label>
+          <div class="radio-group" id="location-type-group">
+            <label class="radio-item">
+              <input type="radio" name="location_type" value="cell_door" />
+              <span>At the cell door / entrance</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="location_type" value="inside_cell" />
+              <span>Inside the cell</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="location_type" value="dayroom" />
+              <span>Dayroom / common area</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="location_type" value="shower" />
+              <span>Shower area</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="location_type" value="movement" />
+              <span>During movement / hallway or corridor</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="location_type" value="rec_yard" />
+              <span>Recreation yard</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="location_type" value="medical" />
+              <span>Medical / health services</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="location_type" value="dining" />
+              <span>Dining hall</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="location_type" value="other" onchange="setLocationOther(true)" />
+              <span>Other — specify</span>
+            </label>
+          </div>
+        </div>
+        <div class="conditional hidden" id="location-other-wrap">
+          <p class="conditional-label">Describe the location</p>
+          <input type="text" id="location_other" placeholder="e.g. the visitation room" />
+        </div>
+        <div class="field">
+          <label for="location_specific">Specific number/identifier, if any <span class="opt-tag">optional</span></label>
+          <input type="text" id="location_specific" placeholder="e.g. E3107" />
+          <p class="helper">Cell number, camera zone, or room number — used in place of the general category above when given.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 2: Reporting Officer ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">2</div>
+        <span class="card-title">Officer and Assignment</span>
+      </div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field">
+            <label for="officer_rank">What is your rank? <span class="req">*</span></label>
+            <select id="officer_rank" name="officer_rank">
+              <option value="">Select rank…</option>
+              <option>Officer</option>
+              <option>Sergeant</option>
+              <option>Lieutenant</option>
+              <option>Captain</option>
+              <option>Major</option>
+              <option>Colonel</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="officer_name">What name should appear on the report? <span class="req">*</span></label>
+            <input type="text" id="officer_name" name="officer_name" placeholder="e.g. T. Davis" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="officer_post">What was your post or assignment? <span class="req">*</span></label>
+            <input type="text" id="officer_post" name="officer_post" placeholder="e.g. housing officer" />
+          </div>
+          <div class="field">
+            <label for="officer_activity">What were you doing when this began? <span class="req">*</span></label>
+            <input type="text" id="officer_activity" name="officer_activity" placeholder="e.g. conducting the master roster count" />
+            <p class="helper">Your assigned task before the incident — not your response to it.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 3: Inmate Identification ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">3</div>
+        <span class="card-title">Inmate Identification</span>
+      </div>
+      <div class="card-body">
+        <div class="field-row-3">
+          <div class="field">
+            <label for="inmate_last_name">Inmate last name <span class="req">*</span></label>
+            <input type="text" id="inmate_last_name" name="inmate_last_name" placeholder="e.g. Smith" />
+          </div>
+          <div class="field">
+            <label for="inmate_first_name">Inmate first name <span class="opt-tag">optional</span></label>
+            <input type="text" id="inmate_first_name" name="inmate_first_name" placeholder="e.g. John" />
+          </div>
+          <div class="field">
+            <label for="dc_number">Inmate DC number <span class="req">*</span></label>
+            <input type="text" id="dc_number" name="dc_number" placeholder="e.g. A12345" />
+            <p class="helper">Enter the fake/practice DC number exactly as it should appear.</p>
+          </div>
+        </div>
+        <div class="field">
+          <label>How should this inmate be referred to in the report? <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="narrative_reference_style" value="he/him" />
+              <span>He / him / his</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="narrative_reference_style" value="she/her" />
+              <span>She / her / hers</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="narrative_reference_style" value="they/them" />
+              <span>They / them / their</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="narrative_reference_style" value="last-name-only" />
+              <span>"Inmate Smith" only — no pronouns</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 4: Behavior Before Order ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">4</div>
+        <span class="card-title">Before the Order</span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label for="inmate_behavior_before_order">What was the inmate doing before you gave any order? <span class="req">*</span></label>
+          <textarea id="inmate_behavior_before_order" name="inmate_behavior_before_order" placeholder="e.g. standing at the cell door outside of his assigned cell"></textarea>
+          <p class="helper">Describe only what you could see before you said anything — the inmate's physical position, location, or action. Do not describe compliance or refusal here.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 5: Order Details ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">5</div>
+        <span class="card-title">Order Given</span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>How was the order given? <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="order_type" value="verbal" />
+              <span>Verbal order</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="order_type" value="written" />
+              <span>Written order</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="order_type" value="both" />
+              <span>Verbal and written order</span>
+            </label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="exact_order">What exactly did you order the inmate to do? <span class="req">*</span></label>
+          <input type="text" id="exact_order" name="exact_order" placeholder="e.g. return to his assigned cell" />
+          <p class="helper">Write the command itself — not "I told him to" but what you ordered. Be specific enough that compliance would be unambiguous.</p>
+        </div>
+        <div class="field" style="max-width: 220px;">
+          <label for="total_orders_given">How many direct orders did you give? <span class="req">*</span></label>
+          <input type="text" id="total_orders_given" name="total_orders_given" placeholder="e.g. 3" />
+          <p class="helper">Enter the exact number of orders. Do not estimate.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 6: Inmate Response ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">6</div>
+        <span class="card-title">Inmate Response</span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>What showed the inmate received your order? <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="acknowledgment_type" value="eye_contact" />
+              <span>Eye contact only</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="acknowledgment_type" value="verbal_response" />
+              <span>Verbal response only</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="acknowledgment_type" value="eye_contact_and_verbal_response" />
+              <span>Eye contact and verbal response</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="acknowledgment_type" value="physical_reaction" />
+              <span>Physical reaction (turned, stepped back, etc.)</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="acknowledgment_type" value="actions_showed_awareness" />
+              <span>Actions showed awareness</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="acknowledgment_type" value="within_hearing_distance" />
+              <span>Within hearing distance only
+                <span class="radio-sub">⚠ Weakest option — will produce a review flag</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>What was the inmate's verbal response? <span class="req">*</span></label>
+          <div class="radio-group" id="said-choice">
+            <label class="radio-item">
+              <input type="radio" name="said_choice" value="said_something" id="radio-said-something"
+                onchange="setSaidNothing(false)" />
+              <span>Exact quote</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="said_choice" value="said_nothing" id="radio-said-nothing"
+                onchange="setSaidNothing(true)" />
+              <span>No verbal response</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field" id="quote-field">
+          <label for="inmate_quote">What exact words did the inmate say? <span class="req">*</span></label>
+          <input type="text" id="inmate_quote" name="inmate_quote" placeholder='e.g. "No, I ain&apos;t doing that."' />
+          <p class="helper">Use quotation marks only if you remember the inmate's exact words. If not exact, check summary below.</p>
+        </div>
+
+        <div id="quote-disabled-note" style="display:none;" class="helper-warn">
+          No verbal response is selected. The draft will describe the physical refusal without a quote.
+        </div>
+
+        <div class="field" id="summary-check-field">
+          <label class="check-item">
+            <input type="checkbox" id="quote_is_summary" name="quote_is_summary" />
+            <span>Summary of what the inmate said — I do not remember the exact words
+              <span class="radio-sub">Checking this adds a [REVIEW] flag to the draft</span>
+            </span>
+          </label>
+          <p class="helper-warn">
+            Use this when you remember the meaning, but not the exact words. The summary will not be placed in quotation marks.
+          </p>
+        </div>
+
+        <div class="field" id="tone-field">
+          <label for="inmate_tone">Tone of the inmate's response <span class="opt-tag">optional</span></label>
+          <input type="text" id="inmate_tone" name="inmate_tone" placeholder="e.g. loud and argumentative" />
+          <p class="helper">Examples: calm, argumentative, loud, profane, threatening, or other wording you observed.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 7: Physical Behavior ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">7</div>
+        <span class="card-title">Physical Refusal Behavior</span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label for="physical_behavior">What did the inmate do after the order? <span class="req">*</span></label>
+          <textarea id="physical_behavior" name="physical_behavior" placeholder="e.g. crossed his arms and remained positioned at the cell door, making no movement to comply"></textarea>
+          <p class="helper">Examples: remained in place, crossed arms, walked away, refused restraints, or refused to move. Describe only what you directly observed.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 8: Operational Impact ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">8</div>
+        <span class="card-title">Operational Impact</span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>What did the refusal disrupt? <span class="opt-tag">recommended</span></label>
+          <div class="check-group" id="operational-impact-group">
+            <label class="check-item">
+              <input type="checkbox" class="impact-check" value="temporarily interrupting the master roster count" />
+              <span>Interrupted the count</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" class="impact-check" value="delaying inmate movement" />
+              <span>Delayed inmate movement</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" class="impact-check" value="delaying shower operations" />
+              <span>Delayed shower operations</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" class="impact-check" value="delaying a scheduled medical or security procedure" />
+              <span>Delayed a medical or security procedure</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" class="impact-check" value="drawing the attention of surrounding inmates" />
+              <span>Drew the attention of surrounding inmates</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" class="impact-check" value="creating a security concern" />
+              <span>Created a security concern</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" class="impact-check" value="requiring staff attention away from other duties" />
+              <span>Pulled staff away from other duties</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" id="impact-other-check" onchange="setImpactOther(this.checked)" />
+              <span>Other — describe</span>
+            </label>
+          </div>
+          <p class="helper">Select any that apply. Check more than one if the refusal caused multiple effects.</p>
+        </div>
+        <div class="conditional hidden" id="impact-other-wrap">
+          <p class="conditional-label">Describe the other effect</p>
+          <textarea id="operational_impact_other" placeholder="e.g. delayed the count by roughly ten minutes"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 9: Ability to Comply ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">9</div>
+        <span class="card-title">Ability to Comply</span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>Was there any clear reason the inmate could not comply? <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="ability_to_comply" value="no_issue"
+                onchange="setAbilityExplain(false)" />
+              <span>No clear barrier observed</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="ability_to_comply" value="issue_with_explanation"
+                onchange="setAbilityExplain(true)" />
+              <span>Yes — explain the medical, mental health, physical, or language barrier
+                <span class="radio-sub">Describe only what you observed</span>
+              </span>
+            </label>
+          </div>
+          <p class="helper">Only select no clear barrier if you did not observe one. Do not guess.</p>
+        </div>
+        <div class="conditional hidden" id="ability-explain">
+          <p class="conditional-label">Describe what you observed</p>
+          <textarea id="ability_to_comply_explanation" name="ability_to_comply_explanation" placeholder="e.g. The inmate appeared to be in medical distress."></textarea>
+          <p class="helper">Describe only what you directly observed or what was reported to you at the time.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 10: Force / UOF ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">10</div>
+        <span class="card-title">Force / Use of Force</span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>Was any force used? <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="force_used" value="no" onchange="setForceExplain(false)" />
+              <span>No force used</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="force_used" value="yes" onchange="setForceExplain(true)" />
+              <span>Force was used</span>
+            </label>
+          </div>
+          <p class="helper">Answer based on this incident. If force was used, complete the separate UOF process.</p>
+        </div>
+        <div class="conditional hidden" id="force-explain">
+          <p class="conditional-label">Force details</p>
+          <div class="field">
+            <label for="force_explanation">Brief description of force used <span class="req">*</span></label>
+            <textarea id="force_explanation" name="force_explanation" placeholder="e.g. This officer applied a wrist-lock technique."></textarea>
+            <p class="helper">Brief factual summary only — this is not a UOF report. Complete the use-of-force report separately.</p>
+          </div>
+          <div class="field">
+            <label>Was the separate use-of-force report completed?</label>
+            <div class="radio-group">
+              <label class="radio-item">
+                <input type="radio" name="uof_documentation_status" value="completed" />
+                <span>Yes — UOF report completed</span>
+              </label>
+              <label class="radio-item">
+                <input type="radio" name="uof_documentation_status" value="not_confirmed" />
+                <span>Not confirmed yet
+                  <span class="radio-sub">⚠ Adds a review flag</span>
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 11: Confinement Outcome ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">11</div>
+        <span class="card-title">After the Refusal</span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>What happened after the refusal? <span class="opt-tag">optional</span></label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="confinement_status" value="placed" />
+              <span>Placed in administrative confinement</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="confinement_status" value="remained" />
+              <span>Remained in assigned housing or current confinement</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="confinement_status" value="none" />
+              <span>Referred to supervisor/OIC; no confinement action</span>
+            </label>
+          </div>
+          <p class="helper">Administrative confinement is pre-hearing placement, not punishment. If there was no confinement action, choose the supervisor/OIC referral option.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 12: OIC Authorization ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">12</div>
+        <span class="card-title">OIC Authorization</span>
+      </div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field">
+            <label for="oic_rank">OIC rank <span class="req">*</span></label>
+            <select id="oic_rank" name="oic_rank">
+              <option value="">Select rank…</option>
+              <option>Officer</option>
+              <option>Sergeant</option>
+              <option>Lieutenant</option>
+              <option>Captain</option>
+              <option>Major</option>
+              <option>Colonel</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="oic_last_name">OIC last name <span class="req">*</span></label>
+            <input type="text" id="oic_last_name" name="oic_last_name" placeholder="e.g. Brown" />
+          </div>
+        </div>
+        <label class="check-item">
+          <input type="checkbox" id="oic_authorized_confirmed" name="oic_authorized_confirmed" />
+          <span>I confirm the OIC listed above authorized this report <span class="req">*</span></span>
+        </label>
+        <p class="helper" style="margin-top:6px;">Enter the rank/name of the OIC who authorized the DR. Do not list a supervisor who was not involved. This confirmation is required before a report can be drafted.</p>
+      </div>
+    </div>
+
+    <!-- ── Section 13: Optional Context ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">13</div>
+        <span class="card-title">Optional Context</span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>Did any other staff witness this? <span class="opt-tag">optional</span></label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="witness_present" value="yes" onchange="setWitnessDetail(true)" />
+              <span>Yes</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="witness_present" value="no" onchange="setWitnessDetail(false)" />
+              <span>No</span>
+            </label>
+          </div>
+        </div>
+        <div class="conditional hidden" id="witness-detail-wrap">
+          <p class="conditional-label">Which staff? (rank and last name)</p>
+          <input type="text" id="witness_staff" placeholder="e.g. Sergeant Johnson" />
+          <p class="helper">Include their rank and last name. Vague entries like "other officers" will produce a review flag.</p>
+        </div>
+        <div class="field">
+          <label>Was this incident within view of a camera? <span class="opt-tag">optional</span></label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="camera_present" value="yes" onchange="setCameraDetail(true)" />
+              <span>Yes</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="camera_present" value="no" onchange="setCameraDetail(false)" />
+              <span>No</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="camera_present" value="not_sure" onchange="setCameraDetail(false)" />
+              <span>Not sure</span>
+            </label>
+          </div>
+        </div>
+        <div class="conditional hidden" id="camera-detail-wrap">
+          <p class="conditional-label">Camera location/ID, if known</p>
+          <input type="text" id="camera_id" placeholder="e.g. camera E3-12" />
+          <p class="helper">Leave blank if coverage is confirmed but you don't know the specific camera.</p>
+        </div>
+        <div class="field">
+          <label for="additional_facts">Anything else the draft should include? <span class="opt-tag">optional</span></label>
+          <textarea id="additional_facts" name="additional_facts" placeholder="e.g. This incident was observed by surrounding inmates in E Dorm."></textarea>
+          <p class="helper">Describe only what you observed — not what you believe the inmate intended. "I think" and "he was trying to" will produce a review flag.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 14: Separate Conduct ── -->
+    <div class="card">
+      <div class="card-header">
+        <div class="section-num">14</div>
+        <span class="card-title">Separate Conduct</span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>Did this incident involve any conduct beyond the inmate refusing your order?
+            <span class="radio-sub" style="display:block;margin-top:3px;">Example: the inmate also threatened staff, damaged property, or assaulted someone</span>
+          </label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="separate_conduct_described" value="false"
+                onchange="setSeparateConduct(false)" />
+              <span>No — this was only about the refusal</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="separate_conduct_described" value="true"
+                onchange="setSeparateConduct(true)" />
+              <span>Yes — other conduct happened</span>
+            </label>
+          </div>
+        </div>
+        <div class="conditional hidden" id="conduct-detail">
+          <p class="conditional-label">Can the 6-1 refusal be written separately?</p>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="separate_conduct_isolatable" value="true" />
+              <span>Yes — the 6-1 refusal can stand alone
+                <span class="radio-sub">⚠ Will produce a review flag noting additional conduct</span>
+              </span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="separate_conduct_isolatable" value="false" />
+              <span>No — the conduct is too intertwined to separate
+                <span class="radio-sub">🚫 Blocks generation — a separate DR is required for each violation</span>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Action Buttons ── -->
+    <div class="button-area card">
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-validate">Check Facts</button>
+        <button class="btn btn-muted" id="btn-generate" disabled title="Check Facts first — GREEN or YELLOW required">Draft Narrative</button>
+        <span class="btn-divider">|</span>
+        <button class="btn btn-ghost" id="btn-clear">Clear Form</button>
+      </div>
+
+      <!-- Generation mode controls -->
+      <div id="generate-mode-controls" class="mode-panel">
+        <p class="mode-panel-title">Draft Mode</p>
+        <div id="public-demo-mode-notice" style="display:none;" class="public-demo-notice">
+          PUBLIC DEMO MODE — Mock generation only. Live Claude generation is disabled on the public demo.
+        </div>
+        <div class="radio-group" style="gap:5px;">
+          <label class="radio-item" id="live-mode-radio-label" style="padding:4px 6px;">
+            <input type="radio" name="generate_mode" value="mock" checked />
+            <span>Mock draft <span class="mode-tag mock-tag">Default · no API credits</span></span>
+          </label>
+          <label class="radio-item" style="padding:4px 6px;">
+            <input type="radio" name="generate_mode" value="live" />
+            <span>Live Claude draft <span class="mode-tag live-tag">⚠ uses API credits · private testing only</span></span>
+          </label>
+        </div>
+        <div id="live-confirm-area" style="display:none;" class="live-confirm-panel">
+          <label class="check-item" style="gap:7px;padding:0;">
+            <input type="checkbox" id="confirm_live_generate" />
+            <span style="font-size:12px;color:#6d3a00;">I understand live mode uses API credits and only fake/practice facts may be used.</span>
+          </label>
+        </div>
+        <div id="live-mode-warning" style="display:none;" class="live-warn">
+          Live Claude drafting requires confirmation before any API call. Check the confirmation box above.
+        </div>
+        <p class="mode-panel-footer">Mock mode is local and free. Live Claude mode uses API credits and must only be used with fake/practice data.</p>
+      </div>
+
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn btn-muted" id="btn-copy-narrative" disabled>Copy Draft</button>
+        <button class="btn btn-muted" id="btn-copy-json" disabled title="Validate first to enable">Copy JSON</button>
+      </div>
+      <div class="btn-row" style="margin-top:4px;">
+        <button class="btn btn-muted" id="btn-export-txt" disabled title="Draft first to enable">Export TXT Draft</button>
+        <button class="btn btn-muted" id="btn-export-json" disabled title="Validate first to enable">Export JSON</button>
+      </div>
+    </div>
+
+    <!-- ── Generate Result Card — shown after generation ── -->
+    <div id="generate-result-card" style="display:none;" class="card">
+      <div id="generate-result-header" class="output-header">
+        <span class="output-label" id="generate-result-status-label">✓ GREEN — Mock Draft Generated</span>
+        <span class="output-sublabel" id="generate-result-mode-label">Mock mode — not a real Claude response</span>
+      </div>
+      <div class="output-body" id="generate-result-body">
+        <!-- populated by renderGenerateResult() -->
+      </div>
+    </div>
+
+    <!-- Demo review checklist -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Demo Review Checklist</span>
+      </div>
+      <div class="card-body">
+        <ul class="demo-checklist" id="demo-review-checklist">
+          <li>Use fake/practice facts only.</li>
+          <li>Check facts before drafting.</li>
+          <li>RED — Missing required facts. Drafting is blocked.</li>
+          <li>YELLOW — Draft allowed, but review flagged items carefully.</li>
+          <li>GREEN — Ready to draft after officer review.</li>
+          <li>Do not treat this as an official report submission system.</li>
+          <li>Do not enter real inmate data in demo mode.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Feedback notes: client-side only, no storage or submit route -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Feedback Notes</span>
+      </div>
+      <div class="card-body">
+        <div class="feedback-grid">
+          <div class="field">
+            <label for="feedback_confusing">What felt confusing?</label>
+            <textarea class="feedback-input" id="feedback_confusing"></textarea>
+          </div>
+          <div class="field">
+            <label for="feedback_missing_field">What question or field was missing?</label>
+            <textarea class="feedback-input" id="feedback_missing_field"></textarea>
+          </div>
+          <div class="field">
+            <label for="feedback_professional">Did the narrative sound professional?</label>
+            <textarea class="feedback-input" id="feedback_professional"></textarea>
+          </div>
+          <div class="field">
+            <label for="feedback_save_time">Would this save time?</label>
+            <textarea class="feedback-input" id="feedback_save_time"></textarea>
+          </div>
+        </div>
+        <div class="field">
+          <label for="feedback_other">Other notes</label>
+          <textarea class="feedback-input" id="feedback_other"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="btn-copy-feedback" type="button">Copy Feedback</button>
+          <button class="btn btn-ghost" id="btn-clear-feedback" type="button">Clear Feedback Notes</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /form-column -->
+
+
+  <!-- RIGHT: REVIEW COLUMN -->
+  <div class="review-column">
+
+    <p class="review-title">Validation Status</p>
+    <div id="live-result" class="hidden" style="margin-bottom:12px;"></div>
+
+    <!-- Status explanation cards -->
+    <div class="status-explain red">
+      <div class="status-pill red">🚫 Red</div>
+      <p>Required facts are missing. Drafting stays blocked until each blocker is fixed.</p>
+    </div>
+
+    <div class="status-explain yellow">
+      <div class="status-pill yellow">⚠ Yellow</div>
+      <p>Drafting is allowed, but flagged items must be reviewed before the report is used. Look for <strong>[REVIEW — …]</strong> markers.</p>
+    </div>
+
+    <div class="status-explain green">
+      <div class="status-pill green">✓ Green</div>
+      <p>No automatic flags found. Still read the full draft and certify accuracy before using it.</p>
+    </div>
+
+    <p class="review-title" style="margin-top:16px;">This Dev Server</p>
+    <div class="review-card">
+      <p style="font-size:12px;color:#6e6e73;line-height:1.65;">
+        <strong>Load sample</strong> — fills the form with fake practice facts<br />
+        <strong>Check Facts</strong> — local evaluator only, no Claude<br />
+        <strong>Draft Narrative</strong> — enabled after GREEN or YELLOW<br />
+        &nbsp;&nbsp;Mock (default): local fake client, no API credits<br />
+        &nbsp;&nbsp;Live: calls Claude — requires confirmation + API key<br />
+        <strong>RED</strong> — never drafts, never calls Claude<br />
+        <strong>Copy Draft</strong> — copies narrative text to clipboard<br />
+        <strong>Copy JSON</strong> — copies most recent result JSON<br />
+        <strong>Export TXT Draft</strong> — downloads draft as .txt (no server)<br />
+        <strong>Export JSON</strong> — downloads result as .json (no server)<br />
+        <strong>No data stored</strong> — form is stateless, exports are local<br />
+        <strong>No real inmate data</strong> — dev/sample only
+      </p>
+    </div>
+
+  </div><!-- /review-column -->
+
+</div><!-- /layout -->
+
+<!-- ── FOOTER ──────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <span>LockUpHQ DR Assist</span>
+  <span class="footer-badge">Demo Mode</span>
+  <span style="margin-left:auto;">Mock default · No storage · No real data</span>
+</footer>
+
+
+<!-- ── Copy / Export toast ──────────────────────────────────────────── -->
+<div id="copy-toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ── STEP 5F JS ─────────────────────────────────────────────────── -->
+<script>
+  // ── Conditional field toggles ──────────────────────────────────────
+
+  function setSaidNothing(nothing) {
+    const quoteField = document.getElementById('quote-field');
+    const quoteInput = document.getElementById('inmate_quote');
+    const disabledNote = document.getElementById('quote-disabled-note');
+    const summaryCheck = document.getElementById('summary-check-field');
+    if (nothing) {
+      quoteField.style.display = 'none';
+      disabledNote.style.display = 'block';
+      summaryCheck.style.display = 'none';
+      quoteInput.value = '';
+      quoteInput.classList.add('disabled-field');
+    } else {
+      quoteField.style.display = '';
+      disabledNote.style.display = 'none';
+      summaryCheck.style.display = '';
+      quoteInput.classList.remove('disabled-field');
+    }
+  }
+
+  function setForceExplain(show) {
+    const el = document.getElementById('force-explain');
+    if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
+  }
+
+  function setAbilityExplain(show) {
+    const el = document.getElementById('ability-explain');
+    if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
+  }
+
+  function setSeparateConduct(show) {
+    const el = document.getElementById('conduct-detail');
+    if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
+  }
+
+  function setLocationOther(show) {
+    const el = document.getElementById('location-other-wrap');
+    if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
+  }
+
+  function setImpactOther(show) {
+    const el = document.getElementById('impact-other-wrap');
+    if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
+  }
+
+  function setWitnessDetail(show) {
+    const el = document.getElementById('witness-detail-wrap');
+    if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
+  }
+
+  function setCameraDetail(show) {
+    const el = document.getElementById('camera-detail-wrap');
+    if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
+  }
+
+  // ── Form data collection → IntakeFacts6_1 ─────────────────────────
+
+  function nullIfEmpty(v) {
+    return (v === null || v === undefined || v === '') ? null : v;
+  }
+
+  // Specific identifier (cell #, room #, etc.) overrides the general location category when
+  // both are given — a category radio alone ("the dayroom") is still a valid, complete answer.
+  const LOCATION_CATEGORY_PHRASES = {
+    cell_door: 'the cell door',
+    inside_cell: 'the cell',
+    dayroom: 'the dayroom',
+    shower: 'the shower area',
+    movement: 'the hallway',
+    rec_yard: 'the recreation yard',
+    medical: 'the medical unit',
+    dining: 'the dining hall',
+  };
+
+  function buildIncidentLocation() {
+    const specific = (document.getElementById('location_specific')?.value || '').trim();
+    if (specific) return specific;
+    const category = document.querySelector('[name="location_type"]:checked')?.value;
+    if (!category) return null;
+    if (category === 'other') {
+      return nullIfEmpty((document.getElementById('location_other')?.value || '').trim());
+    }
+    return LOCATION_CATEGORY_PHRASES[category] ?? null;
+  }
+
+  // Checkbox values are already gerund-phrase fragments ("temporarily interrupting the
+  // master roster count") that compose directly into "...by [fragment]." in the narrative —
+  // the visible <span> labels are the plain-English officer-facing text, kept separate.
+  function buildOperationalImpact() {
+    const parts = Array.from(document.querySelectorAll('.impact-check:checked')).map(el => el.value);
+    const otherChecked = document.getElementById('impact-other-check')?.checked;
+    if (otherChecked) {
+      const other = (document.getElementById('operational_impact_other')?.value || '').trim();
+      if (other) parts.push(other);
+    }
+    if (parts.length === 0) return null;
+    if (parts.length === 1) return parts[0];
+    if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+    return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+  }
+
+  function buildWitnessStaff() {
+    const present = document.querySelector('[name="witness_present"]:checked')?.value;
+    if (present !== 'yes') return null;
+    return nullIfEmpty(document.getElementById('witness_staff')?.value);
+  }
+
+  // "Yes" with no specific camera ID still needs to reach evaluate6_1/the narrative as a
+  // real (non-invented) fact rather than being silently indistinguishable from "No" — falls
+  // back to the generic "camera coverage" phrase per buildPrompt6_1.ts's WITNESS / CAMERA
+  // COVERAGE rule, which expects this value pre-composed to slot into "occurred within [...]".
+  function buildCameraCoverage() {
+    const present = document.querySelector('[name="camera_present"]:checked')?.value;
+    if (present !== 'yes') return null;
+    const idText = (document.getElementById('camera_id')?.value || '').trim();
+    if (!idText) return 'camera coverage';
+    return /^view of/i.test(idText) ? idText : `view of ${idText}`;
+  }
+
+  function collectIntakeFacts() {
+    const totalOrdersRaw = (document.getElementById('total_orders_given').value || '').trim();
+    const totalOrdersParsed = (() => {
+      if (!totalOrdersRaw) return null;
+      const n = parseInt(totalOrdersRaw, 10);
+      return isNaN(n) ? totalOrdersRaw : n;
+    })();
+
+    const separateConductVal = document.querySelector('[name="separate_conduct_described"]:checked')?.value;
+    const separateIsolatableVal = document.querySelector('[name="separate_conduct_isolatable"]:checked')?.value;
+
+    return {
+      incident_date: nullIfEmpty(document.getElementById('incident_date').value),
+      incident_time: nullIfEmpty(document.getElementById('incident_time').value),
+      dorm_area: nullIfEmpty(document.getElementById('dorm_area').value),
+      incident_location: buildIncidentLocation(),
+      officer_rank: nullIfEmpty(document.getElementById('officer_rank').value),
+      officer_name: nullIfEmpty(document.getElementById('officer_name').value),
+      officer_post: nullIfEmpty(document.getElementById('officer_post').value),
+      officer_activity: nullIfEmpty(document.getElementById('officer_activity').value),
+      inmate_last_name: nullIfEmpty(document.getElementById('inmate_last_name').value),
+      inmate_first_name: nullIfEmpty(document.getElementById('inmate_first_name').value),
+      dc_number: nullIfEmpty(document.getElementById('dc_number').value),
+      narrative_reference_style: document.querySelector('[name="narrative_reference_style"]:checked')?.value ?? null,
+      inmate_behavior_before_order: nullIfEmpty(document.getElementById('inmate_behavior_before_order').value),
+      order_type: document.querySelector('[name="order_type"]:checked')?.value ?? null,
+      exact_order: nullIfEmpty(document.getElementById('exact_order').value),
+      total_orders_given: totalOrdersParsed,
+      acknowledgment_type: document.querySelector('[name="acknowledgment_type"]:checked')?.value ?? null,
+      inmate_said_nothing: document.getElementById('radio-said-nothing').checked,
+      inmate_quote: document.getElementById('radio-said-nothing').checked
+        ? null
+        : nullIfEmpty(document.getElementById('inmate_quote').value),
+      quote_is_summary: document.getElementById('quote_is_summary').checked,
+      inmate_tone: nullIfEmpty(document.getElementById('inmate_tone').value),
+      physical_behavior: nullIfEmpty(document.getElementById('physical_behavior').value),
+      operational_impact: buildOperationalImpact(),
+      ability_to_comply: document.querySelector('[name="ability_to_comply"]:checked')?.value ?? null,
+      ability_to_comply_explanation: nullIfEmpty(document.getElementById('ability_to_comply_explanation').value),
+      force_used: document.querySelector('[name="force_used"]:checked')?.value ?? null,
+      force_explanation: nullIfEmpty(document.getElementById('force_explanation').value),
+      uof_documentation_status: document.querySelector('[name="uof_documentation_status"]:checked')?.value ?? null,
+      confinement_status: document.querySelector('[name="confinement_status"]:checked')?.value ?? null,
+      oic_rank: nullIfEmpty(document.getElementById('oic_rank').value),
+      oic_last_name: nullIfEmpty(document.getElementById('oic_last_name').value),
+      oic_authorized_confirmed: document.getElementById('oic_authorized_confirmed').checked,
+      witness_staff: buildWitnessStaff(),
+      camera_coverage: buildCameraCoverage(),
+      additional_facts: nullIfEmpty(document.getElementById('additional_facts').value),
+      separate_conduct_described:
+        separateConductVal === 'true' ? true : separateConductVal === 'false' ? false : null,
+      separate_conduct_isolatable:
+        separateIsolatableVal === 'true' ? true : separateIsolatableVal === 'false' ? false : null,
+      request_to_invent: false,
+    };
+  }
+
+  // ── State ──────────────────────────────────────────────────────────
+
+  let lastValidationResult = null;
+  let lastValidationStatus = null;   // 'RED' | 'YELLOW' | 'GREEN' | null
+  let lastGenerateResult = null;
+  let lastGenerateMode = null;       // 'mock' | 'live' | null — set when generate succeeds
+
+  // ── HTML escape ────────────────────────────────────────────────────
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── Toast notification ─────────────────────────────────────────────
+  // Brief pill at bottom center of page. Replaces browser alert for copy feedback.
+
+  let _toastTimer = null;
+  function showToast(message, isError = false) {
+    const toast = document.getElementById('copy-toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.className = 'toast' + (isError ? ' toast-error' : '');
+    void toast.offsetHeight; // force reflow so CSS transition fires on rapid calls
+    toast.classList.add('toast-visible');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => { toast.classList.remove('toast-visible'); }, 2500);
+  }
+
+  // ── Generate button state management ──────────────────────────────
+
+  function updateGenerateButtonState() {
+    const btn = document.getElementById('btn-generate');
+    const canGenerate = lastValidationStatus === 'GREEN' || lastValidationStatus === 'YELLOW';
+    if (canGenerate) {
+      btn.disabled = false;
+      btn.className = 'btn btn-ready';
+      btn.title = '';
+    } else {
+      btn.disabled = true;
+      btn.className = 'btn btn-muted';
+      btn.title = lastValidationStatus === 'RED'
+        ? 'Resolve RED blockers before drafting'
+        : 'Check Facts first — GREEN or YELLOW required';
+    }
+  }
+
+  // ── Sample data (fake — dev/test only) ────────────────────────────
+
+  const SAMPLE_GREEN = {
+    incident_date: '2026-03-12',
+    incident_time: '1400',
+    officer_rank: 'Officer',
+    officer_name: 'T. Davis',
+    officer_post: 'housing officer',
+    dorm_area: 'E Dorm',
+    officer_activity: 'conducting the master roster count',
+    incident_location: 'cell E3107',
+    inmate_last_name: 'Smith',
+    inmate_first_name: 'John',
+    dc_number: 'A12345',
+    narrative_reference_style: 'he/him',
+    inmate_behavior_before_order: 'standing at the cell door outside of his assigned cell',
+    order_type: 'verbal',
+    exact_order: 'return to his assigned cell',
+    total_orders_given: 3,
+    acknowledgment_type: 'eye_contact_and_verbal_response',
+    inmate_quote: "No, I ain't doing that.",
+    inmate_said_nothing: false,
+    quote_is_summary: false,
+    inmate_tone: 'loud and argumentative',
+    physical_behavior: 'crossed his arms and remained positioned at the cell door',
+    operational_impact: 'temporarily interrupting the master roster count and drawing the attention of surrounding inmates',
+    ability_to_comply: 'no_issue',
+    ability_to_comply_explanation: null,
+    force_used: 'no',
+    force_explanation: null,
+    uof_documentation_status: 'not_applicable',
+    confinement_status: 'placed',
+    oic_rank: 'Captain',
+    oic_last_name: 'Brown',
+    oic_authorized_confirmed: true,
+    witness_staff: null,
+    camera_coverage: null,
+    additional_facts: null,
+    separate_conduct_described: false,
+    separate_conduct_isolatable: null,
+    request_to_invent: false,
+  };
+
+  const SAMPLE_YELLOW = Object.assign({}, SAMPLE_GREEN, {
+    inmate_quote: 'He said he was not going back to his cell.',
+  });
+
+  let publicDemoMode = false;
+
+  async function loadDemoConfig() {
+    try {
+      const resp = await fetch('/api/dr-writer/6-1/config');
+      if (!resp.ok) return;
+      const config = await resp.json();
+      publicDemoMode = config.publicDemoMode === true;
+      applyDemoConfig();
+    } catch {
+      // Static-file fallback: local mock UI remains usable if opened without server config.
+    }
+  }
+
+  function applyDemoConfig() {
+    const notice = document.getElementById('public-demo-mode-notice');
+    const liveRadio = document.querySelector('[name="generate_mode"][value="live"]');
+    const liveLabel = document.getElementById('live-mode-radio-label');
+    const mockRadio = document.querySelector('[name="generate_mode"][value="mock"]');
+    const liveArea = document.getElementById('live-confirm-area');
+    const liveWarn = document.getElementById('live-mode-warning');
+
+    if (!notice || !liveRadio || !liveLabel || !mockRadio) return;
+
+    if (publicDemoMode) {
+      notice.style.display = '';
+      mockRadio.checked = true;
+      liveRadio.disabled = true;
+      liveLabel.classList.add('is-disabled');
+      if (liveArea) liveArea.style.display = 'none';
+      if (liveWarn) liveWarn.style.display = 'none';
+    } else {
+      notice.style.display = 'none';
+      liveRadio.disabled = false;
+      liveLabel.classList.remove('is-disabled');
+    }
+  }
+
+  // ── Fill form from an intake object (for sample fill buttons) ─────
+  // Does NOT auto-validate or auto-generate. Resets result state.
+
+  function fillForm(intake) {
+    // Text inputs / textareas
+    const textMap = {
+      incident_date: intake.incident_date ?? '',
+      incident_time: intake.incident_time ?? '',
+      dorm_area: intake.dorm_area ?? '',
+      location_specific: intake.incident_location ?? '',
+      officer_name: intake.officer_name ?? '',
+      officer_post: intake.officer_post ?? '',
+      officer_activity: intake.officer_activity ?? '',
+      inmate_last_name: intake.inmate_last_name ?? '',
+      inmate_first_name: intake.inmate_first_name ?? '',
+      dc_number: intake.dc_number ?? '',
+      inmate_behavior_before_order: intake.inmate_behavior_before_order ?? '',
+      exact_order: intake.exact_order ?? '',
+      total_orders_given: intake.total_orders_given != null ? String(intake.total_orders_given) : '',
+      inmate_quote: intake.inmate_quote ?? '',
+      inmate_tone: intake.inmate_tone ?? '',
+      physical_behavior: intake.physical_behavior ?? '',
+      ability_to_comply_explanation: intake.ability_to_comply_explanation ?? '',
+      force_explanation: intake.force_explanation ?? '',
+      oic_last_name: intake.oic_last_name ?? '',
+      additional_facts: intake.additional_facts ?? '',
+    };
+    for (const [id, val] of Object.entries(textMap)) {
+      const el = document.getElementById(id);
+      if (el) el.value = val;
+    }
+
+    // Operational impact — sample data is a plain string; sample loader puts it verbatim
+    // into the "Other — describe" box rather than trying to reverse-map it onto checkboxes.
+    if (intake.operational_impact) {
+      const otherCheck = document.getElementById('impact-other-check');
+      const otherBox = document.getElementById('operational_impact_other');
+      if (otherCheck) otherCheck.checked = true;
+      if (otherBox) otherBox.value = intake.operational_impact;
+      setImpactOther(true);
+    }
+
+    // Quote-is-summary and OIC authorization checkboxes
+    const quoteIsSummaryEl = document.getElementById('quote_is_summary');
+    if (quoteIsSummaryEl) quoteIsSummaryEl.checked = intake.quote_is_summary === true;
+    const oicConfirmedEl = document.getElementById('oic_authorized_confirmed');
+    if (oicConfirmedEl) oicConfirmedEl.checked = intake.oic_authorized_confirmed === true;
+
+    // Witness / camera — sample data only carries the final witness_staff/camera_coverage
+    // string, so the sample loader routes it straight to "Yes" + the detail field.
+    const witnessYes = document.querySelector('[name="witness_present"][value="yes"]');
+    const witnessNo = document.querySelector('[name="witness_present"][value="no"]');
+    if (intake.witness_staff) {
+      if (witnessYes) witnessYes.checked = true;
+      const witnessBox = document.getElementById('witness_staff');
+      if (witnessBox) witnessBox.value = intake.witness_staff;
+      setWitnessDetail(true);
+    } else {
+      if (witnessNo) witnessNo.checked = true;
+      setWitnessDetail(false);
+    }
+    const cameraYes = document.querySelector('[name="camera_present"][value="yes"]');
+    const cameraNo = document.querySelector('[name="camera_present"][value="no"]');
+    if (intake.camera_coverage) {
+      if (cameraYes) cameraYes.checked = true;
+      const cameraBox = document.getElementById('camera_id');
+      if (cameraBox) cameraBox.value = intake.camera_coverage.replace(/^view of\s*/i, '');
+      setCameraDetail(true);
+    } else {
+      if (cameraNo) cameraNo.checked = true;
+      setCameraDetail(false);
+    }
+
+    // Select elements
+    for (const [id, val] of [['officer_rank', intake.officer_rank], ['oic_rank', intake.oic_rank]]) {
+      const el = document.getElementById(id);
+      if (el && val) el.value = val;
+    }
+
+    // Radio buttons
+    const radioMap = [
+      ['narrative_reference_style', intake.narrative_reference_style],
+      ['order_type', intake.order_type],
+      ['acknowledgment_type', intake.acknowledgment_type],
+      ['ability_to_comply', intake.ability_to_comply],
+      ['force_used', intake.force_used],
+      ['confinement_status', intake.confinement_status],
+    ];
+    for (const [name, val] of radioMap) {
+      if (val) {
+        const r = document.querySelector(`[name="${name}"][value="${val}"]`);
+        if (r) r.checked = true;
+      }
+    }
+
+    // Conditional toggles
+    setAbilityExplain(intake.ability_to_comply === 'issue_with_explanation');
+    setForceExplain(intake.force_used === 'yes');
+
+    // Said nothing
+    if (intake.inmate_said_nothing) {
+      const r = document.getElementById('radio-said-nothing');
+      if (r) r.checked = true;
+      setSaidNothing(true);
+    } else {
+      const r = document.getElementById('radio-said-something');
+      if (r) r.checked = true;
+      setSaidNothing(false);
+    }
+
+    // Separate conduct
+    if (intake.separate_conduct_described === true) {
+      const r = document.querySelector('[name="separate_conduct_described"][value="true"]');
+      if (r) r.checked = true;
+      setSeparateConduct(true);
+      if (intake.separate_conduct_isolatable != null) {
+        const r2 = document.querySelector(`[name="separate_conduct_isolatable"][value="${intake.separate_conduct_isolatable}"]`);
+        if (r2) r2.checked = true;
+      }
+    } else {
+      const r = document.querySelector('[name="separate_conduct_described"][value="false"]');
+      if (r) r.checked = true;
+      setSeparateConduct(false);
+    }
+
+    // UOF status (only when force was used)
+    if (intake.uof_documentation_status && intake.uof_documentation_status !== 'not_applicable') {
+      const r = document.querySelector(`[name="uof_documentation_status"][value="${intake.uof_documentation_status}"]`);
+      if (r) r.checked = true;
+    }
+
+    // Reset result state — user must re-validate
+    lastValidationStatus = null;
+    lastValidationResult = null;
+    lastGenerateResult = null;
+    lastGenerateMode = null;
+    updateGenerateButtonState();
+    const liveResult = document.getElementById('live-result');
+    liveResult.innerHTML = '';
+    liveResult.style.display = 'none';
+    document.getElementById('generate-result-card').style.display = 'none';
+    document.getElementById('generate-result-body').innerHTML = '';
+    document.getElementById('btn-validate').textContent = 'Check Facts';
+    document.getElementById('btn-generate').textContent = 'Draft Narrative';
+    const btnCopyNarrative = document.getElementById('btn-copy-narrative');
+    if (btnCopyNarrative) { btnCopyNarrative.disabled = true; btnCopyNarrative.className = 'btn btn-muted'; }
+    const btnCopyJson = document.getElementById('btn-copy-json');
+    if (btnCopyJson) btnCopyJson.disabled = true;
+    const btnExportTxtFill = document.getElementById('btn-export-txt');
+    if (btnExportTxtFill) btnExportTxtFill.disabled = true;
+    const btnExportJsonFill = document.getElementById('btn-export-json');
+    if (btnExportJsonFill) btnExportJsonFill.disabled = true;
+  }
+
+  // ── Validation result renderer ─────────────────────────────────────
+
+  function renderValidationResult(data) {
+    const container = document.getElementById('live-result');
+    container.innerHTML = '';
+    container.style.display = '';
+    lastValidationResult = data;
+    lastValidationStatus = data.status;
+
+    const status = data.status;
+    const pillClass = status === 'RED' ? 'red' : status === 'YELLOW' ? 'yellow' : 'green';
+    const pillIcon = status === 'RED' ? '🚫' : status === 'YELLOW' ? '⚠' : '✓';
+
+    const pill = document.createElement('div');
+    pill.className = `status-pill ${pillClass}`;
+    pill.style.marginBottom = '10px';
+    if (status === 'RED') {
+      pill.textContent = `${pillIcon} RED — Missing required facts. Drafting is blocked.`;
+    } else if (status === 'YELLOW') {
+      pill.textContent = `${pillIcon} YELLOW — Draft allowed, but review flagged items carefully.`;
+    } else {
+      pill.textContent = `${pillIcon} GREEN — Ready to draft after officer review.`;
+    }
+    container.appendChild(pill);
+
+    if (status === 'RED' && data.red_blockers.length > 0) {
+      const list = document.createElement('div');
+      list.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+      for (const b of data.red_blockers) {
+        const item = document.createElement('div');
+        item.className = 'blocker-example';
+        item.innerHTML =
+          `<div class="blocker-dot"></div>` +
+          `<span class="blocker-text">` +
+          `<strong>${escHtml(b.id)}</strong> — ${escHtml(b.missing_fact)}<br>` +
+          `<em style="color:#888;font-size:11px;">${escHtml(b.follow_up_question)}</em>` +
+          `</span>`;
+        list.appendChild(item);
+      }
+      container.appendChild(list);
+    }
+
+    if (status === 'YELLOW' && data.yellow_warnings.length > 0) {
+      const list = document.createElement('div');
+      list.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+      for (const w of data.yellow_warnings) {
+        const item = document.createElement('div');
+        item.className = 'warning-example';
+        item.innerHTML =
+          `<div class="warning-dot"></div>` +
+          `<span class="warning-text">` +
+          `<strong>${escHtml(w.id)}</strong> — ¶${w.affected_paragraph}<br>` +
+          `${escHtml(w.warning)}<br>` +
+          `<em style="color:#888;font-size:11px;">${escHtml(w.suggested_clarification)}</em>` +
+          `</span>`;
+        list.appendChild(item);
+      }
+      container.appendChild(list);
+    }
+
+    if (status === 'GREEN') {
+      const msg = document.createElement('div');
+      msg.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f0faf3;border-radius:7px;border:1px solid #a8d5b5;';
+      msg.innerHTML =
+        `<span style="font-size:18px;">✓</span>` +
+        `<div>` +
+        `<p style="font-size:13px;font-weight:600;color:#1a6b35;margin:0 0 2px;">Ready to draft after officer review</p>` +
+        `<p style="font-size:12px;color:#2d7a4a;margin:0;">Read the draft carefully before certifying. GREEN is not a substitute for officer review.</p>` +
+        `</div>`;
+      container.appendChild(msg);
+    }
+
+    updateGenerateButtonState();
+
+    const btnCopyJson = document.getElementById('btn-copy-json');
+    if (btnCopyJson) btnCopyJson.disabled = false;
+
+    // Export JSON: enabled after validate result (no generate result required)
+    const btnExportJson = document.getElementById('btn-export-json');
+    if (btnExportJson) btnExportJson.disabled = false;
+  }
+
+  // ── Generate result renderer (Step 5E: CSS classes + interactive checklist) ──
+
+  function renderGenerateResult(data) {
+    const card = document.getElementById('generate-result-card');
+    const header = document.getElementById('generate-result-header');
+    const statusLabel = document.getElementById('generate-result-status-label');
+    const modeLabel = document.getElementById('generate-result-mode-label');
+    const body = document.getElementById('generate-result-body');
+
+    const status = data.status;
+    const mode = document.querySelector('[name="generate_mode"]:checked')?.value ?? 'mock';
+    const modeName = mode === 'live' ? 'Live Claude response' : 'Mock — not a real Claude response';
+
+    header.className = 'output-header';
+    if (status === 'RED') {
+      header.style.background = 'var(--red)';
+      statusLabel.textContent = '🚫 RED — Drafting is blocked';
+    } else if (status === 'YELLOW') {
+      header.style.background = '#ff9f0a';
+      statusLabel.textContent = '⚠ YELLOW — Draft generated with review flags';
+    } else {
+      header.style.background = 'var(--green)';
+      statusLabel.textContent = '✓ GREEN — Draft generated';
+    }
+    modeLabel.textContent = modeName;
+    body.innerHTML = '';
+
+    // RED — blockers only, then exit
+    if (status === 'RED' && data.red_blockers && data.red_blockers.length > 0) {
+      const section = document.createElement('div');
+      section.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+      for (const b of data.red_blockers) {
+        const item = document.createElement('div');
+        item.className = 'blocker-example';
+        item.innerHTML =
+          `<div class="blocker-dot"></div>` +
+          `<span class="blocker-text"><strong>${escHtml(b.id)}</strong> — ${escHtml(b.missing_fact)}<br>` +
+          `<em style="color:#888;font-size:11px;">${escHtml(b.follow_up_question)}</em></span>`;
+        section.appendChild(item);
+      }
+      body.appendChild(section);
+      card.style.display = '';
+      return;
+    }
+
+    // Status banner
+    {
+      const banner = document.createElement('div');
+      if (status === 'GREEN') {
+        banner.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f0faf3;border-radius:7px;border:1px solid #a8d5b5;';
+        banner.innerHTML =
+          `<span style="font-size:18px;">✓</span>` +
+          `<div><p style="font-size:13px;font-weight:600;color:#1a6b35;margin:0 0 2px;">Draft generated — review before use</p>` +
+          `<p style="font-size:12px;color:#2d7a4a;margin:0;">Read every paragraph and verify accuracy before certifying.</p></div>`;
+      } else {
+        banner.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fffbf0;border-radius:7px;border:1px solid #ffe082;';
+        banner.innerHTML =
+          `<span style="font-size:18px;">⚠</span>` +
+          `<div><p style="font-size:13px;font-weight:600;color:#7a4000;margin:0 0 2px;">Draft generated — flagged sections need review</p>` +
+          `<p style="font-size:12px;color:#7a4000;margin:0;">Look for <strong>[REVIEW — …]</strong> markers in the narrative before using this report.</p></div>`;
+      }
+      body.appendChild(banner);
+    }
+
+    // Narrative
+    if (data.narrative) {
+      const section = document.createElement('div');
+      section.className = 'result-section';
+      const label = document.createElement('p');
+      label.className = 'result-label';
+      label.textContent = 'Section II — Statement of Facts';
+      section.appendChild(label);
+      const narrativeDiv = document.createElement('div');
+      narrativeDiv.className = 'narrative-output';
+      const paragraphs = data.narrative.split(/\n\n+/).filter(p => p.trim().length > 0);
+      for (const para of paragraphs) {
+        const p = document.createElement('p');
+        p.textContent = para.trim();
+        narrativeDiv.appendChild(p);
+      }
+      section.appendChild(narrativeDiv);
+      body.appendChild(section);
+    }
+
+    // Flagged sections (YELLOW)
+    if (status === 'YELLOW' && data.yellow_warnings && data.yellow_warnings.length > 0) {
+      const section = document.createElement('div');
+      section.className = 'result-section';
+      const label = document.createElement('p');
+      label.className = 'result-label';
+      label.textContent = 'Flagged Sections';
+      section.appendChild(label);
+      const wList = document.createElement('div');
+      wList.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+      for (const w of data.yellow_warnings) {
+        const item = document.createElement('div');
+        item.className = 'warning-example';
+        item.innerHTML =
+          `<div class="warning-dot"></div>` +
+          `<span class="warning-text"><strong>¶${w.affected_paragraph}</strong> — ${escHtml(w.warning)}<br>` +
+          `<em style="color:#888;font-size:11px;">${escHtml(w.suggested_clarification)}</em></span>`;
+        wList.appendChild(item);
+      }
+      section.appendChild(wList);
+      body.appendChild(section);
+    }
+
+    // AI disclosure
+    if (data.ai_disclosure) {
+      const section = document.createElement('div');
+      section.className = 'result-section';
+      const disc = document.createElement('div');
+      disc.className = 'disclosure-block';
+      disc.innerHTML = `<strong>AI Disclosure:</strong> ${escHtml(data.ai_disclosure)}`;
+      section.appendChild(disc);
+      body.appendChild(section);
+    }
+
+    // Officer review checklist — interactive checkboxes
+    if (data.officer_review_checklist && data.officer_review_checklist.length > 0) {
+      const section = document.createElement('div');
+      section.className = 'result-section';
+      const label = document.createElement('p');
+      label.className = 'result-label';
+      label.textContent = 'Officer Review Checklist';
+      section.appendChild(label);
+      const clList = document.createElement('div');
+      clList.className = 'checklist-officer';
+      for (const text of data.officer_review_checklist) {
+        const row = document.createElement('label');
+        row.className = 'checklist-officer-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.addEventListener('change', function () { row.classList.toggle('checked', cb.checked); });
+        const span = document.createElement('span');
+        span.textContent = text;
+        row.appendChild(cb);
+        row.appendChild(span);
+        clList.appendChild(row);
+      }
+      section.appendChild(clList);
+      body.appendChild(section);
+    }
+
+    card.style.display = '';
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Generate mode selector — show/hide live confirm ────────────────
+
+  document.querySelectorAll('[name="generate_mode"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      if (publicDemoMode && this.value === 'live') {
+        const mockRadio = document.querySelector('[name="generate_mode"][value="mock"]');
+        if (mockRadio) mockRadio.checked = true;
+        applyDemoConfig();
+        return;
+      }
+      const liveArea = document.getElementById('live-confirm-area');
+      const liveWarn = document.getElementById('live-mode-warning');
+      liveArea.style.display = this.value === 'live' ? '' : 'none';
+      if (liveWarn) liveWarn.style.display = 'none';
+    });
+  });
+
+  // ── Form change → reset generate state (re-validate required) ─────
+
+  document.querySelector('.form-column').addEventListener('input', function(event) {
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      (target.closest('#generate-mode-controls') || target.classList.contains('feedback-input'))
+    ) {
+      return;
+    }
+    if (lastValidationStatus !== null) {
+      lastValidationStatus = null;
+      lastValidationResult = null;
+      updateGenerateButtonState();
+      const container = document.getElementById('live-result');
+      container.style.display = 'none';
+      container.innerHTML = '';
+      const btnCopyJson = document.getElementById('btn-copy-json');
+      if (btnCopyJson && lastGenerateResult === null) btnCopyJson.disabled = true;
+      document.getElementById('btn-validate').textContent = 'Check Facts';
+    }
+  });
+
+  // ── Sample fill buttons ────────────────────────────────────────────
+
+  document.getElementById('btn-load-green').addEventListener('click', function() {
+    fillForm(SAMPLE_GREEN);
+  });
+
+  document.getElementById('btn-load-yellow').addEventListener('click', function() {
+    fillForm(SAMPLE_YELLOW);
+  });
+
+  // ── Validate Facts button → POST to local evaluator ────────────────
+
+  document.getElementById('btn-validate').addEventListener('click', async function () {
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Validating…';
+
+    const intake = collectIntakeFacts();
+    console.log('[LOCKUPHQ] Validate — intake submitted:', intake);
+
+    let data;
+    try {
+      const resp = await fetch('/api/dr-writer/6-1/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(intake),
+      });
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
+        throw new Error(errBody.error ?? `HTTP ${resp.status}`);
+      }
+      data = await resp.json();
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Check Facts';
+      const container = document.getElementById('live-result');
+      container.style.display = '';
+      container.innerHTML =
+        `<div style="padding:10px 12px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;font-size:13px;color:#856404;">` +
+        `<strong>Could not reach local server.</strong><br>` +
+        `Run <code>npm run dev:6-1:ui</code> then open ` +
+        `<code>http://localhost:5176/charge-6-1</code> in your browser.<br>` +
+        `<em style="font-size:11px;color:#999;display:block;margin-top:4px;">` +
+        `Opening this file directly from disk requires the local server to validate.` +
+        `</em></div>`;
+      console.error('[LOCKUPHQ] Validation error:', err);
+      return;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Check Again';
+    renderValidationResult(data);
+    console.log('[LOCKUPHQ] Validation result:', data);
+  });
+
+  // ── Generate Narrative button → POST to generate endpoint ─────────
+
+  document.getElementById('btn-generate').addEventListener('click', async function () {
+    const mode = document.querySelector('[name="generate_mode"]:checked')?.value ?? 'mock';
+    const confirmLive = document.getElementById('confirm_live_generate')?.checked ?? false;
+    const liveWarn = document.getElementById('live-mode-warning');
+
+    if (publicDemoMode && mode === 'live') {
+      if (liveWarn) {
+        liveWarn.textContent = 'Public demo mode is mock-only. Live Claude drafting is disabled on this demo.';
+        liveWarn.style.display = '';
+      }
+      return;
+    }
+
+    // Client-side guard: live requires checkbox before any request is sent
+    if (mode === 'live' && !confirmLive) {
+      if (liveWarn) liveWarn.style.display = '';
+      return;
+    }
+    if (liveWarn) liveWarn.style.display = 'none';
+
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Drafting…';
+
+    const intake = collectIntakeFacts();
+    const requestBody = { intake, mode, confirmLive };
+    console.log('[LOCKUPHQ] Generate — request:', { mode, confirmLive });
+
+    let data;
+    try {
+      const resp = await fetch('/api/dr-writer/6-1/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
+        throw new Error(errBody.error ?? `HTTP ${resp.status}`);
+      }
+      data = await resp.json();
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Draft Narrative';
+      const card = document.getElementById('generate-result-card');
+      const body = document.getElementById('generate-result-body');
+      const header = document.getElementById('generate-result-header');
+      const statusLabel = document.getElementById('generate-result-status-label');
+      header.style.background = 'var(--red)';
+      statusLabel.textContent = '⚠ Error — could not draft';
+      document.getElementById('generate-result-mode-label').textContent = '';
+      body.innerHTML =
+        `<div style="padding:10px 12px;background:#fff5f5;border:1px solid #ffcccc;border-radius:8px;font-size:13px;color:#8b0000;">` +
+        `<strong>Generation request failed.</strong><br>${escHtml(err.message)}` +
+        `</div>`;
+      card.style.display = '';
+      console.error('[LOCKUPHQ] Generate error:', err);
+      return;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Draft Again';
+    lastGenerateResult = data;
+    lastGenerateMode = mode;
+    renderGenerateResult(data);
+
+    // Copy Draft: enabled only when narrative is non-null
+    const btnCopyNarrative = document.getElementById('btn-copy-narrative');
+    if (btnCopyNarrative) {
+      btnCopyNarrative.disabled = (data.narrative == null);
+      if (!btnCopyNarrative.disabled) btnCopyNarrative.className = 'btn btn-ghost';
+    }
+
+    // Copy JSON: always enabled after any result
+    const btnCopyJson = document.getElementById('btn-copy-json');
+    if (btnCopyJson) btnCopyJson.disabled = false;
+
+    // Export TXT: enabled after any generate result
+    const btnExportTxt = document.getElementById('btn-export-txt');
+    if (btnExportTxt) btnExportTxt.disabled = false;
+
+    // Export JSON: enabled after any result
+    const btnExportJsonGen = document.getElementById('btn-export-json');
+    if (btnExportJsonGen) btnExportJsonGen.disabled = false;
+
+    console.log('[LOCKUPHQ] Generate result:', data);
+  });
+
+  // ── Copy Draft ─────────────────────────────────────────────────────
+
+  document.getElementById('btn-copy-narrative').addEventListener('click', function () {
+    if (!lastGenerateResult?.narrative) return;
+    const text = lastGenerateResult.narrative;
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Draft copied.');
+    }).catch(() => {
+      showToast('Copy failed. Select and copy manually.', true);
+      console.log('[LOCKUPHQ] Draft (copy failed — paste manually):\n', text);
+    });
+  });
+
+  // ── Copy JSON ─────────────────────────────────────────────────────
+  // Copies most recent result: generate result if present, else validation result.
+
+  document.getElementById('btn-copy-json').addEventListener('click', function () {
+    const toCopy = lastGenerateResult ?? lastValidationResult;
+    if (!toCopy) return;
+    const jsonStr = JSON.stringify(toCopy, null, 2);
+    navigator.clipboard.writeText(jsonStr).then(() => {
+      showToast('JSON copied.');
+    }).catch(() => {
+      showToast('Copy failed. Select and copy manually.', true);
+      console.log('[LOCKUPHQ] JSON (copy failed — paste manually):\n', jsonStr);
+    });
+  });
+
+  // ── Copy / Clear Feedback Notes ────────────────────────────────────────
+  // Client-side only. No server request, no storage, no external send.
+
+  function buildFeedbackNotesText() {
+    const fields = [
+      ['What felt confusing?', 'feedback_confusing'],
+      ['What question or field was missing?', 'feedback_missing_field'],
+      ['Did the narrative sound professional?', 'feedback_professional'],
+      ['Would this save time?', 'feedback_save_time'],
+      ['Other notes', 'feedback_other'],
+    ];
+    const lines = ['LockUpHQ DR Assist - Charge 6-1 Feedback Notes', ''];
+    for (const [label, id] of fields) {
+      const value = document.getElementById(id)?.value.trim() || '';
+      lines.push(label);
+      lines.push(value || '(blank)');
+      lines.push('');
+    }
+    return lines.join('\n').trim() + '\n';
+  }
+
+  document.getElementById('btn-copy-feedback').addEventListener('click', function () {
+    const text = buildFeedbackNotesText();
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Feedback notes copied.');
+    }).catch(() => {
+      showToast('Copy failed. Select and copy manually.', true);
+      console.log('[LOCKUPHQ] Feedback notes (copy failed — paste manually):\n', text);
+    });
+  });
+
+  document.getElementById('btn-clear-feedback').addEventListener('click', function () {
+    document.querySelectorAll('.feedback-input').forEach(el => { el.value = ''; });
+    showToast('Feedback notes cleared.');
+  });
+
+  // ── Export TXT ─────────────────────────────────────────────────────
+  // Builds a plain-text draft file and triggers a browser download.
+  // No server write. No storage. No backend route. Client-side Blob only.
+
+  function buildExportText(d) {
+    const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+    const hr = '='.repeat(60);
+    const divider = '-'.repeat(60);
+    const lines = [];
+    lines.push('LockUpHQ DR Assist — Charge 6-1');
+    lines.push('Disobeying Verbal or Written Order');
+    lines.push(hr);
+    lines.push('');
+    lines.push('Status:    ' + d.status);
+    lines.push('Exported:  ' + timestamp);
+    if (lastGenerateMode === 'mock') {
+      lines.push('Mode:      MOCK — synthetic narrative (not Claude AI)');
+    } else if (lastGenerateMode === 'live') {
+      lines.push('Mode:      LIVE — Claude AI response');
+    }
+    lines.push('');
+    if (d.red_blockers && d.red_blockers.length > 0) {
+      lines.push(divider);
+      lines.push('RED BLOCKERS — resolve before drafting');
+      lines.push(divider);
+      lines.push('');
+      for (const b of d.red_blockers) {
+        lines.push('[' + b.id + ']');
+        lines.push('  ' + b.missing_fact);
+        lines.push('  Q: ' + b.follow_up_question);
+        lines.push('');
+      }
+    }
+    if (d.yellow_warnings && d.yellow_warnings.length > 0) {
+      lines.push(divider);
+      lines.push('YELLOW FLAGS — review before use');
+      lines.push(divider);
+      lines.push('');
+      for (const w of d.yellow_warnings) {
+        lines.push('[' + String.fromCharCode(182) + w.affected_paragraph + '] ' + w.warning);
+        lines.push('  Suggestion: ' + w.suggested_clarification);
+        lines.push('');
+      }
+    }
+    if (d.narrative) {
+      lines.push(divider);
+      lines.push('SECTION II — STATEMENT OF FACTS');
+      lines.push(divider);
+      lines.push('');
+      lines.push(d.narrative);
+      lines.push('');
+    }
+    if (d.ai_disclosure) {
+      lines.push(divider);
+      lines.push('AI DISCLOSURE');
+      lines.push(divider);
+      lines.push('');
+      lines.push(d.ai_disclosure);
+      lines.push('');
+    }
+    if (d.officer_review_checklist && d.officer_review_checklist.length > 0) {
+      lines.push(divider);
+      lines.push('OFFICER REVIEW CHECKLIST');
+      lines.push('Complete before certifying this report.');
+      lines.push(divider);
+      lines.push('');
+      for (const item of d.officer_review_checklist) {
+        lines.push('[ ] ' + item);
+      }
+      lines.push('');
+    }
+    lines.push(hr);
+    lines.push('REVIEW AND CERTIFY BEFORE USE.');
+    lines.push('This draft was produced with AI assistance. The officer is');
+    lines.push('responsible for verifying all facts before submission.');
+    lines.push(hr);
+    return lines.join('\n');
+  }
+
+  function triggerDownload(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  document.getElementById('btn-export-txt').addEventListener('click', function () {
+    if (!lastGenerateResult) return;
+    triggerDownload(buildExportText(lastGenerateResult), 'lockuphq-6-1-draft.txt', 'text/plain;charset=utf-8');
+    showToast('Draft exported as lockuphq-6-1-draft.txt');
+  });
+
+  // ── Export JSON ────────────────────────────────────────────────────
+  // Downloads the most recent result (generate or validate) as a .json file.
+
+  document.getElementById('btn-export-json').addEventListener('click', function () {
+    const toExport = lastGenerateResult ?? lastValidationResult;
+    if (!toExport) return;
+    triggerDownload(JSON.stringify(toExport, null, 2), 'lockuphq-6-1-output.json', 'application/json;charset=utf-8');
+    showToast('Output exported as lockuphq-6-1-output.json');
+  });
+
+  // ── Clear Form ─────────────────────────────────────────────────────
+
+  document.getElementById('btn-clear').addEventListener('click', function () {
+    if (!confirm('Clear all fields? This cannot be undone.')) return;
+    document.querySelectorAll('input[type="text"], input[type="date"], textarea, select').forEach(el => { el.value = ''; });
+    document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => { el.checked = false; });
+    const mockRadio = document.querySelector('[name="generate_mode"][value="mock"]');
+    if (mockRadio) { mockRadio.checked = true; }
+    document.getElementById('live-confirm-area').style.display = 'none';
+    const liveWarn = document.getElementById('live-mode-warning');
+    if (liveWarn) liveWarn.style.display = 'none';
+    applyDemoConfig();
+    setForceExplain(false);
+    setAbilityExplain(false);
+    setSeparateConduct(false);
+    setSaidNothing(false);
+    setLocationOther(false);
+    setImpactOther(false);
+    setWitnessDetail(false);
+    setCameraDetail(false);
+    const container = document.getElementById('live-result');
+    container.innerHTML = '';
+    container.style.display = 'none';
+    lastValidationResult = null;
+    lastValidationStatus = null;
+    lastGenerateResult = null;
+    lastGenerateMode = null;
+    document.getElementById('generate-result-card').style.display = 'none';
+    document.getElementById('generate-result-body').innerHTML = '';
+    updateGenerateButtonState();
+    document.getElementById('btn-copy-narrative').disabled = true;
+    document.getElementById('btn-copy-narrative').className = 'btn btn-muted';
+    const btnCopyJson = document.getElementById('btn-copy-json');
+    if (btnCopyJson) btnCopyJson.disabled = true;
+    const btnExportTxtClr = document.getElementById('btn-export-txt');
+    if (btnExportTxtClr) btnExportTxtClr.disabled = true;
+    const btnExportJsonClr = document.getElementById('btn-export-json');
+    if (btnExportJsonClr) btnExportJsonClr.disabled = true;
+    document.getElementById('btn-validate').textContent = 'Check Facts';
+    document.getElementById('btn-generate').textContent = 'Draft Narrative';
+  });
+
+  loadDemoConfig();
+</script>
+
+</body>
+</html>

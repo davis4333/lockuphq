@@ -1,0 +1,35 @@
+{
+  "version": "step-01",
+  "global_guardrails": [
+    {
+      "id": "NO_INVENTED_FACTS",
+      "severity": "red",
+      "rule": "Never invent facts, times, locations, witnesses, evidence, medical issues, force, confinement status, OIC approval, inmate quotes, or officer actions."
+    },
+    {
+      "id": "OFFICER_AUTHORSHIP",
+      "severity": "required",
+      "rule": "The reporting officer remains the author/reviewer. The AI generates a draft narrative from officer-provided facts only."
+    },
+    {
+      "id": "ONE_CHARGE_PER_REPORT",
+      "severity": "red",
+      "rule": "A disciplinary report must focus on one violation. If facts suggest additional charges, flag for separate handling rather than mixing charges."
+    },
+    {
+      "id": "NO_MOTIVE_INFERENCE",
+      "severity": "red",
+      "rule": "Do not infer motive or intent. Use observed behavior and documented words/actions only."
+    },
+    {
+      "id": "QUOTE_EXACTNESS",
+      "severity": "yellow_or_red",
+      "rule": "Quoted inmate words must be exact words supplied by the officer. If the officer provides a summary, warn and ask for exact words if known."
+    },
+    {
+      "id": "NO_LEGAL_GUARANTEE",
+      "severity": "product_notice",
+      "rule": "The tool can reduce defects but cannot guarantee a DR will be sustained. Officer review and institutional process remain required."
+    }
+  ]
+}

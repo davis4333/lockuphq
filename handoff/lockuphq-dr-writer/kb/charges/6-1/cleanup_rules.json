@@ -1,0 +1,262 @@
+{
+  "version": "1.1",
+  "charge": "6-1",
+  "authority": "Section 8 of LOCKUPHQ_DR_WRITER_6-1_MASTER_v1.1_FINAL.md",
+  "description": "Safe cleanup and normalization rules. These rules change format, grammar, spelling, and language register only. Facts are never changed. If a value is too vague to translate safely, it is left for the evaluator to flag.",
+  "rules": {
+    "time": {
+      "description": "Normalize time values to 24-hour HHMM hours format. Always preserve 'approximately' when the officer used it or when approximation is implied.",
+      "conversions": [
+        { "input_pattern": "12-hour AM/PM (e.g., '6pm', '6:30pm', '830pm', '8:30 AM')", "output_format": "HHMM hours (e.g., '1800 hours', '1830 hours', '2030 hours', '0830 hours')" },
+        { "input_pattern": "noon or 12pm", "output": "1200 hours" },
+        { "input_pattern": "midnight or 12am", "output": "0000 hours" },
+        { "input_pattern": "4-digit 24-hour already (e.g., '1800')", "output": "1800 hours (add 'hours' suffix)" },
+        { "input_pattern": "3-digit shorthand (e.g., '830')", "output": "0830 hours (pad to 4 digits, add 'hours')" }
+      ],
+      "non_numeric_descriptors": {
+        "examples": ["around lunchtime", "late evening", "after chow", "before shift change", "early morning", "midday"],
+        "action": "Return as-is. Evaluator will flag RED — non-numeric time descriptor is a red blocker. Do not attempt to guess a time."
+      },
+      "prefix": "Always output 'at approximately [TIME] hours' — preserve or add 'approximately'."
+    },
+    "rank": {
+      "description": "Normalize rank abbreviations to fully spelled-out titles. Apply to both officer rank and OIC rank fields.",
+      "map": {
+        "ofc": "Officer",
+        "officer": "Officer",
+        "sgt": "Sergeant",
+        "sargent": "Sergeant",
+        "s/sgt": "Staff Sergeant",
+        "lt": "Lieutenant",
+        "liutenant": "Lieutenant",
+        "lieut": "Lieutenant",
+        "cpt": "Captain",
+        "capt": "Captain",
+        "captain": "Captain",
+        "maj": "Major",
+        "major": "Major",
+        "col": "Colonel",
+        "colonel": "Colonel",
+        "dc": "Deputy Commissioner",
+        "asst": "Assistant"
+      },
+      "rule": "Match case-insensitively. Output the fully spelled-out rank in title case."
+    },
+    "name_and_title": {
+      "description": "All proper names to title case. Fix known spelling errors in rank titles.",
+      "rules": [
+        "Convert all-lowercase names to title case: 'john smith' → 'John Smith'",
+        "Convert all-caps names to title case: 'JOHN SMITH' → 'John Smith'",
+        "Common rank spelling corrections are handled by the rank map above",
+        "Do not change hyphenated names: 'Smith-Jones' stays 'Smith-Jones'",
+        "Do not alter DC numbers: 'A12345' stays 'A12345'"
+      ]
+    },
+    "location": {
+      "description": "Use exact location in Paragraph 1. Use broader operational area in Paragraph 3. Never write 'orderly operation of [cell number].'",
+      "rules": [
+        "Paragraph 1 exact location: 'cell E3107', 'the Wing 2 dayroom', 'the shower area'",
+        "Paragraph 3 operational area: 'E Dorm', 'Wing 2', 'the housing unit' — never 'cell E3107'",
+        "If officer provides only a cell number with no dorm/area, prompt for the dorm separately via YELLOW warning"
+      ]
+    },
+    "order": {
+      "description": "Convert officer's description of giving the order into the command itself only. Remove all first-person phrasing.",
+      "prefix_patterns_to_strip": [
+        "I told him to",
+        "I told her to",
+        "I told them to",
+        "I ordered him to",
+        "I ordered her to",
+        "I ordered them to",
+        "I directed him to",
+        "I directed her to",
+        "I directed them to",
+        "I instructed him to",
+        "I instructed her to",
+        "I instructed them to",
+        "I commanded him to",
+        "I commanded her to",
+        "I commanded them to",
+        "I asked him to",
+        "I asked her to",
+        "I asked them to"
+      ],
+      "examples": [
+        { "input": "I told him to go back to his cell", "output": "return to his assigned cell" },
+        { "input": "I ordered him to cuff up", "output": "submit to hand restraints" },
+        { "input": "I told him to stop kicking the door", "output": "cease kicking the cell door" },
+        { "input": "I told him to sit down", "output": "return to his seat" },
+        { "input": "I told him to stop", "output": "stop (VAGUE — evaluator will flag RED: stop what?)" }
+      ],
+      "rule": "If after removing the first-person prefix the remaining command is a single word or clearly vague, return the cleaned version. The evaluator will detect vagueness and flag RED.",
+      "do_not_invent": "If the officer's phrasing is too vague to translate accurately, leave the cleaned version for the evaluator to flag. Do not invent specific commands."
+    },
+    "inmate_before_order": {
+      "description": "Goal: observable language that shows what the officer saw before any words were spoken.",
+      "bad_input_patterns": [
+        "he wouldn't go in his cell",
+        "she was just standing there",
+        "they refused to lock down",
+        "he was acting up",
+        "he wouldn't listen"
+      ],
+      "action_for_bad_input": "Return as-is with flag for evaluator. Do not rewrite inmate behavior. The evaluator will surface a YELLOW warning for conclusory or too-vague inmate behavior.",
+      "acceptable_output_examples": [
+        "standing at the cell door outside of his assigned cell",
+        "remaining outside of his assigned cell during count procedures",
+        "remaining stationary outside of his assigned bunk area",
+        "blocking the cell doorway without moving toward his assigned bunk",
+        "remaining in the shower area after scheduled shower time"
+      ]
+    },
+    "acknowledgment": {
+      "description": "Convert informal acknowledgment descriptions to standard acknowledgment sentence phrasing.",
+      "map": [
+        { "input": "looked at me", "output_type": "eye_contact" },
+        { "input": "made eye contact", "output_type": "eye_contact" },
+        { "input": "said no", "output_type": "verbal_response" },
+        { "input": "said something back", "output_type": "verbal_response" },
+        { "input": "talked back", "output_type": "verbal_response" },
+        { "input": "turned around", "output_type": "physical_reaction" },
+        { "input": "turned toward me", "output_type": "physical_reaction" },
+        { "input": "he was right there", "output_type": "within_hearing_distance" },
+        { "input": "she was standing right in front of me", "output_type": "within_hearing_distance" }
+      ]
+    },
+    "quote": {
+      "description": "Exact quotes only inside quotation marks. Do not put summaries inside quotation marks.",
+      "rules": [
+        "Preserve all words inside the quote exactly — do not change any words",
+        "Fix capitalization of the first word in the quote",
+        "Add terminal punctuation if missing (period or exclamation mark)",
+        "Preserve profanity exactly as the officer reported it — do not sanitize",
+        "If officer provides a description of what was said rather than exact words, leave for evaluator to flag YELLOW (quote is summary)"
+      ],
+      "summary_detection_patterns": [
+        "he said he",
+        "she said she",
+        "they said they",
+        "he told me",
+        "she told me",
+        "they told me",
+        "he said that",
+        "she said that",
+        "that he wasn't",
+        "that she wasn't",
+        "that they weren't"
+      ]
+    },
+    "tone": {
+      "description": "Normalize tone descriptors. Remove over-stacked tone lists. Remove conclusion-based tone language.",
+      "acceptable_descriptors": [
+        "loud",
+        "argumentative",
+        "loud and argumentative",
+        "loud and disruptive",
+        "yelling",
+        "sarcastic",
+        "calm but refusing",
+        "hostile",
+        "profane"
+      ],
+      "rules": [
+        "Do not use 'non-compliant tone' as the only tone descriptor — it is a legal conclusion, not a description of how something sounded",
+        "Do not stack more than three tone descriptors",
+        "Profane is acceptable only if the exact quote provided by the officer contains profanity",
+        "If over-stacked, trim to the most specific two or three descriptors"
+      ]
+    },
+    "physical_behavior": {
+      "description": "Separate visual behavior from auditory behavior. Convert conclusions to observable actions.",
+      "rules": [
+        "Visual behavior (what the officer saw) goes in one sentence",
+        "Auditory behavior (how something sounded) goes in a separate sentence",
+        "Wrong: 'Inmate Smith stood aggressively in a loud manner'",
+        "Right: 'Inmate Smith crossed his arms and remained positioned at the cell door. Inmate Smith raised his voice in a loud and argumentative manner audible to surrounding inmates.'",
+        "If officer provides a duration without an observable action, leave for evaluator to flag YELLOW",
+        "Convert conclusions to observable actions when the observable action is clearly implied and not invented",
+        "Do not invent physical behavior — if not observable from the officer's description, leave for evaluator"
+      ],
+      "conclusory_patterns_to_flag": [
+        "was noncompliant",
+        "was disrespectful",
+        "was acting up",
+        "acted crazy",
+        "was aggressive",
+        "was hostile"
+      ]
+    },
+    "operational_impact": {
+      "description": "Translate vague operational impact language into specific FDOC report language. Reference dorm/wing/area only — never cell number.",
+      "map": [
+        { "input": "messed up count", "output": "temporarily interrupting the master roster count" },
+        { "input": "delayed count", "output": "temporarily interrupting the master roster count" },
+        { "input": "everyone started looking", "output": "drawing the attention of surrounding inmates" },
+        { "input": "other inmates saw", "output": "drawing the attention of surrounding inmates" },
+        { "input": "pulled me away from what I was doing", "output": "requiring staff attention away from normal duties" },
+        { "input": "stopped showers", "output": "interrupting shower operations" },
+        { "input": "held up chow", "output": "interrupting meal service" },
+        { "input": "stopped movement", "output": "interrupting inmate movement" }
+      ],
+      "minimum_impact_template": "This incident occurred during [OFFICER ACTIVITY] in [AREA], requiring this officer's immediate attention away from assigned duties.",
+      "area_rule": "Always reference dorm, wing, or facility area — never cell number in operational impact sentence"
+    },
+    "ability_and_force": {
+      "description": "Default output when no issue and no force. Do not apply default if officer reported any issue.",
+      "default_no_issue_no_force": "Inmate [LAST NAME] displayed no apparent medical condition, mental health issue, physical limitation, or language barrier that would have prevented compliance with this officer's directive. No use of force was required.",
+      "force_v1_1_schema": {
+        "force_used_no": { "force_explanation": null, "uof_documentation_status": "not_applicable" },
+        "force_used_yes_with_explanation_uof_confirmed": { "uof_documentation_status": "completed" },
+        "force_used_yes_with_explanation_uof_not_confirmed": { "uof_documentation_status": "not_confirmed" },
+        "force_used_yes_no_explanation": "RED blocker — do not generate"
+      },
+      "forbidden": "Do not say 'there was nothing wrong with him/her/them.'"
+    },
+    "pronoun_and_reference": {
+      "description": "Apply narrative reference style consistently across all six paragraphs.",
+      "first_reference": "Inmate [Last Name], [First Name] DC# [Number]",
+      "subsequent_references": "Inmate [Last Name]",
+      "pronoun_rules": {
+        "he/him": "Use he, him, his throughout",
+        "she/her": "Use she, her, hers throughout",
+        "they/them": "Use they, them, their throughout",
+        "last-name-only": "Use 'Inmate [Last Name]' throughout — no pronouns"
+      },
+      "charge_advisory_rule": "Never repeat the last name twice in the same sentence in the charge advisory. Use the pronoun matching the narrative reference style.",
+      "bad_example": "due to Smith's failure to comply, Smith will be receiving",
+      "good_example": "due to his failure to comply with a direct order, he would receive"
+    },
+    "confinement": {
+      "description": "Normalize confinement language. Convert disciplinary confinement to administrative confinement when used before a hearing.",
+      "disciplinary_to_administrative": {
+        "trigger": "Officer types 'disciplinary confinement' in the confinement field before a hearing has occurred",
+        "action": "Convert to 'administrative confinement' and return YELLOW note",
+        "yellow_note": "Note: Disciplinary confinement is a post-hearing sanction. Pre-hearing placement is administrative confinement. This has been corrected in the report."
+      },
+      "templates": {
+        "placed": "Inmate [LAST NAME] was placed in administrative confinement pending the outcome of this disciplinary report.",
+        "remained": "Inmate [LAST NAME] remained in administrative confinement pending the outcome of this disciplinary report.",
+        "none": "(Confinement line omitted entirely)"
+      }
+    },
+    "typo_correction": {
+      "description": "Correct all obvious typos silently without flagging unless the correction changes meaning.",
+      "common_corrections": [
+        { "wrong": "roaster", "right": "roster" },
+        { "wrong": "confinment", "right": "confinement" },
+        { "wrong": "recieved", "right": "received" },
+        { "wrong": "Sargent", "right": "Sergeant" },
+        { "wrong": "liutenant", "right": "Lieutenant" },
+        { "wrong": "dissaplinary", "right": "disciplinary" },
+        { "wrong": "incedent", "right": "incident" },
+        { "wrong": "imediate", "right": "immediate" },
+        { "wrong": "verbaly", "right": "verbally" },
+        { "wrong": "complience", "right": "compliance" },
+        { "wrong": "complied", "right": "complied" },
+        { "wrong": "oreder", "right": "order" },
+        { "wrong": "noncomplience", "right": "noncompliance" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,101 @@
+[
+  {
+    "id": "TC_6_1_HAND_RESTRAINTS_REFUSAL_GREEN",
+    "scenario": "Inmate is ordered to submit to hand restraints during a security check and refuses with an exact quote.",
+    "expected_status": "GREEN",
+    "key_fields": [
+      "exact_order",
+      "total_orders_given",
+      "acknowledgment_type",
+      "exact_quote",
+      "physical_behavior",
+      "operational_impact",
+      "ability_to_comply",
+      "force_used",
+      "oic_authorization"
+    ],
+    "notes": "Common practice pattern. Good candidate for expanding beyond return-to-cell cases."
+  },
+  {
+    "id": "TC_6_1_RELEASE_TO_GP_REFUSAL_GREEN",
+    "scenario": "Inmate is instructed to exit confinement/relocate to general population and refuses.",
+    "expected_status": "GREEN",
+    "key_fields": [
+      "movement directive",
+      "housing context",
+      "refusal quote or action",
+      "operational impact"
+    ],
+    "notes": "Very common in practice examples."
+  },
+  {
+    "id": "TC_6_1_CELLMATE_HAND_RESTRAINTS_YELLOW",
+    "scenario": "Inmate refuses restraints because of a housing/cellmate issue; quote is approximate rather than exact.",
+    "expected_status": "YELLOW",
+    "key_fields": [
+      "summary_quote",
+      "review flag paragraph 2",
+      "no quotation marks around summary"
+    ],
+    "notes": "Good test for quote-summary handling."
+  },
+  {
+    "id": "TC_6_1_SHOWER_REFUSAL_GREEN",
+    "scenario": "Inmate is ordered to submit to restraints or comply with shower movement and refuses.",
+    "expected_status": "GREEN",
+    "key_fields": [
+      "shower context",
+      "order",
+      "refusal",
+      "ability to comply",
+      "no force or force status"
+    ],
+    "notes": "Useful because shower-related refusals showed up repeatedly."
+  },
+  {
+    "id": "TC_6_1_MEDICAL_REFUSAL_FORM_GREEN_OR_YELLOW",
+    "scenario": "Inmate is instructed by medical/security staff to sign or comply with a medical refusal/documentation directive and refuses.",
+    "expected_status": "GREEN_OR_YELLOW_DEPENDS_ON_FACTS",
+    "key_fields": [
+      "authorized staff order",
+      "medical context",
+      "order clarity",
+      "response",
+      "operational impact"
+    ],
+    "notes": "Needs careful charge-boundary handling so the 6-1 order is clear."
+  },
+  {
+    "id": "TC_6_1_SILENT_NONCOMPLIANCE_YELLOW",
+    "scenario": "Inmate says nothing but refuses by action, such as remaining in place or refusing to place hands through flap.",
+    "expected_status": "YELLOW_OR_GREEN_DEPENDS_ON_ACKNOWLEDGMENT",
+    "key_fields": [
+      "inmate_said_nothing",
+      "acknowledgment facts",
+      "physical behavior after order"
+    ],
+    "notes": "Good test for no-quote behavior."
+  },
+  {
+    "id": "TC_6_1_WRITTEN_ORDER_REFUSAL",
+    "scenario": "Inmate disobeys a written movement or housing directive.",
+    "expected_status": "GREEN_IF_WRITTEN_ORDER_SOURCE_CLEAR",
+    "key_fields": [
+      "order_type=written",
+      "source of written order",
+      "inmate awareness",
+      "refusal facts"
+    ],
+    "notes": "Current writer supports verbal/written order; should be tested."
+  },
+  {
+    "id": "TC_6_1_WITNESS_STAFF_PRESENT",
+    "scenario": "Another staff member is present and observes the refusal.",
+    "expected_status": "GREEN",
+    "key_fields": [
+      "witness_staff",
+      "witness observed refusal"
+    ],
+    "notes": "Useful optional sentence pattern."
+  }
+]

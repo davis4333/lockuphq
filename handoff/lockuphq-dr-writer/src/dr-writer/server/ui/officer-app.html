@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOCKUPHQ DR Writer</title>
+<style>
+  :root {
+    --bg: #f4f6f8; --card: #ffffff; --ink: #1a2330; --muted: #5a6a7a;
+    --line: #d8dfe6; --accent: #1f5fa8; --accent-ink: #ffffff;
+    --ok: #1e7e34; --warn: #b8860b; --stop: #b02a37; --hold: #6c757d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); font-size: 16px; line-height: 1.45; }
+  header { background: #12263f; color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .demo-tag { background: #b02a37; color: #fff; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: .5px; }
+  header .spacer { flex: 1; }
+  header button { min-height: 40px; }
+  main { max-width: 880px; margin: 0 auto; padding: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 8px; font-size: 17px; }
+  .card h3 { margin: 12px 0 6px; font-size: 15px; }
+  .hint { color: var(--muted); font-size: 14px; margin: 4px 0 10px; }
+  label { display: block; font-weight: 600; margin: 10px 0 4px; }
+  input[type=text], input[type=password], input[type=datetime-local], textarea, select {
+    width: 100%; padding: 12px; font-size: 16px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink);
+  }
+  textarea { min-height: 140px; resize: vertical; }
+  button {
+    min-height: 48px; padding: 10px 18px; font-size: 16px; font-weight: 600; border-radius: 8px;
+    border: 1px solid var(--line); background: #eef2f6; color: var(--ink); cursor: pointer; touch-action: manipulation;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  button.danger { background: #fbe9eb; border-color: #e5b3b9; color: var(--stop); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .answer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+  .answer-grid button { min-height: 52px; }
+  .status-banner { padding: 12px 16px; border-radius: 10px; font-weight: 700; margin-bottom: 16px; border: 1px solid var(--line); background: #fff; }
+  .gate-list { display: grid; gap: 6px; }
+  .gate { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; background: #f8fafb; border: 1px solid var(--line); }
+  .gate .g-state { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+  .gate .g-label { font-weight: 700; }
+  .gate .g-reasons { color: var(--muted); font-size: 14px; }
+  .gate.pass { border-left: 4px solid var(--ok); }
+  .gate.hold { border-left: 4px solid var(--stop); background: #fdf3f4; }
+  .gate.pending { border-left: 4px solid var(--warn); background: #fdf9ef; }
+  .fact-card { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 8px 0; }
+  .fact-card .f-value { font-weight: 600; }
+  .fact-card .f-source { background: #f2f5f8; border-left: 3px solid var(--accent); padding: 8px 10px; margin-top: 8px; font-size: 14px; color: var(--muted); word-break: break-word; }
+  .fact-card .f-decide { margin-top: 8px; display: flex; gap: 8px; }
+  .fact-card.decided-confirm { border-left: 4px solid var(--ok); }
+  .fact-card.decided-reject { border-left: 4px solid var(--stop); }
+  .sentence { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 6px 0; }
+  .sentence .s-section { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+  .watermark-line { text-align: center; color: #b02a37; font-weight: 800; letter-spacing: 1px; font-size: 13px; padding: 6px 0; border-top: 1px dashed #e5b3b9; border-bottom: 1px dashed #e5b3b9; margin: 8px 0; }
+  .notice { padding: 10px 14px; border-radius: 8px; margin: 10px 0; font-size: 15px; }
+  .notice.error { background: #fdf3f4; border: 1px solid #e5b3b9; color: var(--stop); }
+  .notice.warn { background: #fdf9ef; border: 1px solid #e8d9a8; color: #7a5b00; }
+  .notice.okay { background: #eef8f0; border: 1px solid #bfe3c6; color: var(--ok); }
+  .report-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 8px 0; flex-wrap: wrap; }
+  .overlay { position: fixed; inset: 0; background: rgba(18,38,63,.7); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+  .overlay .card { max-width: 420px; width: 100%; margin: 0; }
+  .final-output { white-space: pre-wrap; border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #fff; }
+  .step-tag { display: inline-block; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; border-radius: 4px; padding: 2px 8px; margin-bottom: 6px; }
+  @media print {
+    header, .no-print { display: none !important; }
+    body { background: #fff; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>LOCKUPHQ DR Writer</h1>
+  <span class="demo-tag">DEMO ONLY — SYNTHETIC DATA</span>
+  <span class="spacer"></span>
+  <span id="hdr-user" style="font-size:14px"></span>
+  <button id="btn-lock" class="no-print" style="display:none">Lock screen</button>
+  <button id="btn-signout" class="no-print" style="display:none">Sign out</button>
+</header>
+<main id="app"></main>
+
+<script>
+'use strict';
+
+// ---------------------------------------------------------------------------
+// State and API plumbing
+// ---------------------------------------------------------------------------
+
+const state = {
+  session: null,        // { session_id, display_name, role, ... }
+  screen: 'signin',     // signin | home | report | output-done
+  reports: [],
+  reportId: null,
+  view: null,           // latest server view of the open report
+  questions: null,      // current clarification batch
+  criticFindings: null,
+  confirmStartedAt: null,
+  needSecondConfirmation: false,
+  factDecisions: {},    // fact_id -> 'confirm' | 'reject'
+  banner: null,         // { kind, text }
+  locked: false,
+  finalOutput: null,    // { channel, text }
+  editingSentence: null,
+  persons: [],
+};
+
+async function api(method, path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.session) headers['Authorization'] = 'Bearer ' + state.session.session_id;
+  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json();
+  if (!data.ok) {
+    const err = new Error(data.error || 'Something went wrong');
+    err.code = data.code;
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+// Shared error handling: session problems, stale tabs, and the second-look
+// confirmation flow are handled here so every screen behaves the same way.
+async function handleError(err) {
+  if (err.code === 'SESSION_LOCKED') { state.locked = true; render(); return; }
+  if (err.code === 'AUTH_REQUIRED' || err.code === 'SESSION_EXPIRED') {
+    state.session = null; state.screen = 'signin';
+    state.banner = { kind: 'warn', text: 'Your session ended. Please sign in again. Your saved work is safe.' };
+    render(); return;
+  }
+  if (err.code === 'STALE_WRITE' || err.code === 'HASH_MISMATCH') {
+    state.banner = { kind: 'warn', text: 'This report changed somewhere else (another tab or session). The latest saved version has been reloaded — please review and try again.' };
+    await refreshView(); return;
+  }
+  if (err.code === 'RAPID_CONFIRMATION') {
+    state.needSecondConfirmation = true;
+    state.banner = { kind: 'warn', text: 'That was quick. Please take a second look at each fact and what your notes say, then confirm again.' };
+    render(); return;
+  }
+  state.banner = { kind: 'error', text: err.message };
+  if (state.reportId) { await refreshView(); } else { render(); }
+}
+
+async function act(fn) {
+  try { state.banner = null; await fn(); }
+  catch (err) { await handleError(err); }
+}
+
+async function refreshView() {
+  if (!state.reportId) { render(); return; }
+  const data = await api('GET', '/api/reports/' + state.reportId);
+  state.view = data.view;
+  render();
+}
+
+function v() { return state.view.meta.report_version; }
+
+// ---------------------------------------------------------------------------
+// Rendering helpers
+// ---------------------------------------------------------------------------
+
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstChild;
+}
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+const ANSWER_LABELS = {
+  exact: 'I know exactly',
+  approximate: 'Approximately',
+  did_not_observe: "I didn't see it",
+  do_not_remember: "I don't remember",
+  unknown: 'Unknown',
+  not_applicable: "Doesn't apply",
+};
+
+const STATUS_EXPLANATIONS = {
+  'SYSTEM HOLD': 'The system has paused this report for a technical or safety reason. No one can change it until the hold clears.',
+  'PROCEDURAL REVIEW': 'Something in your answers and your notes does not line up. A supervisor needs to look at it.',
+  'POLICY REVIEW': 'This incident needs an authorized policy decision before it can move forward.',
+  'FACTS INCOMPLETE': 'Some required facts are missing, unclear, or not yet confirmed by you.',
+  'CHARGE UNSUPPORTED': 'The confirmed facts do not support this charge. The system will not suggest a different charge.',
+  'REVIEW REQUIRED': 'The required facts are in, but there are quality warnings you should read first.',
+  'READY FOR GENERATION': 'Everything needed is in place. You can create the draft narrative.',
+  'VALIDATION HOLD': 'The draft did not pass its checks. Review the issues below.',
+  'READY FOR CERTIFICATION': 'The draft passed all checks. Read it carefully and certify it if it is accurate.',
+  'FINALIZED': 'This report is final. It can no longer be changed.',
+};
+
+function gatePanel() {
+  // Every gate, every reason — never just one summary light.
+  const rows = state.view.gates.map((g) => {
+    const icon = g.state === 'pass' ? '✓' : g.state === 'hold' ? '✕' : '…';
+    const reasons = g.reasons.length ? '<div class="g-reasons">' + g.reasons.map(esc).join('<br>') + '</div>' : '';
+    return '<div class="gate ' + g.state + '"><div class="g-state">' + icon + '</div><div><div class="g-label">' + esc(g.label) + '</div>' + reasons + '</div></div>';
+  }).join('');
+  return '<div class="card no-print"><h2>What is blocking this report</h2>' +
+    '<p class="hint">Every check is shown here, all the time. A red ✕ blocks the report. A yellow … is waiting on an earlier step.</p>' +
+    '<div class="gate-list">' + rows + '</div></div>';
+}
+
+function banner() {
+  if (!state.banner) return '';
+  const kind = state.banner.kind === 'error' ? 'error' : state.banner.kind === 'okay' ? 'okay' : 'warn';
+  return '<div class="notice ' + kind + '">' + esc(state.banner.text) + '</div>';
+}
+
+// ---------------------------------------------------------------------------
+// Screens
+// ---------------------------------------------------------------------------
+
+function render() {
+  document.getElementById('hdr-user').textContent = state.session ? state.session.display_name + ' (' + state.session.role + ')' : '';
+  document.getElementById('btn-lock').style.display = state.session ? '' : 'none';
+  document.getElementById('btn-signout').style.display = state.session ? '' : 'none';
+
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  if (state.locked) { app.appendChild(el(renderLockOverlay())); wireLock(); return; }
+  if (!state.session) { app.innerHTML = banner() + renderSignIn(); wireSignIn(); return; }
+  if (state.screen === 'home') { app.innerHTML = banner() + renderHome(); wireHome(); return; }
+  if (state.screen === 'report' && state.view) { app.innerHTML = banner() + renderReport(); wireReport(); return; }
+  if (state.screen === 'output-done') { app.innerHTML = banner() + renderOutputDone(); wireOutputDone(); return; }
+  app.innerHTML = banner() + '<div class="card"><p>Loading…</p></div>';
+}
+
+function renderSignIn() {
+  return '<div class="card" style="max-width:420px;margin:40px auto">' +
+    '<h2>Sign in</h2>' +
+    '<p class="hint">This is a demonstration system. Everything in it is synthetic — no real incidents, no real people.</p>' +
+    '<label for="si-user">Username</label><input id="si-user" type="text" autocomplete="username">' +
+    '<label for="si-pass">Password</label><input id="si-pass" type="password" autocomplete="current-password">' +
+    '<div class="btn-row"><button id="si-go" class="primary" style="width:100%">Sign in</button></div>' +
+    '</div>';
+}
+
+function wireSignIn() {
+  document.getElementById('si-go').onclick = () => act(async () => {
+    const data = await api('POST', '/api/login', {
+      username: document.getElementById('si-user').value.trim(),
+      password: document.getElementById('si-pass').value,
+    });
+    state.session = data.session;
+    state.screen = 'home';
+    await loadHome();
+  });
+}
+
+function renderLockOverlay() {
+  return '<div class="overlay"><div class="card">' +
+    '<h2>Screen locked</h2>' +
+    '<p class="hint">Enter your password to keep working. Your report is saved.</p>' +
+    '<label for="ul-pass">Password</label><input id="ul-pass" type="password">' +
+    '<div class="btn-row"><button id="ul-go" class="primary" style="width:100%">Unlock</button></div>' +
+    '</div></div>';
+}
+
+function wireLock() {
+  document.getElementById('ul-go').onclick = () => act(async () => {
+    await api('POST', '/api/unlock', { password: document.getElementById('ul-pass').value });
+    state.locked = false;
+    if (state.reportId) await refreshView(); else render();
+  });
+}
+
+async function loadHome() {
+  const [reports, persons] = await Promise.all([api('GET', '/api/reports'), api('GET', '/api/persons')]);
+  state.reports = reports.reports;
+  state.persons = persons.persons;
+  state.reportId = null; state.view = null; state.finalOutput = null;
+  state.screen = 'home';
+  render();
+}
+
+function personName(pid) {
+  const p = state.persons.find((x) => x.person_id === pid);
+  if (!p) return pid;
+  return (p.first_name ? p.first_name + ' ' : '') + p.last_name + (p.dc_number ? ' (DC# ' + p.dc_number + ')' : '');
+}
+
+function renderHome() {
+  const inmates = state.persons.filter((p) => p.person_type === 'inmate');
+  const options = inmates.map((p) => '<option value="' + esc(p.person_id) + '">' + esc(personName(p.person_id)) + '</option>').join('');
+  const items = state.reports.map((r) =>
+    '<div class="report-item"><div><strong>' + esc(r.report_id) + '</strong> — Charge ' + esc(r.charge_code) +
+    ' — ' + esc(personName(r.subject_person_id)) + '<div class="hint">Status: ' + esc(r.lifecycle) + ' · Last saved: ' + esc(r.updated_at) + '</div></div>' +
+    '<button data-open="' + esc(r.report_id) + '" class="primary">Open</button></div>'
+  ).join('') || '<p class="hint">No reports yet.</p>';
+  const newReportCard = state.session.role === 'officer'
+    ? '<div class="card"><h2>Start a new report</h2>' +
+      '<label for="nr-subject">Which inmate is this report about?</label><select id="nr-subject">' + options + '</select>' +
+      '<div class="btn-row"><button id="nr-go" class="primary">Start report (Charge 6-1)</button></div></div>'
+    : '';
+  return newReportCard + '<div class="card"><h2>Your reports</h2>' + items + '</div>';
+}
+
+function wireHome() {
+  const go = document.getElementById('nr-go');
+  if (go) go.onclick = () => act(async () => {
+    const data = await api('POST', '/api/reports', {
+      institution_id: 'INST-1',
+      subject_person_id: document.getElementById('nr-subject').value,
+      charge_code: '6-1',
+      participants: ['P-OFF'],
+    });
+    state.reportId = data.report.report_id;
+    state.screen = 'report';
+    await refreshView();
+  });
+  document.querySelectorAll('[data-open]').forEach((b) => {
+    b.onclick = () => act(async () => {
+      state.reportId = b.getAttribute('data-open');
+      state.screen = 'report';
+      try { await api('POST', '/api/reports/' + state.reportId + '/claim', {}); } catch (e) { /* claim is best-effort; the view will explain */ }
+      await refreshView();
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Report screen — one step at a time, gates always visible
+// ---------------------------------------------------------------------------
+
+function renderReport() {
+  const view = state.view;
+  const status = view.display_status;
+  const explain = STATUS_EXPLANATIONS[status] || '';
+  let html = '<div class="no-print btn-row" style="margin-bottom:12px"><button id="btn-home">← Back to your reports</button></div>';
+  html += '<div class="status-banner">Report ' + esc(view.meta.report_id) + ' — ' + esc(status) +
+    '<div style="font-weight:400;font-size:14px;color:var(--muted)">' + esc(explain) + '</div></div>';
+  html += gatePanel();
+  html += renderCurrentStep();
+  return html;
+}
+
+function renderCurrentStep() {
+  const view = state.view;
+  const insp = view.inspect;
+  const status = view.display_status;
+
+  if (status === 'FINALIZED') {
+    return '<div class="card"><h2>This report is final</h2>' +
+      '<p class="hint">It was certified and delivered. The content can no longer be changed. If you need the final text again — or through a different channel — pick one below. Each release is separately authorized and recorded.</p>' +
+      '<div class="answer-grid">' +
+      '<button data-channel="copy" class="primary">Copy the text</button>' +
+      '<button data-channel="print" class="primary">Print</button>' +
+      '<button data-channel="pdf" class="primary">Save as PDF</button>' +
+      '</div></div>';
+  }
+  if (status === 'SYSTEM HOLD') {
+    return '<div class="card"><h2>System hold</h2><p class="hint">The system has paused this report. Nothing you did caused data loss — your saved work is safe. Contact your administrator.</p></div>';
+  }
+  if (status === 'CHARGE UNSUPPORTED') {
+    return '<div class="card"><h2>The facts do not support this charge</h2>' +
+      '<p class="hint">' + esc((insp.chargeUnsupported && insp.chargeUnsupported.description) || '') + '</p>' +
+      '<p class="hint">This system never suggests a different charge. You can add or correct a fact if something is wrong, or close this report.</p>' +
+      renderAmendmentBox() +
+      '<div class="btn-row"><button id="btn-abandon" class="danger">Close this report</button></div></div>';
+  }
+  if (!insp.admin) return renderAdminStep();
+  if (!insp.proceduralScreen) return renderScreenStep();
+  if (!insp.rawNotes) return renderNotesStep();
+  if (view.ambiguous_references.length > 0) return renderDisambiguationStep();
+  if (status === 'PROCEDURAL REVIEW') {
+    return '<div class="card"><h2>A supervisor needs to look at this</h2>' +
+      '<p class="hint">Your answers and your notes do not line up, or the notes contained something the system flagged. A supervisor has to review it before the report can continue.</p></div>';
+  }
+  if (status === 'POLICY REVIEW') {
+    return '<div class="card"><h2>Waiting on a policy decision</h2>' +
+      '<p class="hint">This incident involves something that needs an authorized policy decision (for example force or medical involvement). A supervisor must resolve it. Your facts are saved.</p></div>';
+  }
+  if (status === 'FACTS INCOMPLETE') return renderFactsStep();
+  if (status === 'REVIEW REQUIRED') return renderQualityStep();
+  if (status === 'READY FOR GENERATION') return renderCreateDraftStep();
+  if (status === 'VALIDATION HOLD') return renderValidationHoldStep();
+  if (status === 'READY FOR CERTIFICATION') {
+    if (!insp.certification) return renderCertifyStep();
+    if (!insp.auditFinalizationCommitted) return renderAuditStep();
+    return renderOutputStep();
+  }
+  return '<div class="card"><p class="hint">Waiting…</p></div>';
+}
+
+// ---- Step: administrative intake -----------------------------------------
+
+function renderAdminStep() {
+  const subject = state.view.meta.subject_person_id;
+  return '<div class="card"><span class="step-tag">Step 1 of 8</span><h2>Basic details</h2>' +
+    '<p class="hint">Fill in the who, when, and where. The report date is worked out automatically from the incident start time — even if the incident crossed midnight.</p>' +
+    '<label>Inmate this report is about</label><input type="text" value="' + esc(personName(subject)) + '" disabled>' +
+    '<label for="ad-dc">Inmate DC number</label><input id="ad-dc" type="text" placeholder="Example: Z99999">' +
+    '<label for="ad-start">When did the incident start?</label><input id="ad-start" type="datetime-local">' +
+    '<label for="ad-certain">How sure are you about the time?</label>' +
+    '<select id="ad-certain"><option value="exact">Exact — I checked the time</option><option value="approximate">Approximate</option></select>' +
+    '<label for="ad-area">General area</label><input id="ad-area" type="text" placeholder="Example: Dorm C">' +
+    '<label for="ad-loc">Specific location</label><input id="ad-loc" type="text" placeholder="Example: Cell 12">' +
+    '<label for="ad-assign">Your assignment</label><input id="ad-assign" type="text" placeholder="Example: Dorm C housing officer">' +
+    '<div class="btn-row"><button id="ad-save" class="primary">Save details</button></div></div>';
+}
+
+function wireAdminStep() {
+  const save = document.getElementById('ad-save');
+  if (!save) return;
+  save.onclick = () => act(async () => {
+    const start = document.getElementById('ad-start').value;
+    await api('POST', '/api/reports/' + state.reportId + '/admin', {
+      version: v(),
+      admin: {
+        reporting_officer_person_id: 'P-OFF',
+        institution_id: 'INST-1',
+        assignment: document.getElementById('ad-assign').value,
+        subject_person_id: state.view.meta.subject_person_id,
+        subject_dc_number: document.getElementById('ad-dc').value.trim(),
+        incident_start: start ? start + ':00Z' : '',
+        incident_end: null,
+        time_certainty: document.getElementById('ad-certain').value,
+        general_area: document.getElementById('ad-area').value,
+        specific_location: document.getElementById('ad-loc').value,
+        charge_code: '6-1',
+        reference_style: 'last_name',
+        incident_group_id: null,
+      },
+    });
+    await refreshView();
+  });
+}
+
+// ---- Step: procedural screen ----------------------------------------------
+
+function renderScreenStep() {
+  return '<div class="card"><span class="step-tag">Step 2 of 8</span><h2>Two quick questions</h2>' +
+    '<p class="hint">These are checked against your notes later. Answer what actually happened.</p>' +
+    '<h3>Was any force used during this incident?</h3>' +
+    '<div class="answer-grid"><button data-force="no">No</button><button data-force="yes">Yes</button></div>' +
+    '<h3>Was medical staff involved, or was medical attention needed?</h3>' +
+    '<div class="answer-grid"><button data-med="no">No</button><button data-med="yes">Yes</button></div>' +
+    '<div class="btn-row"><button id="sc-save" class="primary" disabled>Continue</button></div></div>';
+}
+
+function wireScreenStep() {
+  const save = document.getElementById('sc-save');
+  if (!save) return;
+  const picked = { force: null, med: null };
+  const update = () => { save.disabled = !(picked.force && picked.med); };
+  document.querySelectorAll('[data-force]').forEach((b) => { b.onclick = () => { picked.force = b.getAttribute('data-force'); document.querySelectorAll('[data-force]').forEach((x) => x.classList.remove('primary')); b.classList.add('primary'); update(); }; });
+  document.querySelectorAll('[data-med]').forEach((b) => { b.onclick = () => { picked.med = b.getAttribute('data-med'); document.querySelectorAll('[data-med]').forEach((x) => x.classList.remove('primary')); b.classList.add('primary'); update(); }; });
+  save.onclick = () => act(async () => {
+    await api('POST', '/api/reports/' + state.reportId + '/screen', { version: v(), answers: { force_used: picked.force, medical_involvement: picked.med } });
+    await refreshView();
+  });
+}
+
+// ---- Step: freeform notes + Analyze Incident -------------------------------
+
+function renderNotesStep() {
+  return '<div class="card"><span class="step-tag">Step 3 of 8</span><h2>What happened?</h2>' +
+    '<p class="hint">Describe the incident in your own words, like you would tell your supervisor. ' +
+    'Once you press <strong>Analyze Incident</strong>, these notes are locked in permanently — corrections after that are added as amendments, never by rewriting.</p>' +
+    '<textarea id="nt-text" placeholder="Type your incident notes here…"></textarea>' +
+    '<div class="btn-row"><button id="nt-analyze" class="primary">Analyze Incident</button></div>' +
+    '<p class="hint">The system pulls out the facts for you to check. It does not write the report yet, and it never decides guilt.</p></div>';
+}
+
+function wireNotesStep() {
+  const analyze = document.getElementById('nt-analyze');
+  if (!analyze) return;
+  analyze.onclick = () => act(async () => {
+    const text = document.getElementById('nt-text').value;
+    if (!text.trim()) { state.banner = { kind: 'warn', text: 'Please describe what happened first.' }; render(); return; }
+    analyze.disabled = true; analyze.textContent = 'Analyzing…';
+    const data = await api('POST', '/api/reports/' + state.reportId + '/analyze', {
+      version: v(), text, request_id: 'req-' + state.reportId + '-' + Date.now(),
+    });
+    state.criticFindings = data.critic;
+    await refreshView();
+  });
+}
+
+// ---- Step: person disambiguation -------------------------------------------
+
+function renderDisambiguationStep() {
+  const blocks = state.view.ambiguous_references.map((ref) => {
+    const buttons = ref.candidate_person_ids.map((pid) =>
+      '<button data-pick-ref="' + esc(ref.reference_id) + '" data-pick-person="' + esc(pid) + '">' + esc(personName(pid)) + '</button>'
+    ).join('');
+    return '<div class="fact-card"><div class="f-value">Your notes mention “' + esc(ref.raw_text) + '” — who is that?</div>' +
+      '<div class="answer-grid">' + (buttons || '<p class="hint">No matching people found. Ask your administrator to add them to the roster.</p>') + '</div></div>';
+  }).join('');
+  return '<div class="card"><span class="step-tag">Step 4 of 8</span><h2>Who do you mean?</h2>' +
+    '<p class="hint">More than one person matches a name in your notes. Pick the right one — the report cannot continue with just a last name.</p>' +
+    blocks + '</div>';
+}
+
+function wireDisambiguationStep() {
+  document.querySelectorAll('[data-pick-ref]').forEach((b) => {
+    b.onclick = () => act(async () => {
+      await api('POST', '/api/reports/' + state.reportId + '/disambiguate', {
+        version: v(), reference_id: b.getAttribute('data-pick-ref'), person_id: b.getAttribute('data-pick-person'),
+      });
+      await refreshView();
+    });
+  });
+}
+
+// ---- Step: facts incomplete — questions, orders, confirmation --------------
+
+function renderFactsStep() {
+  const insp = state.view.inspect;
+  const evaln = state.view.charge_evaluation;
+  let html = '<div class="card"><span class="step-tag">Step 5 of 8</span><h2>Fill in and confirm the facts</h2>';
+
+  const orders = insp.orderEvents;
+  const selected = orders.filter((o) => o.selected_for_charge);
+  if (orders.length > 1 && selected.length !== 1) {
+    html += '<h3>Which order is this charge about?</h3><p class="hint">Pick the one order the inmate disobeyed. Different orders are never combined.</p>';
+    html += orders.map((o) =>
+      '<div class="fact-card"><div class="f-value">“' + esc(o.specific_command) + '”</div>' +
+      '<div class="btn-row"><button data-select-order="' + esc(o.order_event_id) + '" class="primary">This one</button></div></div>'
+    ).join('');
+    html += '</div>';
+    return html;
+  }
+
+  if (state.questions && state.questions.questions.length > 0) {
+    html += '<h3>A few follow-up questions</h3><p class="hint">Answer only what you actually observed. “Unknown” and “I don\'t remember” are safe, honest answers — the system never fills in facts for you.</p>';
+    html += state.questions.questions.map((q, i) => {
+      const answers = q.answer_options.map((a) =>
+        '<button data-q="' + i + '" data-answer="' + esc(a) + '">' + esc(ANSWER_LABELS[a] || a) + '</button>'
+      ).join('');
+      return '<div class="fact-card" id="q-' + i + '" data-intent="' + esc(q.intent_id) + '">' +
+        '<div class="f-value">' + esc(q.text) + '</div>' +
+        '<div class="answer-grid">' + answers + '</div>' +
+        '<div id="q-input-' + i + '" style="display:none"><label>Your answer</label><input type="text" id="q-value-' + i + '">' +
+        '<div class="btn-row"><button data-submit-q="' + i + '" class="primary">Save answer</button></div></div></div>';
+    }).join('');
+    html += '</div>';
+    return html;
+  }
+
+  const unconfirmed = insp.facts.filter((f) => f.extraction_status !== 'superseded' && f.confirmation_status === 'unconfirmed');
+  const missing = evaln ? evaln.missing_categories : [];
+  if (missing.length > 0) {
+    html += '<h3>Still missing</h3><p class="hint">The system needs these before a draft is possible: ' + esc(missing.join(', ').replace(/_/g, ' ')) + '</p>' +
+      '<div class="btn-row"><button id="btn-clarify" class="primary">Ask me the questions</button></div>';
+    html += renderAmendmentBox();
+    html += '</div>';
+    return html;
+  }
+  if (unconfirmed.length > 0) return renderConfirmStep();
+
+  html += '<div class="btn-row"><button id="btn-evaluate" class="primary">Check the facts again</button></div></div>';
+  return html;
+}
+
+function renderConfirmStep() {
+  if (!state.confirmStartedAt) state.confirmStartedAt = new Date().toISOString();
+  const facts = state.view.inspect.facts.filter((f) => f.extraction_status !== 'superseded');
+  const cards = facts.map((f) => {
+    const decision = state.factDecisions[f.fact_id];
+    const cls = decision === 'confirm' ? 'decided-confirm' : decision === 'reject' ? 'decided-reject' : '';
+    return '<div class="fact-card ' + cls + '">' +
+      '<div class="hint">' + esc(f.category.replace(/_/g, ' ')) + (f.certainty === 'approximate' ? ' · approximate' : '') + '</div>' +
+      '<div class="f-value">' + esc(f.value) + '</div>' +
+      '<div class="f-source">From your notes: ' + esc(f.source_text) + '</div>' +
+      '<div class="f-decide">' +
+      '<button data-decide="confirm" data-fact="' + esc(f.fact_id) + '" ' + (decision === 'confirm' ? 'class="primary"' : '') + '>That\'s right</button>' +
+      '<button data-decide="reject" data-fact="' + esc(f.fact_id) + '" ' + (decision === 'reject' ? 'class="danger"' : '') + '>That\'s wrong</button>' +
+      '</div></div>';
+  }).join('');
+  const allDecided = facts.every((f) => state.factDecisions[f.fact_id]);
+  const secondNote = state.needSecondConfirmation
+    ? '<div class="notice warn">Please take your time. Re-read each fact against your notes, then press confirm again.</div>' : '';
+  return '<div class="card"><span class="step-tag">Step 6 of 8</span><h2>Confirm each fact</h2>' +
+    '<p class="hint">You are the only one who can confirm a fact. Read what your notes say under each one. The AI never confirms anything for you.</p>' +
+    secondNote + cards +
+    '<div class="btn-row"><button id="btn-confirm-facts" class="primary" ' + (allDecided ? '' : 'disabled') + '>Confirm these facts</button></div></div>';
+}
+
+function renderQualityStep() {
+  const warnings = state.view.charge_evaluation ? state.view.charge_evaluation.quality_warnings : [];
+  return '<div class="card"><span class="step-tag">Step 6 of 8</span><h2>Quality warnings — please read</h2>' +
+    '<p class="hint">These do not block the report, but a hearing may ask about them.</p>' +
+    '<ul>' + warnings.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' +
+    '<div class="btn-row"><button id="btn-ack-quality" class="primary">I have read these — continue</button></div></div>';
+}
+
+function renderCreateDraftStep() {
+  return '<div class="card"><span class="step-tag">Step 7 of 8</span><h2>Create the draft narrative</h2>' +
+    '<p class="hint">The draft is built only from the facts you confirmed. Every sentence is tied to those facts and checked automatically. You will review and can edit it before anything is final.</p>' +
+    '<div class="btn-row"><button id="btn-draft" class="primary">Create draft</button></div></div>';
+}
+
+function renderValidationHoldStep() {
+  const insp = state.view.inspect;
+  const issues = [];
+  if (insp.deterministicValidation) issues.push(...insp.deterministicValidation.issues);
+  if (insp.semanticValidation) issues.push(...insp.semanticValidation.issues);
+  const pending = insp.narrative ? insp.narrative.sentences.filter((s) => s.resourcing_status !== 'sourced') : [];
+  let html = '<div class="card"><h2>The draft did not pass its checks</h2>' +
+    '<p class="hint">Nothing is lost. Fix the items below, or let the system rebuild the draft from your confirmed facts.</p>';
+  if (issues.length) html += '<ul>' + issues.map((i) => '<li>' + esc(i.message) + '</li>').join('') + '</ul>';
+  if (pending.length) {
+    html += '<h3>Sentences that need attention</h3>' + pending.map((s) => renderSentenceControls(s)).join('');
+  }
+  html += renderNarrative(true);
+  html += '<div class="btn-row">' +
+    '<button id="btn-revalidate" class="primary">Run the checks again</button>' +
+    '<button id="btn-regenerate">Rebuild the draft</button></div></div>';
+  return html;
+}
+
+function renderSentenceControls(s) {
+  let controls = '';
+  if (s.resourcing_status === 'pending_resourcing') {
+    controls = '<div class="btn-row"><button data-resource="' + esc(s.sentence_id) + '" class="primary">Match to my confirmed facts</button></div>';
+  } else if (s.resourcing_status === 'unsupported') {
+    controls = '<div class="notice warn">This sentence is not supported by your confirmed facts.</div>' +
+      '<div class="btn-row"><button data-revert="' + esc(s.sentence_id) + '">Put the original sentence back</button>' +
+      '<button data-restate="' + esc(s.sentence_id) + '">Rewrite it</button></div>' +
+      '<p class="hint">If the sentence is right but a fact is missing, add an amendment below instead.</p>';
+  } else if (s.resourcing_status === 'manual_fact_review') {
+    controls = '<div class="notice error">This sentence needs manual review with your supervisor. The automatic path is closed for it.</div>';
+  }
+  return '<div class="sentence"><div class="s-section">' + esc(s.section.replace(/_/g, ' ')) + '</div>' + esc(s.text) + controls + '</div>';
+}
+
+function renderNarrative(withEdit) {
+  const narrative = state.view.inspect.narrative;
+  if (!narrative) return '';
+  // §8 — inline textual watermark between sections; this is a review draft.
+  let html = '<h3>Review draft</h3><div>';
+  let lastSection = null;
+  for (const s of narrative.sentences) {
+    if (s.section !== lastSection) {
+      html += '<div class="watermark-line">REVIEW DRAFT — NOT A DISCIPLINARY REPORT</div>';
+      lastSection = s.section;
+    }
+    if (state.editingSentence === s.sentence_id) {
+      html += '<div class="sentence"><div class="s-section">' + esc(s.section.replace(/_/g, ' ')) + '</div>' +
+        '<textarea id="edit-text" style="min-height:80px">' + esc(s.text) + '</textarea>' +
+        '<div class="btn-row"><button data-save-edit="' + esc(s.sentence_id) + '" class="primary">Save change</button>' +
+        '<button id="btn-cancel-edit">Cancel</button></div></div>';
+    } else {
+      const editBtn = withEdit ? '<div class="btn-row"><button data-edit="' + esc(s.sentence_id) + '" style="min-height:40px;font-size:14px">Edit this sentence</button></div>' : '';
+      html += '<div class="sentence"><div class="s-section">' + esc(s.section.replace(/_/g, ' ')) + '</div>' + esc(s.text) + editBtn + '</div>';
+    }
+  }
+  html += '<div class="watermark-line">REVIEW DRAFT — NOT A DISCIPLINARY REPORT</div></div>';
+  return html;
+}
+
+function renderAmendmentBox() {
+  return '<h3>Add something you left out</h3>' +
+    '<p class="hint">Your original notes never change. An amendment is added alongside them, and the system re-checks everything.</p>' +
+    '<textarea id="am-text" placeholder="What needs to be added or corrected?"></textarea>' +
+    '<label for="am-reason">Why?</label><input id="am-reason" type="text" placeholder="Example: I remembered the exact wording of the order">' +
+    '<div class="btn-row"><button id="btn-amend">Add amendment</button></div>';
+}
+
+function renderCertifyStep() {
+  return '<div class="card"><span class="step-tag">Step 8 of 8</span><h2>Read it and certify</h2>' +
+    renderNarrative(true) +
+    '<div class="notice warn">By certifying, you are stating that this narrative is accurate and complete to the best of your knowledge. You — not the system — are responsible for what it says.</div>' +
+    '<div class="btn-row"><button id="btn-certify" class="primary">I certify this narrative is accurate</button></div></div>';
+}
+
+function renderAuditStep() {
+  return '<div class="card"><h2>One more step: the audit record</h2>' +
+    '<p class="hint">The system writes a permanent record of everything that happened on this report before any output is allowed.</p>' +
+    '<div class="btn-row"><button id="btn-finalize-audit" class="primary">Write the audit record</button></div></div>';
+}
+
+function renderOutputStep() {
+  return '<div class="card"><h2>Get your report</h2>' +
+    '<p class="hint">Pick how you want it. The final text is released once, through a short-lived authorization — if it expires, just press the button again.</p>' +
+    '<div class="answer-grid">' +
+    '<button data-channel="copy" class="primary">Copy the text</button>' +
+    '<button data-channel="print" class="primary">Print</button>' +
+    '<button data-channel="pdf" class="primary">Save as PDF</button>' +
+    '</div></div>';
+}
+
+function renderOutputDone() {
+  const out = state.finalOutput;
+  const actions = out.channel === 'copy'
+    ? '<div class="btn-row no-print"><button id="btn-copy-again" class="primary">Copy to clipboard</button></div>'
+    : '<div class="btn-row no-print"><button id="btn-print-now" class="primary">' + (out.channel === 'pdf' ? 'Open print dialog — choose “Save as PDF”' : 'Print now') + '</button></div>';
+  return '<div class="card"><h2>Your final report narrative</h2>' +
+    '<div class="final-output" id="final-text">' + esc(out.text) + '</div>' + actions +
+    '<div class="btn-row no-print"><button id="btn-home">← Back to your reports</button></div></div>';
+}
+
+// ---------------------------------------------------------------------------
+// Report screen wiring
+// ---------------------------------------------------------------------------
+
+function wireReport() {
+  const home = document.getElementById('btn-home');
+  if (home) home.onclick = () => act(loadHome);
+
+  wireAdminStep();
+  wireScreenStep();
+  wireNotesStep();
+  wireDisambiguationStep();
+
+  document.querySelectorAll('[data-select-order]').forEach((b) => {
+    b.onclick = () => act(async () => {
+      await api('POST', '/api/reports/' + state.reportId + '/select-order', { version: v(), order_event_id: b.getAttribute('data-select-order') });
+      await api('POST', '/api/reports/' + state.reportId + '/evaluate', { version: state.view.meta.report_version + 1 }).catch(() => {});
+      await refreshView();
+    });
+  });
+
+  const clarify = document.getElementById('btn-clarify');
+  if (clarify) clarify.onclick = () => act(async () => {
+    const data = await api('POST', '/api/reports/' + state.reportId + '/clarify', { version: v() });
+    state.questions = data.clarification;
+    await refreshView();
+  });
+
+  document.querySelectorAll('[data-q]').forEach((b) => {
+    b.onclick = () => act(async () => {
+      const i = b.getAttribute('data-q');
+      const answer = b.getAttribute('data-answer');
+      const card = document.getElementById('q-' + i);
+      const intent = card.getAttribute('data-intent');
+      if (answer === 'exact' || answer === 'approximate') {
+        card.setAttribute('data-picked', answer);
+        document.getElementById('q-input-' + i).style.display = '';
+        return;
+      }
+      await api('POST', '/api/reports/' + state.reportId + '/answer', { version: v(), intent_id: intent, answer_type: answer });
+      state.questions.questions = state.questions.questions.filter((q) => q.intent_id !== intent);
+      await refreshView();
+    });
+  });
+  document.querySelectorAll('[data-submit-q]').forEach((b) => {
+    b.onclick = () => act(async () => {
+      const i = b.getAttribute('data-submit-q');
+      const card = document.getElementById('q-' + i);
+      const intent = card.getAttribute('data-intent');
+      const answer = card.getAttribute('data-picked') || 'exact';
+      const value = document.getElementById('q-value-' + i).value;
+      await api('POST', '/api/reports/' + state.reportId + '/answer', { version: v(), intent_id: intent, answer_type: answer, value });
+      state.questions.questions = state.questions.questions.filter((q) => q.intent_id !== intent);
+      await refreshView();
+    });
+  });
+
+  const evaluate = document.getElementById('btn-evaluate');
+  if (evaluate) evaluate.onclick = () => act(async () => {
+    await api('POST', '/api/reports/' + state.reportId + '/evaluate', { version: v() });
+    await refreshView();
+  });
+
+  document.querySelectorAll('[data-decide]').forEach((b) => {
+    b.onclick = () => {
+      state.factDecisions[b.getAttribute('data-fact')] = b.getAttribute('data-decide');
+      render();
+    };
+  });
+  const confirmBtn = document.getElementById('btn-confirm-facts');
+  if (confirmBtn) confirmBtn.onclick = () => act(async () => {
+    const facts = state.view.inspect.facts.filter((f) => f.extraction_status !== 'superseded');
+    const second = state.needSecondConfirmation;
+    await api('POST', '/api/reports/' + state.reportId + '/confirm-facts', {
+      version: v(),
+      request: {
+        ledger_hash_shown: state.view.ledger_hash,
+        displayed: facts.map((f) => ({ fact_id: f.fact_id, version: f.modified_version })),
+        decisions: facts.map((f) => ({ fact_id: f.fact_id, decision: state.factDecisions[f.fact_id] })),
+        started_at: state.confirmStartedAt,
+        submitted_at: new Date().toISOString(),
+        second_confirmation: second,
+      },
+    });
+    state.needSecondConfirmation = false;
+    state.confirmStartedAt = null;
+    state.factDecisions = {};
+    await api('POST', '/api/reports/' + state.reportId + '/evaluate', { version: state.view.meta.report_version + 1 }).catch(() => {});
+    await refreshView();
+  });
+
+  const ack = document.getElementById('btn-ack-quality');
+  if (ack) ack.onclick = () => act(async () => {
+    await api('POST', '/api/reports/' + state.reportId + '/acknowledge-quality', { version: v() });
+    await api('POST', '/api/reports/' + state.reportId + '/evaluate', { version: state.view.meta.report_version + 1 }).catch(() => {});
+    await refreshView();
+  });
+
+  const draft = document.getElementById('btn-draft');
+  if (draft) draft.onclick = () => act(async () => {
+    draft.disabled = true; draft.textContent = 'Building your draft…';
+    await api('POST', '/api/reports/' + state.reportId + '/draft', { version: v() });
+    await refreshView();
+  });
+
+  const revalidate = document.getElementById('btn-revalidate');
+  if (revalidate) revalidate.onclick = () => act(async () => {
+    await api('POST', '/api/reports/' + state.reportId + '/validate', { version: v() });
+    await refreshView();
+  });
+  const regenerate = document.getElementById('btn-regenerate');
+  if (regenerate) regenerate.onclick = () => act(async () => {
+    await api('POST', '/api/reports/' + state.reportId + '/regenerate', { version: v() });
+    await refreshView();
+  });
+
+  document.querySelectorAll('[data-edit]').forEach((b) => {
+    b.onclick = () => { state.editingSentence = b.getAttribute('data-edit'); render(); };
+  });
+  const cancelEdit = document.getElementById('btn-cancel-edit');
+  if (cancelEdit) cancelEdit.onclick = () => { state.editingSentence = null; render(); };
+  document.querySelectorAll('[data-save-edit]').forEach((b) => {
+    b.onclick = () => act(async () => {
+      await api('POST', '/api/reports/' + state.reportId + '/edit-sentence', {
+        version: v(), sentence_id: b.getAttribute('data-save-edit'), new_text: document.getElementById('edit-text').value,
+      });
+      state.editingSentence = null;
+      await refreshView();
+    });
+  });
+  document.querySelectorAll('[data-resource]').forEach((b) => {
+    b.onclick = () => act(async () => {
+      await api('POST', '/api/reports/' + state.reportId + '/resource-sentence', { version: v(), sentence_id: b.getAttribute('data-resource') });
+      await refreshView();
+    });
+  });
+  document.querySelectorAll('[data-revert]').forEach((b) => {
+    b.onclick = () => act(async () => {
+      await api('POST', '/api/reports/' + state.reportId + '/revert-sentence', { version: v(), sentence_id: b.getAttribute('data-revert') });
+      await refreshView();
+    });
+  });
+  document.querySelectorAll('[data-restate]').forEach((b) => {
+    b.onclick = () => act(async () => {
+      const text = prompt('Rewrite the sentence using only what you actually observed:');
+      if (!text) return;
+      await api('POST', '/api/reports/' + state.reportId + '/restate-sentence', { version: v(), sentence_id: b.getAttribute('data-restate'), new_text: text });
+      await refreshView();
+    });
+  });
+
+  const amend = document.getElementById('btn-amend');
+  if (amend) amend.onclick = () => act(async () => {
+    await api('POST', '/api/reports/' + state.reportId + '/amendment', {
+      version: v(), text: document.getElementById('am-text').value, reason: document.getElementById('am-reason').value || 'officer amendment',
+    });
+    state.questions = null;
+    await refreshView();
+  });
+
+  const certify = document.getElementById('btn-certify');
+  if (certify) certify.onclick = () => act(async () => {
+    const insp = state.view.inspect;
+    await api('POST', '/api/reports/' + state.reportId + '/certify', {
+      version: v(),
+      request: {
+        report_version: state.view.meta.report_version,
+        fact_snapshot_hash: state.view.snapshot_hash,
+        narrative_hash: insp.narrative.narrative_hash,
+        deterministic_validation_id: insp.deterministicValidation.validation_id,
+        semantic_validation_id: insp.semanticValidation.validation_id,
+      },
+    });
+    await refreshView();
+  });
+
+  const finalizeAudit = document.getElementById('btn-finalize-audit');
+  if (finalizeAudit) finalizeAudit.onclick = () => act(async () => {
+    await api('POST', '/api/reports/' + state.reportId + '/finalize-audit', { version: v() });
+    await refreshView();
+  });
+
+  document.querySelectorAll('[data-channel]').forEach((b) => {
+    b.onclick = () => act(async () => {
+      const channel = b.getAttribute('data-channel');
+      // Central authorization: request a short-lived token, then redeem it.
+      // The final text ONLY ever comes back from the redemption response.
+      const tok = await api('POST', '/api/reports/' + state.reportId + '/token', { channel });
+      const out = await api('POST', '/api/output', { token_id: tok.token.token_id, channel });
+      state.finalOutput = { channel, text: out.output };
+      state.screen = 'output-done';
+      render();
+      if (channel === 'copy' && navigator.clipboard) {
+        try { await navigator.clipboard.writeText(out.output); state.banner = { kind: 'okay', text: 'Copied to your clipboard.' }; render(); } catch (e) { /* button fallback shown */ }
+      }
+      if (channel === 'print' || channel === 'pdf') { window.print(); }
+    });
+  });
+
+  const abandon = document.getElementById('btn-abandon');
+  if (abandon) abandon.onclick = () => act(async () => {
+    if (!confirm('Close this report? It will be marked abandoned. The record of it is kept.')) return;
+    await api('POST', '/api/reports/' + state.reportId + '/lifecycle', { version: v(), to: 'ABANDONED' });
+    await loadHome();
+  });
+}
+
+function wireOutputDone() {
+  const home = document.getElementById('btn-home');
+  if (home) home.onclick = () => act(loadHome);
+  const copyAgain = document.getElementById('btn-copy-again');
+  if (copyAgain) copyAgain.onclick = async () => {
+    try { await navigator.clipboard.writeText(state.finalOutput.text); state.banner = { kind: 'okay', text: 'Copied to your clipboard.' }; render(); }
+    catch (e) { state.banner = { kind: 'warn', text: 'Copy failed — select the text and copy it manually.' }; render(); }
+  };
+  const printNow = document.getElementById('btn-print-now');
+  if (printNow) printNow.onclick = () => window.print();
+}
+
+// ---------------------------------------------------------------------------
+// Header buttons
+// ---------------------------------------------------------------------------
+
+document.getElementById('btn-lock').onclick = () => act(async () => {
+  await api('POST', '/api/lock', {});
+  state.locked = true;
+  render();
+});
+document.getElementById('btn-signout').onclick = () => act(async () => {
+  await api('POST', '/api/logout', {});
+  state.session = null; state.screen = 'signin'; state.reportId = null; state.view = null;
+  render();
+});
+
+render();
+</script>
+</body>
+</html>

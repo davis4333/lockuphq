@@ -1,0 +1,25 @@
+{
+  "charge_code": "6-1",
+  "charge_title": "Disobeying verbal or written order",
+  "charge_description": "any order given to an inmate or inmates by a staff member or other authorized person",
+  "source_rule": "33-601.314",
+  "module_status": "skeleton_step_01",
+  "development_scope": "Build this charge fully before adding another charge.",
+  "required_fact_groups": [
+    "incident_identity",
+    "officer_assignment",
+    "scene_and_location",
+    "inmate_behavior_before_order",
+    "order_given",
+    "order_count",
+    "inmate_received_or_acknowledged_order",
+    "inmate_response_or_silence",
+    "physical_behavior_after_order",
+    "operational_impact",
+    "ability_to_comply",
+    "force_status",
+    "confinement_status_if_applicable",
+    "oic_authorization"
+  ],
+  "next_step": "Replace this skeleton with source-backed charge.json in Step 02."
+}

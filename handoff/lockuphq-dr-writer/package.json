@@ -1,0 +1,39 @@
+{
+  "name": "lockuphq-dr-writer",
+  "version": "1.0.0",
+  "description": "LOCKUPHQ DR Writer — Charge 6-1 Knowledge Base Module (Step 3A)",
+  "type": "module",
+  "scripts": {
+    "test:engine": "node --experimental-strip-types src/dr-writer/engine/tests/runSection14.ts",
+    "bench:extraction": "node --experimental-strip-types --env-file=.env src/dr-writer/engine/benchmark/runSection15.ts",
+    "bench:full": "node --experimental-strip-types --env-file=.env src/dr-writer/engine/benchmark/runSection15.ts --with-phase6",
+    "test:6-1": "node --experimental-strip-types src/dr-writer/charges/6-1/testCases6_1.ts",
+    "prompt:6-1": "node --experimental-strip-types src/dr-writer/charges/6-1/printPromptSamples6_1.ts",
+    "prompt:6-1:json": "node --experimental-strip-types src/dr-writer/charges/6-1/printPromptSamples6_1.ts --json",
+    "prompt:6-1:green-json": "node --experimental-strip-types src/dr-writer/charges/6-1/printGreenJsonPrompt6_1.ts",
+    "prompt:6-1:yellow-json": "node --experimental-strip-types src/dr-writer/charges/6-1/printYellowJsonPrompt6_1.ts",
+    "validate:6-1:manual": "node --experimental-strip-types src/dr-writer/charges/6-1/validateManualClaudeOutputs6_1.ts",
+    "test:6-1:generate": "node --experimental-strip-types src/dr-writer/charges/6-1/testGenerate6_1.ts",
+    "test:6-1:live-green": "node --experimental-strip-types src/dr-writer/charges/6-1/testLiveClaudeGreen6_1.ts",
+    "test:6-1:live-yellow": "node --experimental-strip-types src/dr-writer/charges/6-1/testLiveClaudeYellow6_1.ts",
+    "test:6-1:live-fake-cases": "node --experimental-strip-types src/dr-writer/charges/6-1/testLiveClaudeFakeOfficerCases6_1.ts",
+    "dev:6-1": "node --experimental-strip-types src/dr-writer/charges/6-1/devRun6_1.ts",
+    "test:6-1:dev-runner": "node --experimental-strip-types src/dr-writer/charges/6-1/testDevRun6_1.ts",
+    "mock:6-1:ui": "node -e \"console.log('Open this file in your browser: prototypes/charge-6-1-static-form.html')\"",
+    "dev:6-1:ui": "node --experimental-strip-types src/dr-writer/server/devServer6_1.ts",
+    "test:6-1:ui-validate": "node --experimental-strip-types src/dr-writer/server/testDevServer6_1.ts",
+    "test:6-1:ui-generate": "node --experimental-strip-types src/dr-writer/server/testDevServer6_1.ts",
+    "test:6-1:all": "npm run test:6-1 && npm run test:6-1:generate && npm run test:6-1:dev-runner && npm run test:6-1:ui-validate && npm run test:6-1:ui-generate",
+    "test:engine:phase5": "node --experimental-strip-types src/dr-writer/engine/tests/phase5Questions.ts",
+    "test:engine:phase7": "node --experimental-strip-types src/dr-writer/engine/tests/phase7Security.ts",
+    "test:engine:phase8": "node --experimental-strip-types src/dr-writer/engine/tests/phase8Ui.ts",
+    "test:engine:phase9": "node --experimental-strip-types src/dr-writer/engine/tests/phase9LiveServing.ts",
+    "test:engine:all": "npm run test:engine && npm run test:engine:phase5 && npm run test:engine:phase7 && npm run test:engine:phase8 && npm run test:engine:phase9 && npm run test:6-1:all",
+    "app:officer": "node --experimental-strip-types src/dr-writer/server/appServer.ts",
+    "app:officer:live": "node --experimental-strip-types --env-file=.env src/dr-writer/server/appServer.ts --ai=live",
+    "shadow:pilot": "node --experimental-strip-types --env-file=.env src/dr-writer/engine/benchmark/shadowPilot.ts"
+  },
+  "engines": {
+    "node": ">=22.6.0"
+  }
+}

@@ -1,0 +1,317 @@
+{
+  "version": "1.1",
+  "charge": "6-1",
+  "authority": "Sections 6 and 7 of LOCKUPHQ_DR_WRITER_6-1_MASTER_v1.1_FINAL.md",
+  "format_note": "Narrative output format is a single continuous paragraph per docs/lockuphq_dr_writer_master_prompt_corrected.md (supersedes the six-paragraph format the affected_paragraph numbering below was originally named for). affected_paragraph (1-6) below is an internal fact-category tag, not an output paragraph index; it maps to: 1=opening/scene, 2=order/response, 3=operational impact, 4=ability to comply/force, 5=charge advisory, 6=confinement/OIC.",
+  "oic_authorization_note": "2026-07-02: the yellow_warnings entry previously here ('implied_oic_authorization', pattern-matching implied vs explicit authorization language) was never implemented in evaluate6_1.ts and never matched any real collected field — oic_rank/oic_last_name are structured fields, not free-text authorization narrative. It has been removed and replaced with the red_blockers entry 'missing_oic_authorization_confirmation', which matches the form's actual oic_authorized_confirmed checkbox and is implemented in evaluate6_1.ts.",
+  "red_blockers": [
+    {
+      "id": "missing_incident_date",
+      "description": "Missing incident date",
+      "intake_field": "incident_date",
+      "check": "null_or_empty",
+      "follow_up_question": "What date did this incident occur? (Example: January 18, 2026)"
+    },
+    {
+      "id": "missing_incident_time",
+      "description": "Missing incident time or approximate time — includes non-numeric time references such as 'around lunchtime,' 'late evening,' or 'after chow.' A descriptor is not a time. A numeric approximate time is required before generation.",
+      "intake_field": "incident_time",
+      "check": "null_or_empty_or_nonnumeric_descriptor",
+      "follow_up_question": "What time did this incident occur? Provide your best approximate numeric time. (Examples: 1800, 6:30 PM, approximately 2000 hours)"
+    },
+    {
+      "id": "missing_officer_name",
+      "description": "Missing reporting officer name",
+      "intake_field": "officer_name",
+      "check": "null_or_empty",
+      "follow_up_question": "What is your name as it should appear in the report?"
+    },
+    {
+      "id": "missing_officer_rank",
+      "description": "Missing reporting officer rank",
+      "intake_field": "officer_rank",
+      "check": "null_or_empty",
+      "follow_up_question": "What is your rank? (Example: Officer, Sergeant, Lieutenant, Captain)"
+    },
+    {
+      "id": "missing_inmate_identity",
+      "description": "Missing inmate last name — minimum required for identity",
+      "intake_field": "inmate_last_name",
+      "check": "null_or_empty",
+      "follow_up_question": "What is the inmate's last name?"
+    },
+    {
+      "id": "missing_dc_number",
+      "description": "Missing inmate DC number",
+      "intake_field": "dc_number",
+      "check": "null_or_empty",
+      "follow_up_question": "What is the inmate's DC number? (Example: A12345)"
+    },
+    {
+      "id": "missing_incident_location",
+      "description": "Missing specific incident location",
+      "intake_field": "incident_location",
+      "check": "null_or_empty",
+      "follow_up_question": "What is the exact location where this incident occurred? (Example: cell E3107, the Wing 2 dayroom, the shower area)"
+    },
+    {
+      "id": "missing_officer_post",
+      "description": "Missing officer post or assignment",
+      "intake_field": "officer_post",
+      "check": "null_or_empty",
+      "follow_up_question": "What was your post or assignment at the time of this incident? (Example: housing officer, floor officer, wing officer)"
+    },
+    {
+      "id": "missing_dorm_area",
+      "description": "Missing dorm or area",
+      "intake_field": "dorm_area",
+      "check": "null_or_empty",
+      "follow_up_question": "What dorm, wing, or area did this incident occur in? (Example: E Dorm, Wing 2, North Housing Unit)"
+    },
+    {
+      "id": "missing_officer_activity",
+      "description": "Missing officer activity when incident began",
+      "intake_field": "officer_activity",
+      "check": "null_or_empty",
+      "follow_up_question": "What were you doing when this incident began? (Example: conducting the master roster count, performing security rounds, distributing medication)"
+    },
+    {
+      "id": "missing_inmate_before_order",
+      "description": "Missing observable inmate behavior before the order",
+      "intake_field": "inmate_behavior_before_order",
+      "check": "null_or_empty",
+      "follow_up_question": "What was the inmate doing before you gave any order? Describe only what you could see — what was the inmate's position, location, or action at the moment before you spoke? (Example: standing at the cell door outside of his assigned cell during count procedures)"
+    },
+    {
+      "id": "missing_order_type",
+      "description": "Missing order type — whether the order was verbal, written, or both",
+      "intake_field": "order_type",
+      "check": "null_or_empty",
+      "follow_up_question": "Was the order you gave verbal, written, or both?"
+    },
+    {
+      "id": "missing_specific_order",
+      "description": "Missing specific order or order too vague to determine what compliance required. Example: 'I told him to stop' without specifying stop what.",
+      "intake_field": "exact_order",
+      "check": "null_or_empty_or_vague_single_verb",
+      "follow_up_question": "What exactly did you order the inmate to do? Be specific enough that compliance is clear. (Example: 'return to his assigned cell,' 'cease kicking the cell door,' 'submit to hand restraints')"
+    },
+    {
+      "id": "missing_specific_order_count",
+      "description": "Missing total number of orders given — any vague count including 'several times,' 'multiple times,' 'a few times,' or any non-numeric count descriptor. The number of orders given is a core 6-1 element.",
+      "intake_field": "total_orders_given",
+      "check": "null_or_vague_descriptor",
+      "follow_up_question": "How many total orders did you give? Provide the exact number, not an approximation. (Example: 1, 2, 3)"
+    },
+    {
+      "id": "missing_acknowledgment",
+      "description": "No facts showing the inmate heard, acknowledged, responded to, or was within hearing distance of the order — unknown acknowledgment with no supporting context.",
+      "intake_field": "acknowledgment_type",
+      "check": "null_or_unknown",
+      "follow_up_question": "What showed that the inmate received your order? Did the inmate make eye contact, verbally respond, turn toward you, or were they positioned close enough to clearly hear you?"
+    },
+    {
+      "id": "missing_inmate_response",
+      "description": "Missing inmate response — neither an exact quote provided nor explicit confirmation that the inmate said nothing.",
+      "intake_field": "inmate_quote / inmate_said_nothing",
+      "check": "both_null_or_false",
+      "follow_up_question": "Did the inmate say anything in response to your order? If yes, what were the exact words? If no, confirm the inmate made no verbal response."
+    },
+    {
+      "id": "missing_physical_behavior",
+      "description": "Missing physical behavior after the order — what the inmate did physically after the order was given.",
+      "intake_field": "physical_behavior",
+      "check": "null_or_empty",
+      "follow_up_question": "What did the inmate physically do after you gave the order? Describe observable actions only — position, movement, posture. (Example: crossed his arms and remained positioned at the cell door)"
+    },
+    {
+      "id": "missing_ability_to_comply",
+      "description": "Missing ability-to-comply answer — whether the inmate had any medical, mental health, physical, or language barrier that would have prevented compliance.",
+      "intake_field": "ability_to_comply",
+      "check": "null",
+      "follow_up_question": "Did you observe any medical condition, mental health issue, physical limitation, or language barrier that might have prevented the inmate from complying with your order? (Answer: no issue, or describe what you observed)"
+    },
+    {
+      "id": "force_no_explanation",
+      "description": "Force used selected but no force explanation provided.",
+      "intake_field": "force_used / force_explanation",
+      "check": "force_yes_and_explanation_null",
+      "follow_up_question": "You indicated force was used. Briefly describe what happened — what force was applied and by whom? (Note: this is not a use-of-force report. Only provide a brief factual summary for the DR.)"
+    },
+    {
+      "id": "medical_issue_no_explanation",
+      "description": "Medical, mental health, physical, or language issue selected but no explanation provided.",
+      "intake_field": "ability_to_comply / ability_to_comply_explanation",
+      "check": "issue_selected_and_explanation_null",
+      "follow_up_question": "You indicated the inmate had a medical, mental health, physical, or language issue. Please describe what you observed or what was reported to you."
+    },
+    {
+      "id": "missing_oic_rank",
+      "description": "Missing OIC rank",
+      "intake_field": "oic_rank",
+      "check": "null_or_empty",
+      "follow_up_question": "What is the rank of the shift Officer in Charge you notified? (Example: Sergeant, Lieutenant, Captain)"
+    },
+    {
+      "id": "missing_oic_last_name",
+      "description": "Missing OIC last name",
+      "intake_field": "oic_last_name",
+      "check": "null_or_empty",
+      "follow_up_question": "What is the last name of the shift Officer in Charge who authorized this report?"
+    },
+    {
+      "id": "missing_oic_authorization_confirmation",
+      "description": "Officer has not explicitly confirmed that the OIC named above actually authorized this report — a name being entered in oic_rank/oic_last_name is not by itself confirmation that authorization happened.",
+      "intake_field": "oic_authorized_confirmed",
+      "check": "not_true",
+      "follow_up_question": "Please confirm that the OIC listed above was directly notified and specifically authorized the initiation of this report."
+    },
+    {
+      "id": "cannot_isolate_6_1",
+      "description": "Officer explicitly asks the AI to include multiple separate violations in one 6-1 narrative, or the facts describing separate conduct are so intertwined that the 6-1 refusal cannot be isolated from other conduct without inventing or omitting facts.",
+      "intake_field": "separate_conduct_isolatable / request_to_invent",
+      "check": "separate_conduct_not_isolatable",
+      "follow_up_question": "Your answers describe conduct that cannot be separated from the 6-1 refusal without omitting key facts. A separate disciplinary report is required for each violation. Please answer questions specific to the order the inmate disobeyed only."
+    },
+    {
+      "id": "request_to_invent",
+      "description": "Officer asks AI to invent, assume, embellish, or 'make it sound worse.'",
+      "intake_field": "request_to_invent",
+      "check": "flag_is_true",
+      "follow_up_question": "This system can only document facts you observed and provided. It cannot invent, assume, or embellish. Please provide the facts as you observed them and this system will format them professionally."
+    },
+    {
+      "id": "facts_do_not_meet_6_1",
+      "description": "Facts clearly indicate this incident does not meet the elements of a 6-1 charge — no order was given, or no refusal occurred.",
+      "intake_field": "various",
+      "check": "logic_check_in_evaluator",
+      "follow_up_question": "Based on your answers, the facts may not support a 6-1 charge. A 6-1 requires that a staff member gave a specific order and the inmate failed or refused to comply. Please review your answers and confirm the order and the refusal both occurred."
+    },
+    {
+      "id": "missing_narrative_reference_style",
+      "description": "Missing narrative reference style when pronouns will appear in the narrative.",
+      "intake_field": "narrative_reference_style",
+      "check": "null",
+      "follow_up_question": "How should the inmate be referred to in the report? Choose one: he/him, she/her, they/them, or last-name-only (no pronouns)."
+    }
+  ],
+  "yellow_warnings": [
+    {
+      "id": "quote_is_summary",
+      "description": "Quote sounds like a summary rather than exact words — officer typed a description of what the inmate said instead of the actual words.",
+      "intake_field": "inmate_quote",
+      "check": "summary_pattern_detected",
+      "affected_paragraph": 2,
+      "suggested_clarification": "It sounds like you summarized what the inmate said. What exact words came out of the inmate's mouth? If you cannot remember exactly, type your best recollection and we will note it as approximate.",
+      "example_stronger_answer": "No, I ain't doing that."
+    },
+    {
+      "id": "vague_operational_impact",
+      "description": "Operational impact is vague — officer typed 'it messed things up,' 'caused problems,' 'yes,' or another non-specific response.",
+      "intake_field": "operational_impact",
+      "check": "too_short_or_vague_pattern",
+      "affected_paragraph": 3,
+      "suggested_clarification": "Describe specifically how this incident affected your area or operation. What was interrupted, delayed, or disrupted?",
+      "example_stronger_answer": "temporarily interrupting the master roster count and drawing the attention of surrounding inmates"
+    },
+    {
+      "id": "conclusory_inmate_before_order",
+      "description": "Inmate-before-order behavior is a conclusion rather than an observation — 'he was refusing,' 'he wouldn't listen,' 'he was acting up,' 'he was disobedient.'",
+      "intake_field": "inmate_behavior_before_order",
+      "check": "conclusory_pattern_or_too_short",
+      "affected_paragraph": 1,
+      "suggested_clarification": "Describe only what you could see before you gave any order — the inmate's physical position, location, or action at that moment. Do not include conclusions about compliance.",
+      "example_stronger_answer": "standing at the cell door outside of his assigned cell during count procedures"
+    },
+    {
+      "id": "conclusory_physical_behavior",
+      "description": "Physical behavior described as a conclusion rather than an observable action — 'being disrespectful,' 'being noncompliant,' 'being disobedient,' 'acting crazy.'",
+      "intake_field": "physical_behavior",
+      "check": "conclusory_behavior_pattern",
+      "affected_paragraph": 2,
+      "suggested_clarification": "Describe what you saw the inmate do physically after your order — position, movement, gestures, posture. Do not use conclusions.",
+      "example_stronger_answer": "crossed his arms and remained positioned at the cell door"
+    },
+    {
+      "id": "physical_behavior_duration_only",
+      "description": "Physical behavior described as a duration without an observable action — 'he stood there for twenty minutes' without describing what he was doing or how he was positioned.",
+      "intake_field": "physical_behavior",
+      "check": "duration_only_pattern",
+      "affected_paragraph": 2,
+      "suggested_clarification": "You described how long the inmate was somewhere, but not what they were doing. What was the inmate's physical position, posture, or action during that time?",
+      "example_stronger_answer": "crossed his arms and remained positioned at the cell door"
+    },
+    {
+      "id": "missing_tone_when_inmate_spoke",
+      "description": "Tone missing when the inmate gave a verbal response — if the inmate spoke, tone of the response is expected.",
+      "intake_field": "inmate_tone",
+      "check": "inmate_spoke_and_tone_null",
+      "affected_paragraph": 2,
+      "suggested_clarification": "How would you describe the tone of the inmate's response — how did it sound? (Example: loud, argumentative, sarcastic, calm but refusing)",
+      "example_stronger_answer": "loud and argumentative"
+    },
+    {
+      "id": "vague_witness_information",
+      "description": "Witness information vague — 'people saw it,' 'everyone,' 'staff' without names or titles.",
+      "intake_field": "witness_staff",
+      "check": "vague_witness_pattern",
+      "affected_paragraph": 3,
+      "suggested_clarification": "If other staff members witnessed this incident, provide their rank and last name. If no other staff were present, indicate none.",
+      "example_stronger_answer": "Sergeant Johnson and Officer Williams were present during the incident."
+    },
+    {
+      "id": "opinion_or_motive_language",
+      "description": "Extra facts include opinion or motive language — 'I think,' 'he was trying to,' 'on purpose,' 'wanted to make me mad.'",
+      "intake_field": "additional_facts",
+      "check": "opinion_pattern_detected",
+      "affected_paragraph": 2,
+      "suggested_clarification": "This report should only document what you observed — not what you believe the inmate intended. Please remove any language about what you think the inmate was trying to do.",
+      "example_stronger_answer": "Remove opinion language and describe only what was directly observed."
+    },
+    {
+      "id": "oic_incomplete",
+      "description": "OIC provided as rank only or last name only without the other.",
+      "intake_field": "oic_rank / oic_last_name",
+      "check": "rank_or_name_missing_but_not_both",
+      "affected_paragraph": 6,
+      "suggested_clarification": "Please provide both the rank and last name of the OIC who authorized this report. Both are required.",
+      "example_stronger_answer": "Captain Brown"
+    },
+    {
+      "id": "unclear_confinement_status",
+      "description": "Confinement status unclear or ambiguous.",
+      "intake_field": "confinement_status",
+      "check": "null_or_ambiguous",
+      "affected_paragraph": 6,
+      "suggested_clarification": "Was the inmate placed in administrative confinement after this incident, was the inmate already in administrative confinement before this incident, or was the inmate not placed in confinement?",
+      "example_stronger_answer": "placed (inmate was placed in administrative confinement after this incident)"
+    },
+    {
+      "id": "within_hearing_distance_only",
+      "description": "'Within hearing distance' is the only acknowledgment fact and no direct response, eye contact, physical reaction, or gesture is documented — weakest acknowledgment option, flag for officer review.",
+      "intake_field": "acknowledgment_type",
+      "check": "within_hearing_distance_only",
+      "affected_paragraph": 2,
+      "suggested_clarification": "Did the inmate show any other sign of receiving the order — eye contact, a verbal response, turning toward you, or a physical reaction? If so, please describe it.",
+      "example_stronger_answer": "The inmate made direct eye contact with this officer and verbally responded to the directive."
+    },
+    {
+      "id": "conduct_outside_6_1_can_be_isolated",
+      "description": "Conduct described in answers appears to fall outside or beyond the 6-1 charge but the 6-1 refusal can still be isolated.",
+      "intake_field": "separate_conduct_isolatable",
+      "check": "separate_conduct_true_and_isolatable",
+      "affected_paragraph": 5,
+      "suggested_clarification": "Your answers may describe conduct outside this 6-1 disobeying-order charge. This report will only document the order and the inmate's failure or refusal to comply. A separate report may be required for any other conduct.",
+      "example_stronger_answer": "A separate disciplinary report for any additional conduct."
+    },
+    {
+      "id": "uof_documentation_not_confirmed",
+      "description": "Force was used but use-of-force documentation completion was not confirmed by the officer.",
+      "intake_field": "uof_documentation_status",
+      "check": "force_yes_and_uof_not_confirmed",
+      "affected_paragraph": 4,
+      "suggested_clarification": "Was separate use-of-force documentation completed for this incident?",
+      "example_stronger_answer": "Yes, separate use-of-force documentation was completed."
+    }
+  ]
+}

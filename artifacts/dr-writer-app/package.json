@@ -1,0 +1,13 @@
+{
+  "name": "@workspace/dr-writer-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "PORT=8000 BASE_PATH=/dr-writer-app AI_MODE=live DR_WRITER_DATA_DIR=/dev/shm/dr-writer-app node --experimental-strip-types src/dr-writer/server/appServer.ts",
+    "start": "node --experimental-strip-types src/dr-writer/server/appServer.ts"
+  },
+  "engines": {
+    "node": ">=22.6.0"
+  }
+}

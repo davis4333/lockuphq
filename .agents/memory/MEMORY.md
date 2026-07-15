@@ -1,2 +1,3 @@
 - [DR Writer frozen pipeline](dr-writer-frozen-pipeline.md) — LOCKUPHQ DR Writer lib is copied-verbatim + server-only key; browser must use the types-only entry, never the barrel.
+- [Hand-authored artifact](hand-authored-artifact.md) — register a non-scaffoldable API artifact by seeding artifact.toml via shell, then verifyAndReplaceArtifactToml (auto-creates the workflow).
 - [LOCKUPHQ standalone handoff](lockuphq-standalone-handoff.md) — full standalone app: zero npm deps, local file store (Reserved VM only), admin bootstrap on fresh data dir; scan ALL files for committed keys, not just .env.

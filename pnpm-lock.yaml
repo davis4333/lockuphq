@@ -172,9 +172,6 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
-      '@workspace/dr-writer':
-        specifier: workspace:*
-        version: link:../../lib/dr-writer
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -345,9 +342,6 @@ importers:
       '@workspace/api-client-react':
         specifier: workspace:*
         version: link:../../lib/api-client-react
-      '@workspace/dr-writer':
-        specifier: workspace:*
-        version: link:../../lib/dr-writer
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -423,6 +417,8 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 3.25.76
+
+  artifacts/dr-writer-app: {}
 
   artifacts/mockup-sandbox:
     devDependencies:

@@ -1,0 +1,30 @@
+kind = "api"
+previewPath = "/dr-writer-app"
+title = "DR Writer"
+version = "1.0.0"
+id = "artifacts/dr-writer-app"
+
+[[services]]
+localPort = 8000
+name = "web"
+paths = ["/dr-writer-app"]
+
+[services.development]
+run = "pnpm --filter @workspace/dr-writer-app run dev"
+
+[services.production]
+
+[services.production.run]
+args = ["node", "--experimental-strip-types", "artifacts/dr-writer-app/src/dr-writer/server/appServer.ts"]
+
+[services.production.run.env]
+PORT = "8000"
+BASE_PATH = "/dr-writer-app"
+AI_MODE = "live"
+DR_WRITER_DATA_DIR = "/dev/shm/dr-writer-app"
+
+[services.env]
+PORT = "8000"
+BASE_PATH = "/dr-writer-app"
+AI_MODE = "live"
+DR_WRITER_DATA_DIR = "/dev/shm/dr-writer-app"

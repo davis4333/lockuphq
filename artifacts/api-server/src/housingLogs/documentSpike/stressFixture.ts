@@ -76,11 +76,28 @@ export function createBUnitStressRecord(eventCount = 72): StoredHousingLog {
   const config = getHousingLogConfig("B", "1");
   const values: HousingLogDraftInput["values"] = {};
   let number = 1;
+  let timeIndex = 0;
   for (const field of fieldsForConfig(config)) {
-    if (field.inputType === "time") values[field.key] = "23:58";
-    else if (field.inputType === "number") values[field.key] = number++;
-    else if (field.inputType === "choice") values[field.key] = field.options?.[0] ?? "Yes";
-    else values[field.key] = `FAKE ${field.label}`;
+    if (field.inputType === "time") {
+      const hour = (19 + Math.floor(timeIndex / 12)) % 24;
+      const minute = (timeIndex * 5) % 60;
+      values[field.key] =
+        `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      timeIndex += 1;
+    } else if (field.inputType === "number") values[field.key] = number++;
+    else if (field.inputType === "choice")
+      values[field.key] = field.options?.[0] ?? "Yes";
+    else if (field.key.endsWith(".initials"))
+      values[field.key] = number % 2 === 0 ? "AM" : "JR";
+    else if (
+      field.key.endsWith(".performedBy") ||
+      field.key.endsWith(".conductedBy") ||
+      field.key.endsWith(".supervisor") ||
+      field.key.endsWith("inventoriedBy") ||
+      field.key.endsWith("reportedBy")
+    )
+      values[field.key] = "A. Montgomery";
+    else values[field.key] = "OK";
   }
 
   Object.assign(values, {
@@ -105,13 +122,13 @@ export function createBUnitStressRecord(eventCount = 72): StoredHousingLog {
     "staff.3.chemicalAgentSeal": "S-333",
     "staff.3.bodyAlarm": "BA-3",
     "staff.3.cuffsCase": "CC-3",
-    "equipment.cellExtraction": "Sgt. Montgomery",
+    "equipment.cellExtraction": "Sgt. A. Montgomery",
     "equipment.radioChargingStation": "OK",
     "equipment.inspectionMirror": "M-19",
     "equipment.ligatureCutterSeal": "LC-44721",
     "equipment.legRestraints": "2",
     "equipment.firstAidSeal": "FA-91827",
-    "medication.inventoriedBy": "Officer Jacqueline Rutherford",
+    "medication.inventoriedBy": "J. Rutherford",
   });
   for (let index = 1; index <= 8; index += 1)
     values[`equipment.acceptedKeyRings.${index}`] = `K${100 + index}`;
@@ -120,6 +137,13 @@ export function createBUnitStressRecord(eventCount = 72): StoredHousingLog {
     values[`equipment.bodyAlarms.${index}`] = `BA${index}`;
     values[`equipment.cuffs.${index}`] = `C${index}`;
     values[`equipment.cuffCases.${index}`] = `CC${index}`;
+  }
+  for (let index = 1; index <= 17; index += 1) {
+    values[`securityChecks.${index}.time`] =
+      `${String((20 + Math.floor(index / 6)) % 24).padStart(2, "0")}:${String((index * 7) % 60).padStart(2, "0")}`;
+    values[`securityChecks.${index}.performedBy`] =
+      index % 2 === 0 ? "C. Beaumont" : "J. Rutherford";
+    values[`securityChecks.${index}.initials`] = index % 2 === 0 ? "CB" : "JR";
   }
 
   const events = Array.from({ length: eventCount }, (_, index) => {
@@ -130,8 +154,7 @@ export function createBUnitStressRecord(eventCount = 72): StoredHousingLog {
       time: afterMidnight
         ? `00:${String(minute).padStart(2, "0")}`
         : `23:${String(minute).padStart(2, "0")}`,
-      activity:
-        `FAKE EVENT ${String(index + 1).padStart(3, "0")}: Officer completed a detailed security, sanitation, equipment, and welfare inspection; all observations were documented and reported to the shift supervisor without exception.`,
+      activity: `FAKE EVENT ${String(index + 1).padStart(3, "0")}: Officer completed a detailed security, sanitation, equipment, and welfare inspection; all observations were documented and reported to the shift supervisor without exception.`,
       initials: index % 2 === 0 ? "AM" : "JR",
     };
   });

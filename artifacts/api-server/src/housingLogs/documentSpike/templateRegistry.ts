@@ -1,5 +1,6 @@
 import path from "node:path";
 import { access } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { getHousingLogConfig } from "@workspace/housing-log";
 import type {
   HousingLogDocumentRecord,
@@ -40,9 +41,18 @@ export class HousingLogTemplateRegistry {
   }
 }
 
+export function resolveHousingLogAssetRoot(
+  moduleUrl = import.meta.url,
+): string {
+  const moduleDirectory = path.dirname(fileURLToPath(moduleUrl));
+  return path.basename(moduleDirectory) === "dist"
+    ? path.join(moduleDirectory, "assets", "housing-logs")
+    : path.resolve(moduleDirectory, "../../../assets/housing-logs");
+}
+
 export function registerBUnitSpikeTemplate(
   registry: HousingLogTemplateRegistry,
-  assetRoot: string,
+  assetRoot = resolveHousingLogAssetRoot(),
   templateVersion = "2026-04-27",
 ): HousingLogTemplateRegistry {
   const versionRoot = path.resolve(assetRoot, templateVersion);

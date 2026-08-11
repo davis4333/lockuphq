@@ -47,6 +47,10 @@ export type SignaturePlacementDiagnostic = {
   signatureKey: "housingSupervisor" | "housingOfficer";
   sourceAspectRatio: number;
   renderedAspectRatio: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
 };
 
 export type HousingLogDocumentDiagnostics = {
@@ -57,5 +61,7 @@ export type HousingLogDocumentDiagnostics = {
   totalPageCount: number;
   eventIdsInRenderedOrder: string[];
   signaturePlacements: SignaturePlacementDiagnostic[];
+  renderedFieldKeys?: string[];
+  layoutViolations?: string[];
   generationMilliseconds: number;
 };

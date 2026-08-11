@@ -1,0 +1,72 @@
+{
+  "generatedAt": "2026-08-11T20:22:23.670Z",
+  "sourceSheet": "1_B",
+  "templateVersion": "2026-04-27",
+  "requiredPhase1FieldCount": 175,
+  "mappedRequiredFieldCount": 175,
+  "missingRequiredFields": [],
+  "securityCheckRowsMapped": 17,
+  "layoutViolations": [],
+  "signaturePlacements": [
+    {
+      "pageIndex": 0,
+      "signatureKey": "housingSupervisor",
+      "sourceAspectRatio": 4.090909090909091,
+      "renderedAspectRatio": 4.090909090909091,
+      "x": 172,
+      "y": 118.5,
+      "width": 49.090909090909086,
+      "height": 12
+    },
+    {
+      "pageIndex": 1,
+      "signatureKey": "housingSupervisor",
+      "sourceAspectRatio": 4.090909090909091,
+      "renderedAspectRatio": 4.090909090909091,
+      "x": 172,
+      "y": 123.5,
+      "width": 49.090909090909086,
+      "height": 12
+    },
+    {
+      "pageIndex": 2,
+      "signatureKey": "housingSupervisor",
+      "sourceAspectRatio": 4.090909090909091,
+      "renderedAspectRatio": 4.090909090909091,
+      "x": 172,
+      "y": 115.5,
+      "width": 49.090909090909086,
+      "height": 12
+    },
+    {
+      "pageIndex": 0,
+      "signatureKey": "housingOfficer",
+      "sourceAspectRatio": 4.090909090909091,
+      "renderedAspectRatio": 4.090909090909091,
+      "x": 172,
+      "y": 102,
+      "width": 49.090909090909086,
+      "height": 12
+    },
+    {
+      "pageIndex": 1,
+      "signatureKey": "housingOfficer",
+      "sourceAspectRatio": 4.090909090909091,
+      "renderedAspectRatio": 4.090909090909091,
+      "x": 172,
+      "y": 107,
+      "width": 49.090909090909086,
+      "height": 12
+    },
+    {
+      "pageIndex": 2,
+      "signatureKey": "housingOfficer",
+      "sourceAspectRatio": 4.090909090909091,
+      "renderedAspectRatio": 4.090909090909091,
+      "x": 172,
+      "y": 101,
+      "width": 49.090909090909086,
+      "height": 12
+    }
+  ]
+}

@@ -170,11 +170,18 @@ export function validateHousingLogSignatureImages(
     const value = input.signatures[signature.key];
     if (!value?.startsWith("data:image/png;base64,")) continue;
     const metrics = inspectPngSignature(value);
+    const horizontalScale = metrics ? Math.max(1, metrics.width / 900) : 1;
+    const verticalScale = metrics ? Math.max(1, metrics.height / 220) : 1;
+    const normalizedInkPixels = metrics
+      ? metrics.inkPixels / (horizontalScale * verticalScale)
+      : 0;
+    const normalizedInkWidth = metrics ? metrics.inkWidth / horizontalScale : 0;
+    const normalizedInkHeight = metrics ? metrics.inkHeight / verticalScale : 0;
     if (
       !metrics ||
-      metrics.inkPixels < 120 ||
-      metrics.inkWidth < 40 ||
-      metrics.inkHeight < 10
+      normalizedInkPixels < 120 ||
+      normalizedInkWidth < 40 ||
+      normalizedInkHeight < 10
     ) {
       issues.push({
         path: `signatures.${signature.key}`,

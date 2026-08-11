@@ -10,7 +10,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
-- Housing Log Phase 1 uses `DATABASE_URL` for draft/finalized structured records. If its schema initialization fails, only Housing Log routes return 503; the remaining LockUpHQ API continues to start.
+- Housing Log Phase 1 uses `DATABASE_URL` for draft/finalized structured records and applies its small ordered migration list through `housing_log_schema_migrations`. If initialization fails, only Housing Log routes return 503 and retry independently; the remaining LockUpHQ API continues normally.
 - Required env (DR Writer app): `ANTHROPIC_API_KEY` — the `dr-writer-app` artifact boots in `AI_MODE=live` and exits if the key is missing (server-only; never exposed to the browser or logged)
 
 ## Stack

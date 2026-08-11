@@ -19,9 +19,12 @@ function pngChunk(type: string, data: Buffer): Buffer {
   return Buffer.concat([length, name, data, checksum]);
 }
 
-export function signatureDataUrl(mode: "valid" | "blank" | "tiny"): string {
-  const width = 400;
-  const height = 120;
+export function signatureDataUrl(
+  mode: "valid" | "blank" | "tiny",
+  pixelRatio = 1,
+): string {
+  const width = 900 * pixelRatio;
+  const height = 220 * pixelRatio;
   const stride = width * 4;
   const raw = Buffer.alloc(height * (stride + 1), 255);
   for (let y = 0; y < height; y += 1) raw[y * (stride + 1)] = 0;
@@ -35,15 +38,19 @@ export function signatureDataUrl(mode: "valid" | "blank" | "tiny"): string {
   };
 
   if (mode === "valid") {
-    for (let x = 45; x < 340; x += 1) {
-      const centerY = 35 + Math.round(18 * Math.sin(x / 18));
-      for (let dx = -1; dx <= 1; dx += 1) {
-        for (let dy = -2; dy <= 2; dy += 1) setPixel(x + dx, centerY + dy);
+    for (let x = 100 * pixelRatio; x < 800 * pixelRatio; x += 1) {
+      const centerY =
+        70 * pixelRatio +
+        Math.round(30 * pixelRatio * Math.sin(x / (35 * pixelRatio)));
+      for (let dx = -2 * pixelRatio; dx <= 2 * pixelRatio; dx += 1) {
+        for (let dy = -2 * pixelRatio; dy <= 2 * pixelRatio; dy += 1)
+          setPixel(x + dx, centerY + dy);
       }
     }
   } else if (mode === "tiny") {
-    for (let x = 196; x <= 202; x += 1) {
-      for (let y = 57; y <= 63; y += 1) setPixel(x, y);
+    for (let x = 446 * pixelRatio; x <= 452 * pixelRatio; x += 1) {
+      for (let y = 107 * pixelRatio; y <= 113 * pixelRatio; y += 1)
+        setPixel(x, y);
     }
   }
 

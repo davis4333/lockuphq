@@ -26,6 +26,18 @@ test("server accepts a structurally valid PNG with plausible handwritten ink", (
   );
 });
 
+test("high-DPI signatures preserve the same plausibility behavior", () => {
+  assert.deepEqual(
+    validateHousingLogSignatureImages(input(signatureDataUrl("valid", 2))),
+    [],
+  );
+  assert.equal(
+    validateHousingLogSignatureImages(input(signatureDataUrl("tiny", 2)))
+      .length,
+    2,
+  );
+});
+
 test("server rejects blank and tiny signature PNGs", () => {
   assert.equal(
     validateHousingLogSignatureImages(input(signatureDataUrl("blank"))).length,

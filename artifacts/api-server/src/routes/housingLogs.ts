@@ -7,7 +7,7 @@ import {
   housingLogUpdateSchema,
   type HousingLogDraftInput,
 } from "@workspace/housing-log";
-import { isHousingLogDatabaseAvailable } from "../housingLogs/db";
+import { ensureHousingLogSchema } from "../housingLogs/db";
 import {
   getHousingLogRepository,
   type HousingLogRepository,
@@ -20,11 +20,11 @@ export function createHousingLogsRouter(
   const requiresConfiguredDatabase = repository === undefined;
   const records = repository ?? getHousingLogRepository();
 
-  router.use("/housing-logs", (_req, res, next) => {
-    if (requiresConfiguredDatabase && !isHousingLogDatabaseAvailable()) {
+  router.use("/housing-logs", async (_req, res, next) => {
+    if (requiresConfiguredDatabase && !(await ensureHousingLogSchema())) {
       return res.status(503).json({
         error:
-          "Housing Log persistence is temporarily unavailable. Other LockUpHQ tools remain available.",
+          "Housing Log persistence is temporarily unavailable and will retry automatically. Other LockUpHQ tools remain available.",
       });
     }
     return next();

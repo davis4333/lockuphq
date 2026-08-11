@@ -2,7 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import {
   ensureHousingLogSchema,
-  markHousingLogDatabaseUnavailable,
+  getHousingLogInitializationError,
 } from "./housingLogs/db";
 
 const rawPort = process.env["PORT"];
@@ -21,13 +21,12 @@ if (Number.isNaN(port) || port <= 0) {
 
 async function start(): Promise<void> {
   if (process.env["DATABASE_URL"]) {
-    try {
-      await ensureHousingLogSchema();
-    } catch (error) {
-      markHousingLogDatabaseUnavailable();
+    const available = await ensureHousingLogSchema(true);
+    if (!available) {
+      const error = getHousingLogInitializationError();
       logger.error(
         { errName: error instanceof Error ? error.name : "UnknownError" },
-        "Housing Log database initialization failed; Housing Log routes will return 503",
+        "Housing Log database initialization failed; its routes will return 503 and retry independently",
       );
     }
   } else {

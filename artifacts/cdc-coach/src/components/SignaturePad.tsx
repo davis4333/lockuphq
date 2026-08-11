@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  SIGNATURE_LOGICAL_HEIGHT,
+  SIGNATURE_LOGICAL_WIDTH,
   emptySignatureInkMetrics,
   isPlausibleSignatureInk,
+  signatureBackingDimensions,
   type SignatureInkMetrics,
 } from "./signatureInk";
 
@@ -32,42 +35,90 @@ export default function SignaturePad({
   const paintBlankCanvas = (canvas: HTMLCanvasElement) => {
     const context = canvas.getContext("2d");
     if (!context) return;
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, canvas.width, canvas.height);
+    context.restore();
+  };
+
+  const syncCanvasResolution = (canvas: HTMLCanvasElement): boolean => {
+    const rect = canvas.getBoundingClientRect();
+    const dimensions = signatureBackingDimensions(
+      window.devicePixelRatio,
+      rect.width,
+      rect.height,
+    );
+    const changed =
+      canvas.width !== dimensions.width || canvas.height !== dimensions.height;
+    if (changed) {
+      canvas.width = dimensions.width;
+      canvas.height = dimensions.height;
+    }
+    canvas
+      .getContext("2d")
+      ?.setTransform(dimensions.scaleX, 0, 0, dimensions.scaleY, 0, 0);
+    return changed;
   };
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    paintBlankCanvas(canvas);
     metricsRef.current = emptySignatureInkMetrics();
     committedInkRef.current = false;
     setHasInk(false);
-    if (!value) return;
+    let active = true;
 
-    const context = canvas.getContext("2d");
-    if (!context) return;
-    const image = new Image();
-    image.onload = () => {
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      committedInkRef.current = true;
-      setHasInk(true);
-    };
-    image.onerror = () => {
+    const renderValue = () => {
+      syncCanvasResolution(canvas);
       paintBlankCanvas(canvas);
-      committedInkRef.current = false;
-      setHasInk(false);
+      if (!value) return;
+      const context = canvas.getContext("2d");
+      if (!context) return;
+      const image = new Image();
+      image.onload = () => {
+        if (!active) return;
+        context.drawImage(
+          image,
+          0,
+          0,
+          SIGNATURE_LOGICAL_WIDTH,
+          SIGNATURE_LOGICAL_HEIGHT,
+        );
+        committedInkRef.current = true;
+        setHasInk(true);
+      };
+      image.onerror = () => {
+        if (!active) return;
+        paintBlankCanvas(canvas);
+        committedInkRef.current = false;
+        setHasInk(false);
+      };
+      image.src = value;
     };
-    image.src = value;
+
+    const refreshResolution = () => {
+      if (syncCanvasResolution(canvas)) renderValue();
+    };
+
+    renderValue();
+    const observer = new ResizeObserver(refreshResolution);
+    observer.observe(canvas);
+    window.addEventListener("resize", refreshResolution);
+    return () => {
+      active = false;
+      observer.disconnect();
+      window.removeEventListener("resize", refreshResolution);
+    };
   }, [value]);
 
   const point = (event: React.PointerEvent<HTMLCanvasElement>): Point => {
     const canvas = event.currentTarget;
     const rect = canvas.getBoundingClientRect();
     return {
-      x: (event.clientX - rect.left) * (canvas.width / rect.width),
-      y: (event.clientY - rect.top) * (canvas.height / rect.height),
+      x: (event.clientX - rect.left) * (SIGNATURE_LOGICAL_WIDTH / rect.width),
+      y: (event.clientY - rect.top) * (SIGNATURE_LOGICAL_HEIGHT / rect.height),
     };
   };
 
@@ -144,8 +195,8 @@ export default function SignaturePad({
     <div>
       <canvas
         ref={canvasRef}
-        width={900}
-        height={220}
+        width={SIGNATURE_LOGICAL_WIDTH}
+        height={SIGNATURE_LOGICAL_HEIGHT}
         aria-label={`${label} signature pad`}
         className={`h-40 w-full touch-none rounded-lg border bg-white ${hasError ? "border-red-400 ring-2 ring-red-400/30" : "border-blue-300/50"} ${disabled ? "cursor-not-allowed opacity-70" : "cursor-crosshair"}`}
         onPointerDown={start}

@@ -8,13 +8,13 @@
   "include": ["src"],
   "references": [
     {
-      "path": "../../lib/db"
-    },
-    {
       "path": "../../lib/api-zod"
     },
     {
       "path": "../../lib/dr-writer"
+    },
+    {
+      "path": "../../lib/housing-log"
     }
   ]
 }

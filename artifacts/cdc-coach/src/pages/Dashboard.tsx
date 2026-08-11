@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { Lock, AlertTriangle, ChevronRight } from "lucide-react";
+import { Lock, AlertTriangle, ChevronRight, ClipboardList } from "lucide-react";
 import fdocSeal from "@assets/ChatGPT_Image_Jun_7,_2026,_03_31_51_AM_1780817532915.png";
 import searchLogIcon from "@assets/search_log_icon_(2)_1781869060675.png";
 import dc6229Icon from "@assets/DC6-229_icon_1781868024454.png";
@@ -54,6 +54,7 @@ const MODULES: Module[] = [
   { id: "search-log-autofill", title: "Search Log", description: "Upload Bed Book and fill original Search Log.", icon: SearchLogIcon, route: "/search-log" },
   { id: "dc6-229", title: "DC6-229 Daily Record", description: "Build a weekly Daily Record of Special Housing for each inmate.", icon: Dc6229Icon, route: "/dc6-229" },
   { id: "dr-writer-6-1", title: "DR WRITER - PROTOTYPE", description: "Draft a disciplinary report narrative PROTOTYPE", icon: DrDescriptionIcon, route: "/dr-writer-6-1" },
+  { id: "housing-log", title: "Housing Log", description: "Complete and finalize the official shift Housing Unit Log.", icon: ClipboardList, route: "/housing-log" },
   { id: "meal-restriction", title: "Meal Restriction / Loaf", description: "Generate special management meal documentation.", icon: MealRestrictionIcon },
   { id: "incident-report", title: "Incident Report Narrative", description: "Draft IR narrative descriptions.", icon: IncidentReportIcon },
   { id: "dr-description", title: "DR Description", description: "Complete the description portion of a disciplinary report.", icon: DrDescriptionIcon },
@@ -411,4 +412,3 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
     </div>
   );
 }
-

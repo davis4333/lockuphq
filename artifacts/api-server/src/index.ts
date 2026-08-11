@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { ensureHousingLogSchema } from "./housingLogs/db";
 
 const rawPort = process.env["PORT"];
 
@@ -15,11 +16,22 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
+async function start(): Promise<void> {
+  if (process.env["DATABASE_URL"]) {
+    await ensureHousingLogSchema();
+  } else {
+    logger.warn("DATABASE_URL is not configured; Housing Log persistence is unavailable");
   }
+  app.listen(port, (err) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
+    logger.info({ port }, "Server listening");
+  });
+}
 
-  logger.info({ port }, "Server listening");
+start().catch((err: unknown) => {
+  logger.error({ err }, "Failed to initialize the API server");
+  process.exit(1);
 });

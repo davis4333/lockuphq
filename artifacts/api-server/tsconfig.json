@@ -15,6 +15,9 @@
     },
     {
       "path": "../../lib/dr-writer"
+    },
+    {
+      "path": "../../lib/housing-log"
     }
   ]
 }

@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { cp, rm } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -118,6 +118,15 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+
+  // Phase 2A templates are immutable binary assets and therefore cannot be
+  // embedded safely by the TypeScript bundle. Keep their versioned directory
+  // intact so the same templateVersion + sourceSheet resolver works in Replit.
+  await cp(
+    path.resolve(artifactDir, "assets", "housing-logs"),
+    path.resolve(distDir, "assets", "housing-logs"),
+    { recursive: true },
+  );
 }
 
 buildAll().catch((err) => {

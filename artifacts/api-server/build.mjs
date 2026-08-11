@@ -130,6 +130,15 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   await access(
     path.resolve(distDir, "assets", "housing-logs", "2026-04-27", "1_B.pdf"),
   );
+  await access(
+    path.resolve(
+      distDir,
+      "assets",
+      "housing-logs",
+      "2026-04-27",
+      "Housing Unit Logs (REVISED 4.27.26).xlsx",
+    ),
+  );
 }
 
 buildAll().catch((err) => {

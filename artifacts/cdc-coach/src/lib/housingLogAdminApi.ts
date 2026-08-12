@@ -1,4 +1,7 @@
-import type { HousingLogArchiveResponse } from "@workspace/housing-log";
+import type {
+  HousingLogArchiveResponse,
+  HousingShift,
+} from "@workspace/housing-log";
 
 export class HousingLogAdminApiError extends Error {
   constructor(
@@ -47,17 +50,15 @@ export async function getHousingLogArchive(): Promise<HousingLogArchiveResponse>
   return response.json() as Promise<HousingLogArchiveResponse>;
 }
 
-export async function downloadHousingLogExcel(id: string): Promise<void> {
-  const response = await fetch(
-    `/api/admin/housing-logs/${encodeURIComponent(id)}/excel`,
-    { credentials: "same-origin" },
-  );
+async function downloadResponse(
+  endpoint: string,
+  fallbackName: string,
+): Promise<void> {
+  const response = await fetch(endpoint, { credentials: "same-origin" });
   if (!response.ok) await errorFromResponse(response);
   const disposition = response.headers.get("content-disposition") ?? "";
   const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
-  const fileName = encodedName
-    ? decodeURIComponent(encodedName)
-    : "Housing-Log.xlsx";
+  const fileName = encodedName ? decodeURIComponent(encodedName) : fallbackName;
   const url = URL.createObjectURL(await response.blob());
   try {
     const link = document.createElement("a");
@@ -69,4 +70,21 @@ export async function downloadHousingLogExcel(id: string): Promise<void> {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+export async function downloadHousingLogExcel(id: string): Promise<void> {
+  return downloadResponse(
+    `/api/admin/housing-logs/${encodeURIComponent(id)}/excel`,
+    "Housing-Log.xlsx",
+  );
+}
+
+export async function downloadHousingLogShiftPackage(
+  logDate: string,
+  shift: HousingShift,
+): Promise<void> {
+  return downloadResponse(
+    `/api/admin/housing-logs/shift-package/${encodeURIComponent(logDate)}/${encodeURIComponent(shift)}`,
+    `Housing-Logs_${logDate}_Shift-${shift}.zip`,
+  );
 }

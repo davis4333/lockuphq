@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 import {
   prepareHousingLog,
   type HousingLogDraftInput,
@@ -32,6 +32,10 @@ export interface HousingLogRepository {
   get(id: string): Promise<StoredHousingLog | undefined>;
   list(filters: HousingLogListFilters): Promise<HousingLogSummary[]>;
   listFinalizedArchive(): Promise<FinalizedHousingLogMetadata[]>;
+  listFinalizedForShift(
+    logDate: string,
+    shift: HousingShift,
+  ): Promise<StoredHousingLog[]>;
   updateDraft(
     id: string,
     input: HousingLogDraftInput,
@@ -167,6 +171,28 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
         finalizedAt: row.finalizedAt.toISOString(),
       };
     });
+  }
+
+  async listFinalizedForShift(
+    logDate: string,
+    shift: HousingShift,
+  ): Promise<StoredHousingLog[]> {
+    const rows = await getHousingLogDatabase()
+      .select()
+      .from(housingLogs)
+      .where(
+        and(
+          eq(housingLogs.status, "finalized"),
+          eq(housingLogs.logDate, logDate),
+          eq(housingLogs.shift, shift),
+        ),
+      )
+      .orderBy(
+        asc(housingLogs.housingUnit),
+        asc(housingLogs.finalizedAt),
+        asc(housingLogs.id),
+      );
+    return rows.map(toStored);
   }
 
   async updateDraft(

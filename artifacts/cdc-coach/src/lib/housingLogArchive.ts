@@ -15,6 +15,11 @@ export type HousingLogArchiveUnitSlot = {
 export type HousingLogArchiveShiftNode = {
   shift: HousingShift;
   units: HousingLogArchiveUnitSlot[];
+  packageState:
+    | "complete"
+    | "missing"
+    | "duplicates"
+    | "missing-and-duplicates";
 };
 
 export type HousingLogArchiveDateNode = {
@@ -68,9 +73,8 @@ export function buildHousingLogArchiveTree(
   const years = new Map<number, Map<number, HousingLogArchiveDateNode[]>>();
   for (const [logDate, dateRecords] of dates) {
     const { year, month } = dateParts(logDate);
-    const shifts = housingShifts.map((shift) => ({
-      shift,
-      units: expectedHousingUnits.map((housingUnit) => {
+    const shifts = housingShifts.map((shift) => {
+      const units = expectedHousingUnits.map((housingUnit) => {
         const slotRecords = dateRecords
           .filter(
             (record) =>
@@ -85,8 +89,22 @@ export function buildHousingLogArchiveTree(
           missing: slotRecords.length === 0,
           duplicate: slotRecords.length > 1,
         };
-      }),
-    }));
+      });
+      const hasMissing = units.some((unit) => unit.missing);
+      const hasDuplicates = units.some((unit) => unit.duplicate);
+      return {
+        shift,
+        units,
+        packageState:
+          hasMissing && hasDuplicates
+            ? ("missing-and-duplicates" as const)
+            : hasMissing
+              ? ("missing" as const)
+              : hasDuplicates
+                ? ("duplicates" as const)
+                : ("complete" as const),
+      };
+    });
     const months = years.get(year) ?? new Map();
     const monthDates = months.get(month) ?? [];
     monthDates.push({ logDate, shifts });

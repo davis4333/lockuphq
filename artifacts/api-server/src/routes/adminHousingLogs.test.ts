@@ -8,6 +8,7 @@ import type {
   HousingLogListFilters,
   HousingLogSignatures,
   HousingLogSummary,
+  HousingShift,
   StoredHousingLog,
 } from "@workspace/housing-log";
 import { jsonErrorHandler } from "../app";
@@ -25,6 +26,7 @@ import {
   HousingLogWorkbookRegistry,
   registerOfficialHousingLogWorkbook,
 } from "../housingLogs/excelTemplate/workbookRegistry";
+import type { HousingLogShiftPackage } from "../housingLogs/shiftPackage";
 import { createAdminHousingLogsRouter } from "./adminHousingLogs";
 
 class AdminMemoryRepository implements HousingLogRepository {
@@ -69,6 +71,18 @@ class AdminMemoryRepository implements HousingLogRepository {
           finalizedAt,
         }),
       );
+  }
+
+  async listFinalizedForShift(
+    logDate: string,
+    shift: StoredHousingLog["shift"],
+  ): Promise<StoredHousingLog[]> {
+    return [...this.records.values()].filter(
+      (record) =>
+        record.status === "finalized" &&
+        record.logDate === logDate &&
+        record.shift === shift,
+    );
   }
 
   async updateDraft(
@@ -240,6 +254,7 @@ test("every Housing Log admin archive route rejects unauthorized sessions", asyn
       for (const path of [
         "/api/admin/housing-logs/archive",
         "/api/admin/housing-logs/unknown/excel",
+        "/api/admin/housing-logs/shift-package/2026-08-12/2",
       ]) {
         const response = await fetch(`${baseUrl}${path}`);
         assert.equal(response.status, 401);
@@ -247,6 +262,91 @@ test("every Housing Log admin archive route rejects unauthorized sessions", asyn
           error: "Housing Log admin login required.",
         });
       }
+    },
+  );
+});
+
+test("shift package endpoint validates inputs and returns a protected no-store ZIP", async () => {
+  const calls: Array<{ logDate: string; shift: HousingShift }> = [];
+  const packageResult: HousingLogShiftPackage = {
+    bytes: Buffer.from("synthetic zip bytes"),
+    filename: "Housing-Logs_2026-08-12_Shift-2.zip",
+    manifest: {
+      manifestVersion: 1,
+      packageDate: "2026-08-12",
+      shift: "2",
+      generatedAt: "2026-08-13T00:00:00.000Z",
+      completenessStatus: "INCOMPLETE",
+      expectedHousingUnits: ["A/H", "B", "C", "D", "E", "F", "G", "Infirmary"],
+      includedLogs: [],
+      missingHousingUnits: ["A/H", "B", "C", "D", "E", "F", "G", "Infirmary"],
+      duplicateHousingUnitSlots: [],
+    },
+  };
+  await withServer(
+    {
+      repository: new AdminMemoryRepository(),
+      passwordProvider: () => "correct horse",
+      shiftPackageBuilder: async (logDate, shift) => {
+        calls.push({ logDate, shift });
+        return packageResult;
+      },
+    },
+    async (baseUrl) => {
+      const cookie = await login(baseUrl);
+      for (const path of [
+        "/api/admin/housing-logs/shift-package/2026-02-30/2",
+        "/api/admin/housing-logs/shift-package/2026-08-12/4",
+      ]) {
+        const invalid = await fetch(`${baseUrl}${path}`, {
+          headers: { cookie },
+        });
+        assert.equal(invalid.status, 400);
+      }
+      assert.deepEqual(calls, []);
+
+      const response = await fetch(
+        `${baseUrl}/api/admin/housing-logs/shift-package/2026-08-12/2`,
+        { headers: { cookie } },
+      );
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get("content-type") ?? "", /zip/);
+      assert.match(
+        response.headers.get("content-disposition") ?? "",
+        /attachment.*Housing-Logs_2026-08-12_Shift-2\.zip/i,
+      );
+      assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+      assert.deepEqual(
+        Buffer.from(await response.arrayBuffer()),
+        packageResult.bytes,
+      );
+      assert.deepEqual(calls, [{ logDate: "2026-08-12", shift: "2" }]);
+    },
+  );
+});
+
+test("shift package generation failures receive controlled JSON", async () => {
+  await withServer(
+    {
+      repository: new AdminMemoryRepository(),
+      passwordProvider: () => "correct horse",
+      shiftPackageBuilder: async () => {
+        throw new Error("sensitive Excel generation failure");
+      },
+    },
+    async (baseUrl) => {
+      const cookie = await login(baseUrl);
+      const response = await fetch(
+        `${baseUrl}/api/admin/housing-logs/shift-package/2026-08-12/2`,
+        { headers: { cookie } },
+      );
+      assert.equal(response.status, 500);
+      const body = (await response.json()) as { error: string };
+      assert.equal(
+        body.error,
+        "The request could not be completed. Try again.",
+      );
+      assert.equal(JSON.stringify(body).includes("sensitive"), false);
     },
   );
 });
@@ -377,7 +477,7 @@ test("draft and unknown records cannot be downloaded", async () => {
   );
 });
 
-test("authenticated archive reports database unavailability without affecting session auth", async () => {
+test("authenticated archive and package routes report database unavailability without affecting session auth", async () => {
   const sessions = new HousingLogAdminSessions();
   const token = sessions.issue();
   await withServer(
@@ -386,17 +486,19 @@ test("authenticated archive reports database unavailability without affecting se
       passwordProvider: () => "correct horse",
     },
     async (baseUrl) => {
-      const response = await fetch(
-        `${baseUrl}/api/admin/housing-logs/archive`,
-        {
+      for (const path of [
+        "/api/admin/housing-logs/archive",
+        "/api/admin/housing-logs/shift-package/2026-08-12/2",
+      ]) {
+        const response = await fetch(`${baseUrl}${path}`, {
           headers: {
             cookie: `${HOUSING_LOG_ADMIN_COOKIE}=${encodeURIComponent(token)}`,
           },
-        },
-      );
-      assert.equal(response.status, 503);
-      const body = (await response.json()) as { error: string };
-      assert.match(body.error, /temporarily unavailable/i);
+        });
+        assert.equal(response.status, 503);
+        const body = (await response.json()) as { error: string };
+        assert.match(body.error, /temporarily unavailable/i);
+      }
     },
   );
 });

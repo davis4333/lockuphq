@@ -55,6 +55,7 @@ test("archive preserves duplicates and marks missing configured units without fa
     ["A/H", "B"],
   );
   const secondShift = tree[0]!.months[0]!.dates[0]!.shifts[1]!;
+  assert.equal(secondShift.packageState, "missing-and-duplicates");
   const duplicate = secondShift.units[0]!;
   assert.equal(duplicate.duplicate, true);
   assert.equal(duplicate.missing, false);
@@ -65,4 +66,21 @@ test("archive preserves duplicates and marks missing configured units without fa
   const missing = secondShift.units[1]!;
   assert.equal(missing.missing, true);
   assert.equal(missing.records.length, 0);
+});
+
+test("archive exposes complete and incomplete shift package states", () => {
+  const tree = buildHousingLogArchiveTree(
+    [
+      record("a", "2026-08-12", "1", "A/H"),
+      record("b", "2026-08-12", "1", "B"),
+      record("duplicate-a", "2026-08-12", "2", "A/H"),
+      record("duplicate-b", "2026-08-12", "2", "A/H"),
+      record("second-b", "2026-08-12", "2", "B"),
+    ],
+    ["A/H", "B"],
+  );
+  const shifts = tree[0]!.months[0]!.dates[0]!.shifts;
+  assert.equal(shifts[0]!.packageState, "complete");
+  assert.equal(shifts[1]!.packageState, "duplicates");
+  assert.equal(shifts[2]!.packageState, "missing");
 });

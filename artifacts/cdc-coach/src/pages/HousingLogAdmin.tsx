@@ -17,6 +17,7 @@ import PageShell, {
 } from "@/components/PageShell";
 import {
   downloadHousingLogExcel,
+  downloadHousingLogShiftPackage,
   getHousingLogArchive,
   HousingLogAdminApiError,
   loginHousingLogAdmin,
@@ -33,6 +34,13 @@ const shiftLabel: Record<HousingShift, string> = {
   "3": "Third Shift",
 };
 
+const packageStateLabel = {
+  complete: "Complete",
+  missing: "Missing logs",
+  duplicates: "Duplicate logs",
+  "missing-and-duplicates": "Missing + duplicates",
+} as const;
+
 export default function HousingLogAdmin() {
   const [archive, setArchive] = useState<HousingLogArchiveResponse | null>(
     null,
@@ -42,6 +50,9 @@ export default function HousingLogAdmin() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [downloadingPackage, setDownloadingPackage] = useState<string | null>(
+    null,
+  );
 
   const loadArchive = async () => {
     setLoading(true);
@@ -134,6 +145,30 @@ export default function HousingLogAdmin() {
       );
     } finally {
       setDownloading(null);
+    }
+  };
+
+  const downloadPackage = async (logDate: string, shift: HousingShift) => {
+    const key = `${logDate}-${shift}`;
+    setDownloadingPackage(key);
+    setError("");
+    try {
+      await downloadHousingLogShiftPackage(logDate, shift);
+    } catch (requestError) {
+      if (
+        requestError instanceof HousingLogAdminApiError &&
+        requestError.status === 401
+      ) {
+        setAuthenticated(false);
+        setArchive(null);
+      }
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "The shift package could not be downloaded.",
+      );
+    } finally {
+      setDownloadingPackage(null);
     }
   };
 
@@ -266,6 +301,46 @@ export default function HousingLogAdmin() {
                                     <summary className="cursor-pointer px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-blue-200 marker:text-blue-400">
                                       {shiftLabel[shift.shift]}
                                     </summary>
+                                    <div className="mx-3 mb-3 flex flex-col gap-2 rounded-md border border-blue-400/25 bg-blue-950/25 p-3 sm:flex-row sm:items-center sm:justify-between">
+                                      <div>
+                                        <div className="text-[9px] font-black uppercase tracking-[0.14em] text-blue-300/65">
+                                          Shift package status
+                                        </div>
+                                        <div
+                                          className={`mt-1 text-xs font-black uppercase tracking-[0.08em] ${
+                                            shift.packageState === "complete"
+                                              ? "text-emerald-300"
+                                              : "text-amber-300"
+                                          }`}
+                                        >
+                                          {
+                                            packageStateLabel[
+                                              shift.packageState
+                                            ]
+                                          }
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          void downloadPackage(
+                                            date.logDate,
+                                            shift.shift,
+                                          )
+                                        }
+                                        disabled={
+                                          downloadingPackage ===
+                                          `${date.logDate}-${shift.shift}`
+                                        }
+                                        className="inline-flex items-center justify-center gap-2 rounded border border-blue-300/50 bg-blue-700/30 px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-blue-50 hover:bg-blue-600/45 disabled:opacity-50"
+                                      >
+                                        <Download className="h-3.5 w-3.5" />
+                                        {downloadingPackage ===
+                                        `${date.logDate}-${shift.shift}`
+                                          ? "Building Package…"
+                                          : "Download Shift Package"}
+                                      </button>
+                                    </div>
                                     <div className="grid gap-2 px-3 pb-3 md:grid-cols-2">
                                       {shift.units.map((slot) => (
                                         <div

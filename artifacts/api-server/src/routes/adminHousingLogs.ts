@@ -1,8 +1,11 @@
 import { Router, type IRouter } from "express";
 import {
   getHousingLogConfig,
+  housingShifts,
   housingUnits,
+  isValidHousingLogDate,
   type HousingLogArchiveResponse,
+  type HousingShift,
 } from "@workspace/housing-log";
 import { ensureHousingLogSchema } from "../housingLogs/db";
 import {
@@ -20,6 +23,10 @@ import {
 } from "../housingLogs/repository";
 import { generateExcelHousingLog } from "../housingLogs/excelTemplate/generateExcelHousingLog";
 import {
+  buildHousingLogShiftPackage,
+  type HousingLogShiftPackage,
+} from "../housingLogs/shiftPackage";
+import {
   HousingLogWorkbookRegistry,
   registerOfficialHousingLogWorkbook,
 } from "../housingLogs/excelTemplate/workbookRegistry";
@@ -30,6 +37,10 @@ type AdminHousingLogsRouterOptions = {
   passwordProvider?: () => string | undefined;
   secureCookies?: boolean;
   workbookRegistry?: HousingLogWorkbookRegistry;
+  shiftPackageBuilder?: (
+    logDate: string,
+    shift: HousingShift,
+  ) => Promise<HousingLogShiftPackage>;
 };
 
 const safeFilePart = (value: string) =>
@@ -50,6 +61,13 @@ export function createAdminHousingLogsRouter(
   const workbookRegistry =
     options.workbookRegistry ??
     registerOfficialHousingLogWorkbook(new HousingLogWorkbookRegistry());
+  const shiftPackageBuilder =
+    options.shiftPackageBuilder ??
+    ((logDate: string, shift: HousingShift) =>
+      buildHousingLogShiftPackage(logDate, shift, {
+        repository: records,
+        workbookRegistry,
+      }));
 
   router.post("/admin/session", (request, response) => {
     const configuredPassword = passwordProvider();
@@ -116,6 +134,36 @@ export function createAdminHousingLogsRouter(
     response.setHeader("Cache-Control", "no-store");
     response.json(body);
   });
+
+  router.get(
+    "/admin/housing-logs/shift-package/:logDate/:shift",
+    async (request, response) => {
+      const logDate = String(request.params["logDate"]);
+      const rawShift = String(request.params["shift"]);
+      if (!isValidHousingLogDate(logDate)) {
+        response.status(400).json({
+          error: "Enter a real package date in YYYY-MM-DD format.",
+        });
+        return;
+      }
+      if (!housingShifts.includes(rawShift as HousingShift)) {
+        response.status(400).json({ error: "Invalid Housing Log shift." });
+        return;
+      }
+      const shift = rawShift as HousingShift;
+      const generated = await shiftPackageBuilder(logDate, shift);
+      response.setHeader("Content-Type", "application/zip");
+      response.setHeader(
+        "Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(generated.filename)}`,
+      );
+      response.setHeader("Cache-Control", "no-store, private");
+      response.setHeader("Pragma", "no-cache");
+      response.setHeader("X-Content-Type-Options", "nosniff");
+      response.setHeader("Content-Length", String(generated.bytes.length));
+      response.status(200).send(generated.bytes);
+    },
+  );
 
   router.get("/admin/housing-logs/:id/excel", async (request, response) => {
     const record = await records.get(String(request.params["id"]));

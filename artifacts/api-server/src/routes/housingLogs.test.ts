@@ -153,6 +153,18 @@ class MemoryRepository implements HousingLogRepository {
       );
   }
 
+  async listFinalizedForShift(
+    logDate: string,
+    shift: StoredHousingLog["shift"],
+  ): Promise<StoredHousingLog[]> {
+    return [...this.records.values()].filter(
+      (record) =>
+        record.status === "finalized" &&
+        record.logDate === logDate &&
+        record.shift === shift,
+    );
+  }
+
   async updateDraft(
     id: string,
     input: HousingLogDraftInput,

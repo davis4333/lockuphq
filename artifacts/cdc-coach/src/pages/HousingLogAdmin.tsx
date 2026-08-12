@@ -144,9 +144,21 @@ export default function HousingLogAdmin() {
       maxWidthClass="max-w-6xl"
     >
       {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-400/50 bg-red-950/50 p-3 text-sm text-red-100">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
+        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-red-400/50 bg-red-950/50 p-3 text-sm text-red-100 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+          {authenticated !== false && (
+            <button
+              type="button"
+              onClick={() => void loadArchive()}
+              disabled={loading}
+              className="shrink-0 rounded-md border border-red-200/50 bg-red-900/35 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-red-50 hover:bg-red-800/50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? "Retrying…" : "Retry Archive"}
+            </button>
+          )}
         </div>
       )}
 

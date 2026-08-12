@@ -48,14 +48,24 @@ export function createHousingLogsRouter(
         error: "Invalid Housing Log filters.",
         issues: parsed.error.issues,
       });
-    return res.json(await records.list(parsed.data));
+    if (parsed.data.status === "finalized")
+      return res.status(403).json({
+        error:
+          "Finalized Housing Logs are available only in the admin archive.",
+      });
+    return res.json(await records.list({ ...parsed.data, status: "draft" }));
   });
 
   router.get("/housing-logs/:id", async (req, res) => {
     const record = await records.get(String(req.params["id"]));
-    return record
-      ? res.json(record)
-      : res.status(404).json({ error: "Housing Log not found." });
+    if (!record)
+      return res.status(404).json({ error: "Housing Log not found." });
+    if (record.status === "finalized")
+      return res.status(403).json({
+        error:
+          "Finalized Housing Logs are available only in the admin archive.",
+      });
+    return res.json(record);
   });
 
   router.patch("/housing-logs/:id", async (req, res) => {

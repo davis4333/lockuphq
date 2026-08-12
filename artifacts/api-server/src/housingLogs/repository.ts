@@ -22,10 +22,16 @@ export type FinalizeHousingLogResult =
   | { outcome: "not_found" }
   | { outcome: "not_editable" };
 
+export type FinalizedHousingLogMetadata = Pick<
+  StoredHousingLog,
+  "id" | "logDate" | "shift" | "housingUnit" | "templateVersion" | "finalizedAt"
+> & { finalizedAt: string };
+
 export interface HousingLogRepository {
   create(input: HousingLogDraftInput): Promise<StoredHousingLog>;
   get(id: string): Promise<StoredHousingLog | undefined>;
   list(filters: HousingLogListFilters): Promise<HousingLogSummary[]>;
+  listFinalizedArchive(): Promise<FinalizedHousingLogMetadata[]>;
   updateDraft(
     id: string,
     input: HousingLogDraftInput,
@@ -129,6 +135,38 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
       updatedAt: row.updatedAt.toISOString(),
       finalizedAt: row.finalizedAt?.toISOString() ?? null,
     }));
+  }
+
+  async listFinalizedArchive(): Promise<FinalizedHousingLogMetadata[]> {
+    const rows = await getHousingLogDatabase()
+      .select({
+        id: housingLogs.id,
+        logDate: housingLogs.logDate,
+        shift: housingLogs.shift,
+        housingUnit: housingLogs.housingUnit,
+        templateVersion: housingLogs.templateVersion,
+        finalizedAt: housingLogs.finalizedAt,
+      })
+      .from(housingLogs)
+      .where(eq(housingLogs.status, "finalized"))
+      .orderBy(
+        desc(housingLogs.logDate),
+        desc(housingLogs.shift),
+        desc(housingLogs.housingUnit),
+        desc(housingLogs.finalizedAt),
+      );
+    return rows.map((row) => {
+      if (!row.finalizedAt)
+        throw new Error("Finalized Housing Log is missing finalized_at.");
+      return {
+        id: row.id,
+        logDate: row.logDate,
+        shift: row.shift as HousingShift,
+        housingUnit: row.housingUnit as HousingUnit,
+        templateVersion: row.templateVersion,
+        finalizedAt: row.finalizedAt.toISOString(),
+      };
+    });
   }
 
   async updateDraft(

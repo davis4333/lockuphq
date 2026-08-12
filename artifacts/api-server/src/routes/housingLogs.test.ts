@@ -16,6 +16,7 @@ import {
 import { signatureDataUrl } from "../housingLogs/signatureTestUtils";
 import { validateHousingLogForFinalization } from "../housingLogs/signatureValidation";
 import {
+  type FinalizedHousingLogMetadata,
   type FinalizeHousingLogResult,
   type HousingLogRepository,
 } from "../housingLogs/repository";
@@ -125,6 +126,31 @@ class MemoryRepository implements HousingLogRepository {
         (record) => !filters.logDate || record.logDate === filters.logDate,
       )
       .map(summary);
+  }
+
+  async listFinalizedArchive(): Promise<FinalizedHousingLogMetadata[]> {
+    return [...this.records.values()]
+      .filter(
+        (record): record is StoredHousingLog & { finalizedAt: string } =>
+          record.status === "finalized" && record.finalizedAt !== null,
+      )
+      .map(
+        ({
+          id,
+          logDate,
+          shift,
+          housingUnit,
+          templateVersion,
+          finalizedAt,
+        }) => ({
+          id,
+          logDate,
+          shift,
+          housingUnit,
+          templateVersion,
+          finalizedAt,
+        }),
+      );
   }
 
   async updateDraft(
@@ -343,14 +369,37 @@ test("signature patches merge against the current record instead of a stale snap
 });
 
 test("list endpoint returns lightweight metadata and rejects invalid filters", async () => {
-  await withServer(async (baseUrl) => {
-    await createDraft(baseUrl);
+  await withServer(async (baseUrl, repository) => {
+    const draft = await createDraft(baseUrl);
+    repository.records.set("finalized-hidden", {
+      ...draft,
+      id: "finalized-hidden",
+      status: "finalized",
+      finalizedAt: new Date().toISOString(),
+    });
     const valid = await fetch(`${baseUrl}/api/housing-logs?status=draft`);
     assert.equal(valid.status, 200);
     const body = (await valid.json()) as Array<Record<string, unknown>>;
     assert.equal(body.length, 1);
     assert.equal("values" in (body[0] ?? {}), false);
     assert.equal("signatures" in (body[0] ?? {}), false);
+
+    const unfiltered = await fetch(`${baseUrl}/api/housing-logs`);
+    assert.equal(unfiltered.status, 200);
+    assert.deepEqual(
+      ((await unfiltered.json()) as HousingLogSummary[]).map(
+        (record) => record.id,
+      ),
+      [draft.id],
+    );
+    const finalizedList = await fetch(
+      `${baseUrl}/api/housing-logs?status=finalized`,
+    );
+    assert.equal(finalizedList.status, 403);
+    const finalizedGet = await fetch(
+      `${baseUrl}/api/housing-logs/finalized-hidden`,
+    );
+    assert.equal(finalizedGet.status, 403);
 
     const invalid = await fetch(`${baseUrl}/api/housing-logs?status=anything`);
     assert.equal(invalid.status, 400);

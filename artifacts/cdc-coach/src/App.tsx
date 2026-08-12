@@ -8,6 +8,7 @@ import PropertyRestriction from "@/pages/PropertyRestriction";
 import SearchLogAutofill from "@/pages/SearchLogAutofill";
 import DC6229DailyRecord from "@/pages/DC6229DailyRecord";
 import HousingLog from "@/pages/HousingLog";
+import HousingLogAdmin from "@/pages/HousingLogAdmin";
 // DR Writer tab temporarily disabled until further notice — re-enable this import,
 // the "/dr-writer-6-1" route below, and the MODULES entry in Dashboard.tsx.
 // import DrWriter61 from "@/pages/DrWriter61";
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/search-log" component={SearchLogAutofill} />
       <Route path="/dc6-229" component={DC6229DailyRecord} />
       <Route path="/housing-log" component={HousingLog} />
+      <Route path="/housing-log-admin" component={HousingLogAdmin} />
       {/* <Route path="/dr-writer-6-1" component={DrWriter61} /> */}
       <Route component={NotFound} />
     </Switch>

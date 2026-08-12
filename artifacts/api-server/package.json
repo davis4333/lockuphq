@@ -7,9 +7,8 @@
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "test": "tsx --test src/routes/housingLogs.test.ts src/housingLogs/signatureValidation.test.ts src/housingLogs/schemaMigrations.test.ts src/housingLogs/schemaInitialization.test.ts src/housingLogs/documentSpike/documentSpike.test.ts src/housingLogs/excelTemplate/excelHousingLog.test.ts src/housingLogs/excelTemplate/allTemplatesExcel.test.ts",
+    "test": "tsx --test src/routes/housingLogs.test.ts src/routes/adminHousingLogs.test.ts src/housingLogs/signatureValidation.test.ts src/housingLogs/schemaMigrations.test.ts src/housingLogs/schemaInitialization.test.ts src/housingLogs/documentSpike/documentSpike.test.ts src/housingLogs/excelTemplate/allTemplatesExcel.test.ts",
     "spike:housing-log": "tsx src/housingLogs/documentSpike/runSpike.ts",
-    "proof:housing-log-excel": "tsx src/housingLogs/excelTemplate/runExcelProof.ts",
     "proof:housing-log-excel-all": "tsx src/housingLogs/excelTemplate/runAllTemplatesProof.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

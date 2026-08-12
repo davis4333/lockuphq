@@ -1,0 +1,111 @@
+import {
+  housingShifts,
+  type HousingLogArchiveRecord,
+  type HousingShift,
+  type HousingUnit,
+} from "@workspace/housing-log";
+
+export type HousingLogArchiveUnitSlot = {
+  housingUnit: HousingUnit;
+  records: HousingLogArchiveRecord[];
+  missing: boolean;
+  duplicate: boolean;
+};
+
+export type HousingLogArchiveShiftNode = {
+  shift: HousingShift;
+  units: HousingLogArchiveUnitSlot[];
+};
+
+export type HousingLogArchiveDateNode = {
+  logDate: string;
+  shifts: HousingLogArchiveShiftNode[];
+};
+
+export type HousingLogArchiveMonthNode = {
+  month: number;
+  label: string;
+  dates: HousingLogArchiveDateNode[];
+};
+
+export type HousingLogArchiveYearNode = {
+  year: number;
+  months: HousingLogArchiveMonthNode[];
+};
+
+const dateParts = (logDate: string) => {
+  const [year, month, day] = logDate.split("-").map(Number);
+  return { year: year!, month: month!, day: day! };
+};
+
+export function formatArchiveMonth(year: number, month: number): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+export function formatArchiveDate(logDate: string): string {
+  const { year, month, day } = dateParts(logDate);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
+export function buildHousingLogArchiveTree(
+  records: readonly HousingLogArchiveRecord[],
+  expectedHousingUnits: readonly HousingUnit[],
+): HousingLogArchiveYearNode[] {
+  const dates = new Map<string, HousingLogArchiveRecord[]>();
+  for (const record of records) {
+    const existing = dates.get(record.logDate) ?? [];
+    existing.push(record);
+    dates.set(record.logDate, existing);
+  }
+
+  const years = new Map<number, Map<number, HousingLogArchiveDateNode[]>>();
+  for (const [logDate, dateRecords] of dates) {
+    const { year, month } = dateParts(logDate);
+    const shifts = housingShifts.map((shift) => ({
+      shift,
+      units: expectedHousingUnits.map((housingUnit) => {
+        const slotRecords = dateRecords
+          .filter(
+            (record) =>
+              record.shift === shift && record.housingUnit === housingUnit,
+          )
+          .sort((left, right) =>
+            right.finalizedAt.localeCompare(left.finalizedAt),
+          );
+        return {
+          housingUnit,
+          records: slotRecords,
+          missing: slotRecords.length === 0,
+          duplicate: slotRecords.length > 1,
+        };
+      }),
+    }));
+    const months = years.get(year) ?? new Map();
+    const monthDates = months.get(month) ?? [];
+    monthDates.push({ logDate, shifts });
+    months.set(month, monthDates);
+    years.set(year, months);
+  }
+
+  return [...years.entries()]
+    .sort(([left], [right]) => right - left)
+    .map(([year, months]) => ({
+      year,
+      months: [...months.entries()]
+        .sort(([left], [right]) => right - left)
+        .map(([month, monthDates]) => ({
+          month,
+          label: formatArchiveMonth(year, month),
+          dates: monthDates.sort((left, right) =>
+            right.logDate.localeCompare(left.logDate),
+          ),
+        })),
+    }));
+}

@@ -113,6 +113,19 @@ export type HousingLogSummary = Pick<
   | "finalizedAt"
 >;
 
+export type HousingLogArchiveRecord = Pick<
+  StoredHousingLog,
+  "id" | "logDate" | "shift" | "housingUnit" | "templateVersion" | "finalizedAt"
+> & {
+  sourceSheet: string;
+  finalizedAt: string;
+};
+
+export type HousingLogArchiveResponse = {
+  records: HousingLogArchiveRecord[];
+  expectedHousingUnits: HousingUnit[];
+};
+
 export type HousingLogListFilters = {
   status?: HousingLogStatus;
   housingUnit?: HousingUnit;

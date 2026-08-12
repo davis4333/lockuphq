@@ -1,0 +1,115 @@
+{
+  "method": "@oai/artifact-tool independent XLSX import, inspect, and render",
+  "workbookCount": 12,
+  "allImported": true,
+  "entries": [
+    {
+      "fileName": "1_AH-editable-fake.xlsx",
+      "sourceSheet": "1_AH",
+      "imported": true,
+      "usedRange": "A1:T138",
+      "formulaErrorMatches": 0,
+      "drawingRecords": 6,
+      "renderedPreview": "rendered-sheets/1_AH.png"
+    },
+    {
+      "fileName": "1_B-editable-fake.xlsx",
+      "sourceSheet": "1_B",
+      "imported": true,
+      "usedRange": "A1:D149",
+      "formulaErrorMatches": 0,
+      "drawingRecords": 6,
+      "renderedPreview": "rendered-sheets/1_B.png"
+    },
+    {
+      "fileName": "1_CDEFG-editable-fake.xlsx",
+      "sourceSheet": "1_CDEFG",
+      "imported": true,
+      "usedRange": "A1:D135",
+      "formulaErrorMatches": 0,
+      "drawingRecords": 6,
+      "renderedPreview": "rendered-sheets/1_CDEFG.png"
+    },
+    {
+      "fileName": "1_INF-editable-fake.xlsx",
+      "sourceSheet": "1_INF",
+      "imported": true,
+      "usedRange": "A1:D136",
+      "formulaErrorMatches": 0,
+      "drawingRecords": 3,
+      "renderedPreview": "rendered-sheets/1_INF.png"
+    },
+    {
+      "fileName": "2_AH-editable-fake.xlsx",
+      "sourceSheet": "2_AH",
+      "imported": true,
+      "usedRange": "A1:D138",
+      "formulaErrorMatches": 0,
+      "drawingRecords": 6,
+      "renderedPreview": "rendered-sheets/2_AH.png"
+    },
+    {
+      "fileName": "2_B-editable-fake.xlsx",
+      "sourceSheet": "2_B",
+      "imported": true,
+      "usedRange": "A1:D150",
+      "formulaErrorMatches": 0,
+      "drawingRecords": 6,
+      "renderedPreview": "rendered-sheets/2_B.png"
+    },
+    {
+      "fileName": "2_CDEFG-editable-fake.xlsx",
+      "sourceSheet": "2_CDEFG",
+      "imported": true,
+      "usedRange": "A1:D148",
+      "formulaErrorMatches": 0,
+      "drawingRecords": 6,
+      "renderedPreview": "rendered-sheets/2_CDEFG.png"
+    },
+    {
+      "fileName": "2_INF-editable-fake.xlsx",
+      "sourceSheet": "2_INF",
+      "imported": true,
+      "usedRange": "A1:D139",
+      "formulaErrorMatches": 0,
+      "drawingRecords": 6,
+      "renderedPreview": "rendered-sheets/2_INF.png"
+    },
+    {
+      "fileName": "3_AH-editable-fake.xlsx",
+      "sourceSheet": "3_AH",
+      "imported": true,
+      "usedRange": "A1:D218",
+      "formulaErrorMatches": 0,
+      "drawingRecords": 6,
+      "renderedPreview": "rendered-sheets/3_AH.png"
+    },
+    {
+      "fileName": "3_B-editable-fake.xlsx",
+      "sourceSheet": "3_B",
+      "imported": true,
+      "usedRange": "A1:D144",
+      "formulaErrorMatches": 0,
+      "drawingRecords": 6,
+      "renderedPreview": "rendered-sheets/3_B.png"
+    },
+    {
+      "fileName": "3_CDEFG-editable-fake.xlsx",
+      "sourceSheet": "3_CDEFG",
+      "imported": true,
+      "usedRange": "A1:D142",
+      "formulaErrorMatches": 0,
+      "drawingRecords": 6,
+      "renderedPreview": "rendered-sheets/3_CDEFG.png"
+    },
+    {
+      "fileName": "3_INF-editable-fake.xlsx",
+      "sourceSheet": "3_INF",
+      "imported": true,
+      "usedRange": "A1:D219",
+      "formulaErrorMatches": 0,
+      "drawingRecords": 6,
+      "renderedPreview": "rendered-sheets/3_INF.png"
+    }
+  ]
+}

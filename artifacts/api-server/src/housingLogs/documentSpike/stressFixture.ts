@@ -4,6 +4,8 @@ import {
   getHousingLogConfig,
   prepareHousingLog,
   type HousingLogDraftInput,
+  type HousingShift,
+  type HousingUnit,
   type StoredHousingLog,
 } from "@workspace/housing-log";
 
@@ -26,7 +28,7 @@ function pngChunk(type: string, data: Buffer): Buffer {
   return Buffer.concat([length, name, data, checksum]);
 }
 
-function fakeHandwrittenSignature(phase: number): string {
+export function fakeHandwrittenSignature(phase: number): string {
   const width = 900;
   const height = 220;
   const stride = width * 4;
@@ -72,8 +74,12 @@ function fakeHandwrittenSignature(phase: number): string {
   return `data:image/png;base64,${png.toString("base64")}`;
 }
 
-export function createBUnitStressRecord(eventCount = 72): StoredHousingLog {
-  const config = getHousingLogConfig("B", "1");
+export function createHousingLogStressRecord(
+  housingUnit: HousingUnit,
+  shift: HousingShift,
+  eventCount = 72,
+): StoredHousingLog {
+  const config = getHousingLogConfig(housingUnit, shift);
   const values: HousingLogDraftInput["values"] = {};
   let number = 1;
   let timeIndex = 0;
@@ -130,6 +136,21 @@ export function createBUnitStressRecord(eventCount = 72): StoredHousingLog {
     "equipment.firstAidSeal": "FA-91827",
     "medication.inventoriedBy": "J. Rutherford",
   });
+  for (let index = 1; index <= 5; index += 1) {
+    values[`staff.${index}.name`] = [
+      "Alexandra Montgomery",
+      "Christopher Beaumont",
+      "Jacqueline Rutherford",
+      "Maximiliano Fitzgerald",
+      "Penelope Washington",
+    ][index - 1]!;
+    values[`staff.${index}.keyRing`] = `K${100 + index}`;
+    values[`staff.${index}.radio`] = `R${10 + index}`;
+    values[`staff.${index}.chemicalAgent`] = `CAP-${index}`;
+    values[`staff.${index}.chemicalAgentSeal`] = `S-${index}11`;
+    values[`staff.${index}.bodyAlarm`] = `BA-${index}`;
+    values[`staff.${index}.cuffsCase`] = `CC-${index}`;
+  }
   for (let index = 1; index <= 8; index += 1)
     values[`equipment.acceptedKeyRings.${index}`] = `K${100 + index}`;
   for (let index = 1; index <= 3; index += 1) {
@@ -138,7 +159,7 @@ export function createBUnitStressRecord(eventCount = 72): StoredHousingLog {
     values[`equipment.cuffs.${index}`] = `C${index}`;
     values[`equipment.cuffCases.${index}`] = `CC${index}`;
   }
-  for (let index = 1; index <= 17; index += 1) {
+  for (let index = 1; index <= config.securityCheckCount; index += 1) {
     values[`securityChecks.${index}.time`] =
       `${String((20 + Math.floor(index / 6)) % 24).padStart(2, "0")}:${String((index * 7) % 60).padStart(2, "0")}`;
     values[`securityChecks.${index}.performedBy`] =
@@ -160,8 +181,8 @@ export function createBUnitStressRecord(eventCount = 72): StoredHousingLog {
   });
   const prepared = prepareHousingLog({
     logDate: "2026-08-11",
-    shift: "1",
-    housingUnit: "B",
+    shift,
+    housingUnit,
     templateVersion: config.templateVersion,
     values,
     events,
@@ -171,11 +192,15 @@ export function createBUnitStressRecord(eventCount = 72): StoredHousingLog {
     },
   });
   return {
-    id: "phase2a-fake-b-unit-2026-08-11-shift-1",
+    id: `phase2b-fake-${config.sourceSheet.toLowerCase()}-${housingUnit.toLowerCase()}-2026-08-11`,
     ...prepared,
     status: "finalized",
     createdAt: "2026-08-11T04:00:00.000Z",
     updatedAt: "2026-08-12T12:00:00.000Z",
     finalizedAt: "2026-08-12T12:00:00.000Z",
   };
+}
+
+export function createBUnitStressRecord(eventCount = 72): StoredHousingLog {
+  return createHousingLogStressRecord("B", "1", eventCount);
 }

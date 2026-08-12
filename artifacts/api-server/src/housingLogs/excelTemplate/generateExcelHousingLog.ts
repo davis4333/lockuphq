@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import JSZip from "jszip";
-import { getHousingLogConfig } from "@workspace/housing-log";
-import { B_UNIT_FIRST_SHIFT_EXCEL_WRITES } from "./bUnitFirstShiftExcelMap.ts";
+import { fieldsForConfig, getHousingLogConfig } from "@workspace/housing-log";
+import { buildOfficialWorksheetLayout } from "./officialWorksheetMap.ts";
 import type { HousingLogWorkbookTemplate } from "./workbookRegistry.ts";
 import type { HousingLogDocumentRecord } from "../documentSpike/types.ts";
 
@@ -18,14 +19,7 @@ const WORKSHEET_CONTENT_TYPE =
 const DRAWING_CONTENT_TYPE =
   "application/vnd.openxmlformats-officedocument.drawing+xml";
 
-const OFFICIAL_EVENT_ROWS = [
-  ...Array.from({ length: 6 }, (_, index) => 91 + index),
-  ...Array.from({ length: 45 }, (_, index) => 102 + index),
-];
-const CONTINUATION_EVENT_ROWS = Array.from(
-  { length: 45 },
-  (_, index) => 3 + index,
-);
+const DETERMINISTIC_ZIP_DATE = new Date("2026-04-27T00:00:00.000Z");
 
 type EventWorkbookLine = {
   eventId: string;
@@ -43,6 +37,11 @@ export type ExcelHousingLogDiagnostics = {
   eventLineCount: number;
   eventIdsInRenderedOrder: string[];
   embeddedSignatureImageCount: number;
+  officialEventCapacity: number;
+  continuationEventCapacity: number;
+  officialEventRows: number[];
+  continuationEventRows: number[];
+  semanticFingerprint: string;
   generationMilliseconds: number;
 };
 
@@ -50,9 +49,11 @@ export class HousingLogExcelOverflowError extends Error {
   constructor(
     public readonly address: string,
     public readonly valueLength: number,
+    public readonly sourceSheet: string,
+    public readonly templateVersion: string,
   ) {
     super(
-      `Housing Log value for ${address} is too long for the official printable row (${valueLength} characters).`,
+      `Housing Log ${templateVersion} / ${sourceSheet} value for ${address} is too long for the official printable row (${valueLength} characters).`,
     );
     this.name = "HousingLogExcelOverflowError";
   }
@@ -87,12 +88,50 @@ async function zipText(zip: JSZip, fileName: string): Promise<string> {
   return file.async("string");
 }
 
+function setZipFile(zip: JSZip, path: string, data: string | Uint8Array): void {
+  zip.file(path, data, {
+    date: DETERMINISTIC_ZIP_DATE,
+    createFolders: false,
+  });
+}
+
+async function semanticFingerprint(zip: JSZip): Promise<string> {
+  const digest = createHash("sha256");
+  for (const path of Object.keys(zip.files)
+    .filter((name) => !zip.files[name]!.dir)
+    .sort()) {
+    digest.update(path);
+    digest.update("\0");
+    digest.update(await zip.files[path]!.async("nodebuffer"));
+    digest.update("\0");
+  }
+  return digest.digest("hex");
+}
+
 function setInlineCell(xml: string, address: string, value: string): string {
   const pattern = new RegExp(
     `<c\\b([^>]*\\br="${escapeRegExp(address)}"[^>]*?)(?:\\s*/>|>[\\s\\S]*?</c>)`,
   );
-  if (!pattern.test(xml))
-    throw new Error(`Official worksheet is missing cell ${address}.`);
+  if (!pattern.test(xml)) {
+    const rowNumber = address.match(/\d+/)?.[0];
+    const column = address.match(/[A-Z]+/)?.[0];
+    if (!rowNumber || !column)
+      throw new Error(`Invalid worksheet cell address ${address}.`);
+    const rowPattern = new RegExp(
+      `<row\\b([^>]*\\br="${rowNumber}"[^>]*)>([\\s\\S]*?)<\\/row>`,
+    );
+    if (!rowPattern.test(xml))
+      throw new Error(`Official worksheet is missing row ${rowNumber}.`);
+    const nearbyStyle = xml.match(
+      new RegExp(`<c\\b[^>]*\\br="${column}\\d+"[^>]*\\bs="([^"]+)"`),
+    )?.[1];
+    const style = nearbyStyle ? ` s="${nearbyStyle}"` : "";
+    return xml.replace(
+      rowPattern,
+      (_match, attributes: string, cells: string) =>
+        `<row ${attributes}>${cells}<c r="${address}"${style} t="inlineStr"><is><t xml:space="preserve">${escapeXml(value)}</t></is></c></row>`,
+    );
+  }
   return xml.replace(pattern, (_match, rawAttributes: string) => {
     const attributes = rawAttributes.replace(/\s+t="[^"]*"/g, "").trim();
     return `<c ${attributes} t="inlineStr"><is><t xml:space="preserve">${escapeXml(value)}</t></is></c>`;
@@ -173,50 +212,59 @@ function shiftReference(reference: string, offset: number): string {
 function continuationSheetFromOfficial(
   officialXml: string,
   continuationNumber: number,
+  sourceStart: number,
+  sourceEnd: number,
 ): string {
   const sheetDataMatch = officialXml.match(
     /<sheetData>([\s\S]*?)<\/sheetData>/,
   );
   if (!sheetDataMatch)
-    throw new Error("The official B-unit worksheet has no sheetData block.");
+    throw new Error("The official worksheet has no sheetData block.");
   const selectedRows = [...sheetDataMatch[1].matchAll(/<row\b[\s\S]*?<\/row>/g)]
     .map((match) => match[0])
     .filter((row) => {
       const reference = row.match(/<row\b[^>]*\br="(\d+)"/)?.[1];
-      return reference !== undefined && Number(reference) >= 100;
+      return (
+        reference !== undefined &&
+        Number(reference) >= sourceStart &&
+        Number(reference) <= sourceEnd
+      );
     })
     .map((row) =>
       row
         .replace(
           /(<row\b[^>]*\br=")(\d+)(")/,
-          (_m, start, number, end) => `${start}${Number(number) - 99}${end}`,
+          (_m, start, number, end) =>
+            `${start}${Number(number) - sourceStart + 1}${end}`,
         )
         .replace(
           /(<c\b[^>]*\br=")([A-Z]+)(\d+)(")/g,
           (_m, start, column, number, end) =>
-            `${start}${column}${Number(number) - 99}${end}`,
+            `${start}${column}${Number(number) - sourceStart + 1}${end}`,
         ),
     );
-  if (selectedRows.length !== 50)
+  const pageLength = sourceEnd - sourceStart + 1;
+  if (selectedRows.length !== pageLength)
     throw new Error(
-      "The official B-unit continuation source must contain rows 100 through 149.",
+      `The official continuation source must contain rows ${sourceStart} through ${sourceEnd}.`,
     );
 
   const sourceMerges = officialXml.match(
     /<mergeCells\b[\s\S]*?<\/mergeCells>/,
   )?.[0];
   if (!sourceMerges)
-    throw new Error("The official B-unit worksheet has no mergeCells block.");
+    throw new Error("The official worksheet has no mergeCells block.");
   const continuationMerges = [
     ...sourceMerges.matchAll(/<mergeCell ref="([^"]+)"\/>/g),
   ]
     .map((match) => match[1]!)
     .filter((reference) =>
-      reference
-        .split(":")
-        .every((cellReference) => rowNumberFromReference(cellReference) >= 100),
+      reference.split(":").every((cellReference) => {
+        const row = rowNumberFromReference(cellReference);
+        return row >= sourceStart && row <= sourceEnd;
+      }),
     )
-    .map((reference) => shiftReference(reference, -99));
+    .map((reference) => shiftReference(reference, 1 - sourceStart));
   const mergeXml = `<mergeCells count="${continuationMerges.length}">${continuationMerges
     .map((reference) => `<mergeCell ref="${reference}"/>`)
     .join("")}</mergeCells>`;
@@ -228,7 +276,10 @@ function continuationSheetFromOfficial(
         `codeName="HousingLogContinuation${continuationNumber}"`,
       ),
     )
-    .replace(/<dimension ref="[^"]+"\/>/, '<dimension ref="A1:D50"/>')
+    .replace(
+      /<dimension ref="[^"]+"\/>/,
+      `<dimension ref="A1:D${pageLength}"/>`,
+    )
     .replace(/activeCell="[^"]+"/, 'activeCell="B3"')
     .replace(/sqref="[^"]+"/, 'sqref="B3:C3"')
     .replace(
@@ -270,36 +321,40 @@ function pictureAnchor(options: {
 }
 
 function drawingXml(
-  signatureRows: readonly [number, number][],
+  signatureRows: readonly { supervisor: number; officer?: number }[],
   supervisorDimensions: { width: number; height: number },
-  officerDimensions: { width: number; height: number },
+  officerDimensions?: { width: number; height: number },
 ): string {
   let id = 1;
-  const anchors = signatureRows.flatMap(
-    ([supervisorRow, officerRow], pageIndex) => [
+  const anchors = signatureRows.flatMap((rows, pageIndex) => {
+    const pageAnchors = [
       pictureAnchor({
         id: id++,
         name: `Housing Supervisor Signature Page ${pageIndex + 1}`,
         relationshipId: "rId1",
-        rowIndex: supervisorRow - 1,
+        rowIndex: rows.supervisor - 1,
         imageWidth: supervisorDimensions.width,
         imageHeight: supervisorDimensions.height,
       }),
-      pictureAnchor({
-        id: id++,
-        name: `Housing Officer Signature Page ${pageIndex + 1}`,
-        relationshipId: "rId2",
-        rowIndex: officerRow - 1,
-        imageWidth: officerDimensions.width,
-        imageHeight: officerDimensions.height,
-      }),
-    ],
-  );
+    ];
+    if (rows.officer !== undefined && officerDimensions)
+      pageAnchors.push(
+        pictureAnchor({
+          id: id++,
+          name: `Housing Officer Signature Page ${pageIndex + 1}`,
+          relationshipId: "rId2",
+          rowIndex: rows.officer - 1,
+          imageWidth: officerDimensions.width,
+          imageHeight: officerDimensions.height,
+        }),
+      );
+    return pageAnchors;
+  });
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${anchors.join("")}</xdr:wsDr>`;
 }
 
-function drawingRelationshipsXml(): string {
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${IMAGE_RELATIONSHIP}" Target="../media/housing-log-supervisor.png"/><Relationship Id="rId2" Type="${IMAGE_RELATIONSHIP}" Target="../media/housing-log-officer.png"/></Relationships>`;
+function drawingRelationshipsXml(includeOfficer: boolean): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${IMAGE_RELATIONSHIP}" Target="../media/housing-log-supervisor.png"/>${includeOfficer ? `<Relationship Id="rId2" Type="${IMAGE_RELATIONSHIP}" Target="../media/housing-log-officer.png"/>` : ""}</Relationships>`;
 }
 
 function worksheetRelationshipsXml(
@@ -312,7 +367,7 @@ function worksheetRelationshipsXml(
 function addDrawingReference(xml: string): string {
   if (/<drawing\b/.test(xml))
     throw new Error(
-      "The official B-unit worksheet unexpectedly already contains a drawing.",
+      "The official worksheet unexpectedly already contains a drawing relationship.",
     );
   return xml.replace("</worksheet>", '<drawing r:id="rId2"/></worksheet>');
 }
@@ -328,6 +383,7 @@ function addWorksheetMetadata(options: {
   appXml: string;
   names: readonly string[];
   worksheetIndexes: readonly number[];
+  printAreas: readonly string[];
 }): {
   workbookXml: string;
   workbookRelationshipsXml: string;
@@ -358,7 +414,7 @@ function addWorksheetMetadata(options: {
   );
   const definedNames = options.names.flatMap((name, index) => {
     const localSheetId = existingSheetCount + index;
-    const formula = `'${name.replace(/'/g, "''")}'!$A$1:$D$50`;
+    const formula = `'${name.replace(/'/g, "''")}'!${options.printAreas[index]}`;
     return [
       `<definedName name="_xlnm.Print_Area" localSheetId="${localSheetId}">${escapeXml(formula)}</definedName>`,
       `<definedName name="Z_0FC2772C_9857_4107_BB08_847B66758678_.wvu.PrintArea" localSheetId="${localSheetId}" hidden="1">${escapeXml(formula)}</definedName>`,
@@ -489,15 +545,11 @@ export async function generateExcelHousingLog(
   const config = getHousingLogConfig(record.housingUnit, record.shift);
   if (config.sourceSheet !== template.sourceSheet)
     throw new Error(
-      "The Housing Log record does not match the workbook source sheet.",
+      `Housing Log ${record.templateVersion} / ${config.sourceSheet} does not match workbook source sheet ${template.sourceSheet}.`,
     );
   if (record.templateVersion !== template.templateVersion)
     throw new Error(
-      "The Housing Log record does not match the workbook template version.",
-    );
-  if (template.sourceSheet !== "1_B")
-    throw new Error(
-      "The Phase 2A Excel proof currently supports only source sheet 1_B.",
+      `Housing Log ${record.templateVersion} / ${config.sourceSheet} does not match workbook template version ${template.templateVersion}.`,
     );
 
   const zip = await JSZip.loadAsync(await readFile(template.workbookPath));
@@ -514,44 +566,78 @@ export async function generateExcelHousingLog(
     template.sourceSheet,
   );
   const officialSourceXml = await zipText(zip, worksheet.worksheetPath);
+  const sharedStringsXml = await zipText(zip, "xl/sharedStrings.xml");
+  const layout = buildOfficialWorksheetLayout(
+    officialSourceXml,
+    sharedStringsXml,
+    config,
+  );
   let officialXml = officialSourceXml;
 
   const requiredFieldKeysWritten: string[] = [];
-  for (const cell of B_UNIT_FIRST_SHIFT_EXCEL_WRITES) {
+  for (const cell of layout.writes) {
     const value = cell.value(record);
-    if (cell.address.startsWith("B") && value.length > 150)
-      throw new HousingLogExcelOverflowError(cell.address, value.length);
+    if (cell.address.startsWith("B") && value.length > 180)
+      throw new HousingLogExcelOverflowError(
+        cell.address,
+        value.length,
+        template.sourceSheet,
+        template.templateVersion,
+      );
     officialXml = setInlineCell(officialXml, cell.address, value);
     requiredFieldKeysWritten.push(...cell.coverageKeys);
   }
+  const requiredKeys = fieldsForConfig(config).map((field) => field.key);
+  const missingKeys = requiredKeys.filter(
+    (key) => !requiredFieldKeysWritten.includes(key),
+  );
+  if (missingKeys.length)
+    throw new Error(
+      `Housing Log ${template.templateVersion} / ${template.sourceSheet} has unmapped fields: ${missingKeys.join(", ")}.`,
+    );
 
   const lines = eventLines(record);
   officialXml = fillEventRows(
     officialXml,
-    OFFICIAL_EVENT_ROWS,
-    lines.slice(0, OFFICIAL_EVENT_ROWS.length),
+    layout.officialEventRows,
+    lines.slice(0, layout.officialEventRows.length),
   );
-  const overflowLines = lines.slice(OFFICIAL_EVENT_ROWS.length);
+  const overflowLines = lines.slice(layout.officialEventRows.length);
   const continuationCount = Math.ceil(
-    overflowLines.length / CONTINUATION_EVENT_ROWS.length,
+    overflowLines.length / layout.continuationEventRows.length,
   );
   const continuationNames = Array.from(
     { length: continuationCount },
-    (_, index) => `1_B Continuation ${index + 1}`,
+    (_, index) => `${template.sourceSheet} Continuation ${index + 1}`,
   );
 
+  const includeOfficer = config.signatures.some(
+    (signature) => signature.key === "housingOfficer",
+  );
   const supervisorBytes = pngBytes(
     record.signatures.housingSupervisor,
     "housing supervisor",
   );
-  const officerBytes = pngBytes(
-    record.signatures.housingOfficer,
-    "housing officer",
-  );
+  const officerBytes = includeOfficer
+    ? pngBytes(record.signatures.housingOfficer, "housing officer")
+    : undefined;
   const supervisorDimensions = pngDimensions(supervisorBytes);
-  const officerDimensions = pngDimensions(officerBytes);
-  zip.file("xl/media/housing-log-supervisor.png", supervisorBytes);
-  zip.file("xl/media/housing-log-officer.png", officerBytes);
+  const officerDimensions = officerBytes
+    ? pngDimensions(officerBytes)
+    : undefined;
+  setZipFile(zip, "xl/media/housing-log-supervisor.png", supervisorBytes);
+  if (officerBytes)
+    setZipFile(zip, "xl/media/housing-log-officer.png", officerBytes);
+  else
+    for (const row of layout.officerSignatureRows) {
+      const current = readInlineCell(officialXml, `A${row}`);
+      if (!/N\/A/i.test(current ?? ""))
+        officialXml = setInlineCell(
+          officialXml,
+          `A${row}`,
+          `${current ?? "Housing Officer Signature:"} N/A`,
+        );
+    }
 
   const existingWorksheetIndexes = Object.keys(zip.files)
     .map((name) => name.match(/^xl\/worksheets\/sheet(\d+)\.xml$/)?.[1])
@@ -571,14 +657,9 @@ export async function generateExcelHousingLog(
   const firstNewWorksheetIndex = nextNumber(existingWorksheetIndexes);
   const firstNewDrawingIndex = nextNumber(existingDrawingIndexes);
   const firstNewPrinterIndex = nextNumber(existingPrinterIndexes);
-  const drawingIndexes = Array.from(
-    { length: continuationCount + 1 },
-    (_, index) => firstNewDrawingIndex + index,
-  );
-
-  const officialDrawingIndex = drawingIndexes[0]!;
-  officialXml = addDrawingReference(officialXml);
-  zip.file(worksheet.worksheetPath, officialXml);
+  const existingDrawingRelationshipId = officialXml.match(
+    /<drawing\b[^>]*r:id="([^"]+)"/,
+  )?.[1];
   const officialRelationshipsPath = `xl/worksheets/_rels/sheet${worksheet.worksheetIndex}.xml.rels`;
   const officialRelationships = await zipText(zip, officialRelationshipsPath);
   const printerTarget = officialRelationships.match(
@@ -588,48 +669,111 @@ export async function generateExcelHousingLog(
   )?.[1];
   if (!printerTarget)
     throw new Error(
-      "The official B-unit worksheet has no printer-settings relationship.",
+      `Housing Log ${template.templateVersion} / ${template.sourceSheet} has no printer-settings relationship.`,
     );
   const printerSettingsFile = zip.file(
     `xl/${printerTarget.replace(/^\.\.\//, "")}`,
   );
   if (!printerSettingsFile)
-    throw new Error("The official B-unit printer-settings binary is missing.");
+    throw new Error(
+      `Housing Log ${template.templateVersion} / ${template.sourceSheet} printer-settings binary is missing.`,
+    );
   const printerSettingsBytes = await printerSettingsFile.async("nodebuffer");
-  zip.file(
-    officialRelationshipsPath,
-    worksheetRelationshipsXml(printerTarget, officialDrawingIndex),
-  );
-  zip.file(
-    `xl/drawings/drawing${officialDrawingIndex}.xml`,
-    drawingXml(
-      [
-        [48, 49],
-        [97, 98],
-        [147, 148],
-      ],
+  let officialDrawingIndex: number;
+  let createdOfficialDrawing = false;
+  if (existingDrawingRelationshipId) {
+    const drawingTarget = officialRelationships.match(
+      new RegExp(
+        `<Relationship\\b[^>]*Id="${escapeRegExp(existingDrawingRelationshipId)}"[^>]*Target="([^"]+)"`,
+      ),
+    )?.[1];
+    officialDrawingIndex = Number(
+      drawingTarget?.match(/drawing(\d+)\.xml$/)?.[1],
+    );
+    if (!drawingTarget || !officialDrawingIndex)
+      throw new Error(
+        `Housing Log ${template.templateVersion} / ${template.sourceSheet} existing drawing relationship is invalid.`,
+      );
+    const drawingPath = `xl/${drawingTarget.replace(/^\.\.\//, "")}`;
+    let existingDrawingXml = await zipText(zip, drawingPath);
+    if (!/xmlns:r=/.test(existingDrawingXml))
+      existingDrawingXml = existingDrawingXml.replace(
+        /<xdr:wsDr\b/,
+        '<xdr:wsDr xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"',
+      );
+    const anchors = drawingXml(
+      layout.supervisorSignatureRows.map((supervisor, index) => ({
+        supervisor,
+        officer: includeOfficer
+          ? layout.officerSignatureRows[index]
+          : undefined,
+      })),
       supervisorDimensions,
       officerDimensions,
-    ),
-  );
-  zip.file(
-    `xl/drawings/_rels/drawing${officialDrawingIndex}.xml.rels`,
-    drawingRelationshipsXml(),
-  );
+    ).match(/<xdr:wsDr[^>]*>([\s\S]*)<\/xdr:wsDr>/)?.[1];
+    if (!anchors) throw new Error("Generated signature drawing is invalid.");
+    existingDrawingXml = existingDrawingXml.replace(
+      "</xdr:wsDr>",
+      `${anchors}</xdr:wsDr>`,
+    );
+    setZipFile(zip, drawingPath, existingDrawingXml);
+    setZipFile(
+      zip,
+      `xl/drawings/_rels/drawing${officialDrawingIndex}.xml.rels`,
+      drawingRelationshipsXml(includeOfficer),
+    );
+  } else {
+    officialDrawingIndex = firstNewDrawingIndex;
+    createdOfficialDrawing = true;
+    officialXml = addDrawingReference(officialXml);
+    setZipFile(
+      zip,
+      officialRelationshipsPath,
+      worksheetRelationshipsXml(printerTarget, officialDrawingIndex),
+    );
+    setZipFile(
+      zip,
+      `xl/drawings/drawing${officialDrawingIndex}.xml`,
+      drawingXml(
+        layout.supervisorSignatureRows.map((supervisor, index) => ({
+          supervisor,
+          officer: includeOfficer
+            ? layout.officerSignatureRows[index]
+            : undefined,
+        })),
+        supervisorDimensions,
+        officerDimensions,
+      ),
+    );
+    setZipFile(
+      zip,
+      `xl/drawings/_rels/drawing${officialDrawingIndex}.xml.rels`,
+      drawingRelationshipsXml(includeOfficer),
+    );
+  }
+  setZipFile(zip, worksheet.worksheetPath, officialXml);
 
   const continuationWorksheetIndexes: number[] = [];
+  const continuationDrawingIndexes: number[] = [];
   for (let index = 0; index < continuationCount; index += 1) {
     const worksheetIndex = firstNewWorksheetIndex + index;
-    const drawingIndex = drawingIndexes[index + 1]!;
+    const drawingIndex =
+      firstNewDrawingIndex + index + (createdOfficialDrawing ? 1 : 0);
     const printerIndex = firstNewPrinterIndex + index;
     let continuationXml = continuationSheetFromOfficial(
       officialSourceXml,
       index + 1,
+      layout.continuationSourceStart,
+      layout.continuationSourceEnd,
     );
+    continuationXml = continuationXml
+      .replace(/<controls\b[\s\S]*?<\/controls>/g, "")
+      .replace(/<legacyDrawing\b[^>]*\/>/g, "")
+      .replace(/<drawing\b[^>]*\/>/g, "");
     continuationXml = setInlineCell(
       continuationXml,
       "A1",
-      "HOUSING UNIT    B           First shift",
+      `HOUSING UNIT  ${record.housingUnit}        ${config.shiftLabel}`,
     );
     continuationXml = setInlineCell(
       continuationXml,
@@ -638,37 +782,68 @@ export async function generateExcelHousingLog(
     );
     continuationXml = fillEventRows(
       continuationXml,
-      CONTINUATION_EVENT_ROWS,
+      layout.continuationEventRows,
       overflowLines.slice(
-        index * CONTINUATION_EVENT_ROWS.length,
-        (index + 1) * CONTINUATION_EVENT_ROWS.length,
+        index * layout.continuationEventRows.length,
+        (index + 1) * layout.continuationEventRows.length,
       ),
     );
+    if (!includeOfficer) {
+      const current = readInlineCell(
+        continuationXml,
+        `A${layout.continuationOfficerRow}`,
+      );
+      continuationXml = setInlineCell(
+        continuationXml,
+        `A${layout.continuationOfficerRow}`,
+        `${current ?? "Housing Officer Signature:"} N/A`,
+      );
+    }
     continuationXml = addDrawingReference(continuationXml);
-    zip.file(`xl/worksheets/sheet${worksheetIndex}.xml`, continuationXml);
-    zip.file(
+    setZipFile(
+      zip,
+      `xl/worksheets/sheet${worksheetIndex}.xml`,
+      continuationXml,
+    );
+    setZipFile(
+      zip,
       `xl/worksheets/_rels/sheet${worksheetIndex}.xml.rels`,
       worksheetRelationshipsXml(
         `../printerSettings/printerSettings${printerIndex}.bin`,
         drawingIndex,
       ),
     );
-    zip.file(
+    setZipFile(
+      zip,
       `xl/printerSettings/printerSettings${printerIndex}.bin`,
       printerSettingsBytes,
     );
-    zip.file(
+    setZipFile(
+      zip,
       `xl/drawings/drawing${drawingIndex}.xml`,
-      drawingXml([[48, 49]], supervisorDimensions, officerDimensions),
+      drawingXml(
+        [
+          {
+            supervisor: layout.continuationSupervisorRow,
+            officer: includeOfficer ? layout.continuationOfficerRow : undefined,
+          },
+        ],
+        supervisorDimensions,
+        officerDimensions,
+      ),
     );
-    zip.file(
+    setZipFile(
+      zip,
       `xl/drawings/_rels/drawing${drawingIndex}.xml.rels`,
-      drawingRelationshipsXml(),
+      drawingRelationshipsXml(includeOfficer),
     );
     continuationWorksheetIndexes.push(worksheetIndex);
+    continuationDrawingIndexes.push(drawingIndex);
   }
 
   if (continuationCount > 0) {
+    const continuationPageLength =
+      layout.continuationSourceEnd - layout.continuationSourceStart + 1;
     const metadata = addWorksheetMetadata({
       workbookXml,
       workbookRelationshipsXml,
@@ -676,20 +851,25 @@ export async function generateExcelHousingLog(
       appXml,
       names: continuationNames,
       worksheetIndexes: continuationWorksheetIndexes,
+      printAreas: continuationNames.map(
+        () => `$A$1:$D$${continuationPageLength}`,
+      ),
     });
     workbookXml = metadata.workbookXml;
     workbookRelationshipsXml = metadata.workbookRelationshipsXml;
     contentTypesXml = metadata.contentTypesXml;
     appXml = metadata.appXml;
   }
-  contentTypesXml = addContentTypesForImagesAndDrawings(
-    contentTypesXml,
-    drawingIndexes,
-  );
-  zip.file("xl/workbook.xml", workbookXml);
-  zip.file("xl/_rels/workbook.xml.rels", workbookRelationshipsXml);
-  zip.file("[Content_Types].xml", contentTypesXml);
-  zip.file("docProps/app.xml", appXml);
+  contentTypesXml = addContentTypesForImagesAndDrawings(contentTypesXml, [
+    ...(createdOfficialDrawing ? [officialDrawingIndex] : []),
+    ...continuationDrawingIndexes,
+  ]);
+  setZipFile(zip, "xl/workbook.xml", workbookXml);
+  setZipFile(zip, "xl/_rels/workbook.xml.rels", workbookRelationshipsXml);
+  setZipFile(zip, "[Content_Types].xml", contentTypesXml);
+  setZipFile(zip, "docProps/app.xml", appXml);
+
+  const fingerprint = await semanticFingerprint(zip);
 
   const bytes = await zip.generateAsync({
     type: "nodebuffer",
@@ -709,7 +889,14 @@ export async function generateExcelHousingLog(
       requiredFieldKeysWritten: [...new Set(requiredFieldKeysWritten)],
       eventLineCount: lines.length,
       eventIdsInRenderedOrder: record.events.map((event) => event.id),
-      embeddedSignatureImageCount: (continuationCount + 3) * 2,
+      embeddedSignatureImageCount:
+        (layout.pageStarts.length + continuationCount) *
+        (includeOfficer ? 2 : 1),
+      officialEventCapacity: layout.officialEventRows.length,
+      continuationEventCapacity: layout.continuationEventRows.length,
+      officialEventRows: layout.officialEventRows,
+      continuationEventRows: layout.continuationEventRows,
+      semanticFingerprint: fingerprint,
       generationMilliseconds: performance.now() - started,
     },
   };

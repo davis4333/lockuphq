@@ -1,0 +1,140 @@
+﻿{
+    "method":  "Microsoft Excel desktop COM automation using normal read-only Workbooks.Open",
+    "automated":  true,
+    "workbookCount":  12,
+    "allOpenedNormallyWithoutRepair":  true,
+    "results":  [
+                    {
+                        "fileName":  "1_AH-editable-fake.xlsx",
+                        "sourceSheet":  "1_AH",
+                        "openedNormallyWithoutRepair":  true,
+                        "worksheetCount":  15,
+                        "printArea":  "$A$1:$D$138",
+                        "paperSize":  5,
+                        "orientation":  1,
+                        "embeddedShapeCount":  6,
+                        "editableCellSample":  "Sergeant Alexandra Montgomery on duty with the following equipment: Keyring K101, Radio R11,"
+                    },
+                    {
+                        "fileName":  "1_B-editable-fake.xlsx",
+                        "sourceSheet":  "1_B",
+                        "openedNormallyWithoutRepair":  true,
+                        "worksheetCount":  15,
+                        "printArea":  "$A$1:$D$149",
+                        "paperSize":  5,
+                        "orientation":  1,
+                        "embeddedShapeCount":  6,
+                        "editableCellSample":  "Sergeant Alexandra Montgomery on duty with the following equipment: Keyring K101, Radio R11,"
+                    },
+                    {
+                        "fileName":  "1_CDEFG-editable-fake.xlsx",
+                        "sourceSheet":  "1_CDEFG",
+                        "openedNormallyWithoutRepair":  true,
+                        "worksheetCount":  15,
+                        "printArea":  "$A$1:$D$135",
+                        "paperSize":  5,
+                        "orientation":  1,
+                        "embeddedShapeCount":  6,
+                        "editableCellSample":  "Sergeant Alexandra Montgomery on duty with the following equipment: Keyring K101, Radio R11,"
+                    },
+                    {
+                        "fileName":  "1_INF-editable-fake.xlsx",
+                        "sourceSheet":  "1_INF",
+                        "openedNormallyWithoutRepair":  true,
+                        "worksheetCount":  14,
+                        "printArea":  "$A$1:$D$136",
+                        "paperSize":  5,
+                        "orientation":  1,
+                        "embeddedShapeCount":  3,
+                        "editableCellSample":  "Sergeant Alexandra Montgomery on duty with the following equipment: Keyring K101, Radio R11,"
+                    },
+                    {
+                        "fileName":  "2_AH-editable-fake.xlsx",
+                        "sourceSheet":  "2_AH",
+                        "openedNormallyWithoutRepair":  true,
+                        "worksheetCount":  14,
+                        "printArea":  "$A$1:$D$138",
+                        "paperSize":  5,
+                        "orientation":  1,
+                        "embeddedShapeCount":  6,
+                        "editableCellSample":  "Sergeant Alexandra Montgomery on duty with the following equipment: Keyring K101, Radio R11,"
+                    },
+                    {
+                        "fileName":  "2_B-editable-fake.xlsx",
+                        "sourceSheet":  "2_B",
+                        "openedNormallyWithoutRepair":  true,
+                        "worksheetCount":  14,
+                        "printArea":  "$A$1:$D$150",
+                        "paperSize":  5,
+                        "orientation":  1,
+                        "embeddedShapeCount":  6,
+                        "editableCellSample":  "Sergeant Alexandra Montgomery on duty with the following equipment: Keyring K101, Radio R11,"
+                    },
+                    {
+                        "fileName":  "2_CDEFG-editable-fake.xlsx",
+                        "sourceSheet":  "2_CDEFG",
+                        "openedNormallyWithoutRepair":  true,
+                        "worksheetCount":  14,
+                        "printArea":  "$A$1:$D$148",
+                        "paperSize":  5,
+                        "orientation":  1,
+                        "embeddedShapeCount":  6,
+                        "editableCellSample":  "Sergeant Alexandra Montgomery on duty with the following equipment: Keyring K101, Radio R11,"
+                    },
+                    {
+                        "fileName":  "2_INF-editable-fake.xlsx",
+                        "sourceSheet":  "2_INF",
+                        "openedNormallyWithoutRepair":  true,
+                        "worksheetCount":  14,
+                        "printArea":  "$A$1:$D$139",
+                        "paperSize":  5,
+                        "orientation":  1,
+                        "embeddedShapeCount":  6,
+                        "editableCellSample":  "Sergeant / Officer Alexandra Montgomery on duty with the following equipment: Keyring K101, Radio R11,"
+                    },
+                    {
+                        "fileName":  "3_AH-editable-fake.xlsx",
+                        "sourceSheet":  "3_AH",
+                        "openedNormallyWithoutRepair":  true,
+                        "worksheetCount":  15,
+                        "printArea":  "$A$1:$D$142",
+                        "paperSize":  5,
+                        "orientation":  1,
+                        "embeddedShapeCount":  6,
+                        "editableCellSample":  "Sergeant Alexandra Montgomery on duty with the following equipment: Keyring K101, Radio R11,"
+                    },
+                    {
+                        "fileName":  "3_B-editable-fake.xlsx",
+                        "sourceSheet":  "3_B",
+                        "openedNormallyWithoutRepair":  true,
+                        "worksheetCount":  16,
+                        "printArea":  "$A$1:$E$144",
+                        "paperSize":  5,
+                        "orientation":  1,
+                        "embeddedShapeCount":  6,
+                        "editableCellSample":  "Sergeant Alexandra Montgomery on duty with the following equipment: Keyring K101, Radio R11,"
+                    },
+                    {
+                        "fileName":  "3_CDEFG-editable-fake.xlsx",
+                        "sourceSheet":  "3_CDEFG",
+                        "openedNormallyWithoutRepair":  true,
+                        "worksheetCount":  15,
+                        "printArea":  "$A$1:$D$142",
+                        "paperSize":  5,
+                        "orientation":  1,
+                        "embeddedShapeCount":  6,
+                        "editableCellSample":  "Sergeant Alexandra Montgomery on duty with the following equipment: Keyring K101, Radio R11,"
+                    },
+                    {
+                        "fileName":  "3_INF-editable-fake.xlsx",
+                        "sourceSheet":  "3_INF",
+                        "openedNormallyWithoutRepair":  true,
+                        "worksheetCount":  14,
+                        "printArea":  "$A$1:$D$143",
+                        "paperSize":  5,
+                        "orientation":  1,
+                        "embeddedShapeCount":  14,
+                        "editableCellSample":  "Sergeant / Officer Alexandra Montgomery on duty with the following equipment: Keyring K101, Radio R11,"
+                    }
+                ]
+}

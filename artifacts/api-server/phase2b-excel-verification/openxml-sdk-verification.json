@@ -1,0 +1,19 @@
+{
+  "method": "DocumentFormat.OpenXml.Validation.OpenXmlValidator",
+  "workbookCount": 12,
+  "allValid": true,
+  "entries": [
+    { "fileName": "1_AH-editable-fake.xlsx", "validationErrors": 0 },
+    { "fileName": "1_B-editable-fake.xlsx", "validationErrors": 0 },
+    { "fileName": "1_CDEFG-editable-fake.xlsx", "validationErrors": 0 },
+    { "fileName": "1_INF-editable-fake.xlsx", "validationErrors": 0 },
+    { "fileName": "2_AH-editable-fake.xlsx", "validationErrors": 0 },
+    { "fileName": "2_B-editable-fake.xlsx", "validationErrors": 0 },
+    { "fileName": "2_CDEFG-editable-fake.xlsx", "validationErrors": 0 },
+    { "fileName": "2_INF-editable-fake.xlsx", "validationErrors": 0 },
+    { "fileName": "3_AH-editable-fake.xlsx", "validationErrors": 0 },
+    { "fileName": "3_B-editable-fake.xlsx", "validationErrors": 0 },
+    { "fileName": "3_CDEFG-editable-fake.xlsx", "validationErrors": 0 },
+    { "fileName": "3_INF-editable-fake.xlsx", "validationErrors": 0 }
+  ]
+}

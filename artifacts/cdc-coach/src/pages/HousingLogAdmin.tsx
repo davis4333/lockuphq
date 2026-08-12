@@ -91,6 +91,7 @@ export default function HousingLogAdmin() {
     try {
       await loginHousingLogAdmin(password);
       setPassword("");
+      setAuthenticated(true);
       await loadArchive();
     } catch (requestError) {
       setAuthenticated(false);

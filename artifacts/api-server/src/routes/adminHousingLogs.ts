@@ -53,6 +53,7 @@ import {
   HousingLogWorkbookRegistry,
   registerOfficialHousingLogWorkbook,
 } from "../housingLogs/excelTemplate/workbookRegistry";
+import { safeFilePart } from "../housingLogs/filenames";
 
 type AdminHousingLogsRouterOptions = {
   repository?: HousingLogRepository;
@@ -68,9 +69,6 @@ type AdminHousingLogsRouterOptions = {
   deliveryAttemptRepository?: HousingLogDeliveryAttemptRepository;
   emailProviderFactory?: () => HousingLogEmailProvider;
 };
-
-const safeFilePart = (value: string) =>
-  value.replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
 
 function isObjectBody(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

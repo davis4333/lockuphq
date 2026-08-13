@@ -11,6 +11,7 @@ import {
   Circle,
   CircleDot,
   ClipboardList,
+  Eye,
   Plus,
   Trash2,
   X,
@@ -26,6 +27,7 @@ import {
   prepareHousingLog,
   validateHousingLog,
   type FieldDefinition,
+  type HousingLogDraftInput,
   type HousingLogEvent,
   type HousingLogSignatures,
   type HousingLogValue,
@@ -61,7 +63,13 @@ import {
   type StaffSlot,
 } from "@/lib/housingLogSections";
 import { formatLogDateForDisplay } from "@/lib/housingLogArchive";
-import { finalizeHousingLog, HousingLogApiError } from "@/lib/housingLogApi";
+import {
+  finalizeHousingLog,
+  HousingLogApiError,
+  previewHousingLogXlsx,
+  saveHousingLogBlob,
+} from "@/lib/housingLogApi";
+import HousingLogPreview from "@/components/HousingLogPreview";
 import {
   clearHousingLogLocalState,
   createSubmissionId,
@@ -245,6 +253,18 @@ export default function HousingLog() {
   const [finalizeError, setFinalizeError] = useState<string>();
   const [finalizedAt, setFinalizedAt] = useState<string>();
   const [busy, setBusy] = useState(false);
+
+  // ── Preview Official Log (pre-finalize review) ──
+  // `previewInput` is the exact canonical payload validation passed for —
+  // it drives both the read-only preview screen and every "Download Current
+  // Log" click from inside it, so what the officer reviews always matches
+  // what a download or Finalize would submit.
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewInput, setPreviewInput] = useState<HousingLogDraftInput>();
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewError, setPreviewError] = useState<string>();
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [downloadError, setDownloadError] = useState<string>();
   const [activeTask, setActiveTask] = useState<HousingLogTaskId>("setup");
   const panelHeadingRefs = useRef<
     Partial<Record<HousingLogTaskId, HTMLHeadingElement | null>>
@@ -316,23 +336,29 @@ export default function HousingLog() {
     signatures,
   });
 
+  // The one canonical prepared record — everything downstream (the live task
+  // statuses below, Finalize, Preview Official Log, Download Current Log)
+  // derives from this SAME value, so preview/download content can never
+  // drift from what finalize would actually submit.
+  const preparedInput = useMemo(() => {
+    if (!config || !housingUnit || !shift) return undefined;
+    return prepareHousingLog({
+      logDate,
+      housingUnit,
+      shift,
+      templateVersion: config.templateVersion,
+      values,
+      events,
+      signatures,
+    });
+  }, [config, housingUnit, shift, logDate, values, events, signatures]);
+
   // Live task statuses derived from the canonical validator — the same
   // validateHousingLog used at finalization. No parallel required-field list.
   const workspace = useMemo(() => {
-    if (!config || !housingUnit || !shift) return undefined;
-    return computeWorkspaceStatus(
-      config,
-      prepareHousingLog({
-        logDate,
-        housingUnit,
-        shift,
-        templateVersion: config.templateVersion,
-        values,
-        events,
-        signatures,
-      }),
-    );
-  }, [config, housingUnit, shift, logDate, values, events, signatures]);
+    if (!config || !preparedInput) return undefined;
+    return computeWorkspaceStatus(config, preparedInput);
+  }, [config, preparedInput]);
 
   // ── Quick Event Entry composer state (declared early so restore can seed it) ──
   const [composerTime, setComposerTime] = useState("");
@@ -493,6 +519,21 @@ export default function HousingLog() {
     readOnlyTab,
   ]);
 
+  // A successful Finalize (whether launched from the preview screen or,
+  // defensively, any other path) always returns to the normal workspace —
+  // which then shows the finalized-success state — rather than leaving a
+  // stale preview of a now-finalized record on screen.
+  useEffect(() => {
+    if (status === "finalized" && previewOpen) setPreviewOpen(false);
+  }, [status, previewOpen]);
+
+  // A tab that becomes read-only (another tab took over as active) must not
+  // keep showing a preview as if it could still Download or Finalize from
+  // it — the same active-tab lock that already disables editing here.
+  useEffect(() => {
+    if (readOnlyTab && previewOpen) setPreviewOpen(false);
+  }, [readOnlyTab, previewOpen]);
+
   const resetFormState = () => {
     staffStashRef.current = {};
     setValues({});
@@ -503,6 +544,10 @@ export default function HousingLog() {
     setNotice(undefined);
     setFinalizeError(undefined);
     setFinalizedAt(undefined);
+    setPreviewOpen(false);
+    setPreviewInput(undefined);
+    setPreviewError(undefined);
+    setDownloadError(undefined);
     setIsDemoData(false);
     setComposerTime("");
     setComposerActivity("");
@@ -736,17 +781,10 @@ export default function HousingLog() {
   };
 
   const finalize = async () => {
-    if (!config || !housingUnit || !shift || readOnlyTab) return;
+    if (!config || !housingUnit || !shift || !preparedInput || readOnlyTab)
+      return;
     if (!confirmDemoDataPersist()) return;
-    const input = prepareHousingLog({
-      logDate,
-      housingUnit,
-      shift,
-      templateVersion: config.templateVersion,
-      values,
-      events,
-      signatures,
-    });
+    const input = preparedInput;
     const nextIssues = validateHousingLog(input);
     setIssues(nextIssues);
     setFinalizeError(undefined);
@@ -798,6 +836,73 @@ export default function HousingLog() {
       );
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Officer must not finalize blindly: opening the preview runs the exact
+  // same canonical validation finalize uses (client pre-check here, full
+  // server-side check — including signature ink-plausibility, which cannot
+  // run in the browser — in previewHousingLogXlsx) before showing anything.
+  // On success the fetched document is discarded immediately; the read-only
+  // screen renders from `preparedInput` itself, and Download re-fetches a
+  // fresh copy of that same payload on demand.
+  const openPreview = async () => {
+    if (!config || !housingUnit || !shift || !preparedInput || readOnlyTab)
+      return;
+    const nextIssues = validateHousingLog(preparedInput);
+    setIssues(nextIssues);
+    setPreviewError(undefined);
+    if (nextIssues.length) {
+      setActiveTask("review");
+      requestAnimationFrame(() =>
+        document
+          .getElementById("housing-log-issues")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      );
+      return;
+    }
+    setPreviewBusy(true);
+    try {
+      await previewHousingLogXlsx(preparedInput);
+      setPreviewInput(preparedInput);
+      setPreviewOpen(true);
+    } catch (error) {
+      if (error instanceof HousingLogApiError && error.issues.length)
+        setIssues(error.issues);
+      setPreviewError(
+        error instanceof Error
+          ? error.message
+          : "The Housing Log preview could not be generated. Nothing was lost. Try again.",
+      );
+    } finally {
+      setPreviewBusy(false);
+    }
+  };
+
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setDownloadError(undefined);
+  };
+
+  // Always re-fetches the current snapshot rather than reusing any earlier
+  // response — safe and cheap, since the preview screen has no editable
+  // fields (nothing can change while it's open), and it means a download
+  // can never silently serve stale content.
+  const downloadCurrentLog = async () => {
+    if (!previewInput) return;
+    setDownloadBusy(true);
+    setDownloadError(undefined);
+    try {
+      const { blob, fileName } = await previewHousingLogXlsx(previewInput);
+      saveHousingLogBlob(blob, fileName);
+    } catch (error) {
+      setDownloadError(
+        error instanceof Error
+          ? error.message
+          : "The Housing Log could not be downloaded. Nothing was lost. Try again.",
+      );
+    } finally {
+      setDownloadBusy(false);
     }
   };
 
@@ -966,6 +1071,22 @@ export default function HousingLog() {
       return `Saved on this device ${localSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
     return "Not yet saved on this device";
   })();
+
+  if (previewOpen && config && previewInput) {
+    return (
+      <HousingLogPreview
+        config={config}
+        input={previewInput}
+        onBackToEdit={closePreview}
+        onDownload={downloadCurrentLog}
+        downloading={downloadBusy}
+        downloadError={downloadError}
+        onFinalize={finalize}
+        finalizing={busy}
+        finalizeError={finalizeError}
+      />
+    );
+  }
 
   return (
     <PageShell
@@ -2110,28 +2231,32 @@ export default function HousingLog() {
                   ))}
                 </div>
 
-                {finalizeError && (
+                {previewError && (
                   <p
                     className="mt-4 rounded-md border border-red-400/50 bg-red-950/50 px-3 py-2 text-xs text-red-100"
                     role="alert"
                   >
-                    {finalizeError} Nothing has been lost — this Housing Log
+                    {previewError} Nothing has been lost — this Housing Log
                     remains saved on this device. You can retry.
                   </p>
                 )}
 
-                <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-blue-400/20 pt-4">
+                <p className="mt-6 text-xs text-blue-200/60">
+                  Review the completed official log before submitting it —
+                  finalizing happens from that review screen.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-blue-400/20 pt-4">
                   <div className="min-w-0 text-xs text-blue-200/65">
                     {localStatusLabel}
                   </div>
                   <button
                     type="button"
-                    onClick={finalize}
-                    disabled={disabled}
+                    onClick={openPreview}
+                    disabled={disabled || previewBusy}
                     className="inline-flex items-center gap-2 rounded-md border border-emerald-300/60 bg-emerald-500/20 px-4 py-2.5 text-xs font-black uppercase tracking-[0.08em] text-emerald-100 disabled:opacity-40"
                   >
-                    <CheckCircle2 className="h-4 w-4" aria-hidden />{" "}
-                    {busy ? "Finalizing…" : "Finalize Housing Log"}
+                    <Eye className="h-4 w-4" aria-hidden />{" "}
+                    {previewBusy ? "Preparing preview…" : "Preview Official Log"}
                   </button>
                 </div>
               </section>

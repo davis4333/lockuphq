@@ -18,6 +18,7 @@ import {
   registerOfficialHousingLogWorkbook,
 } from "./excelTemplate/workbookRegistry";
 import type { HousingLogDocumentRecord } from "./documentSpike/types";
+import { safeFilePart } from "./filenames";
 
 const PACKAGE_ZIP_DATE = new Date("2026-04-27T00:00:00.000Z");
 
@@ -81,9 +82,6 @@ export type HousingLogShiftPackageDependencies = {
   generateWorkbook?: GenerateWorkbook;
   now?: () => Date;
 };
-
-const safeFilePart = (value: string) =>
-  value.replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
 
 const checksum = (bytes: Uint8Array) =>
   createHash("sha256").update(bytes).digest("hex");

@@ -587,8 +587,11 @@ export async function generateExcelHousingLog(
   template: HousingLogWorkbookTemplate,
 ): Promise<{ bytes: Buffer; diagnostics: ExcelHousingLogDiagnostics }> {
   const started = performance.now();
-  if (record.status !== "finalized")
-    throw new Error("Only finalized Housing Logs can be exported.");
+  // Callable for both a finalized archive record (admin download, shift
+  // packages) and a not-yet-finalized officer working copy (stateless
+  // preview/current-log download — see routes/housingLogs.ts). Either way
+  // the caller is responsible for validating the record before calling
+  // this function; generation itself has no persistence side effects.
   const config = getHousingLogConfig(record.housingUnit, record.shift);
   if (config.sourceSheet !== template.sourceSheet)
     throw new Error(

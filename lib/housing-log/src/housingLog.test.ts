@@ -6,6 +6,7 @@ import {
   getEasternCalendarDate,
   getHousingLogConfig,
   hasMeaningfulHousingLogContent,
+  housingLogCanonicalFingerprint,
   housingLogConfigs,
   housingLogDraftInputSchema,
   prepareHousingLog,
@@ -436,5 +437,71 @@ test("N/A staff times are rejected when the rest of the slot is present", () => 
   );
   assert.ok(
     issues.some((issue) => issue.path === "values.staff.1.relievedAt"),
+  );
+});
+
+test("housingLogCanonicalFingerprint ignores object key order", () => {
+  const input = completeInput("A", "1");
+  const reorderedValues = Object.fromEntries(
+    Object.entries(input.values).reverse(),
+  );
+  assert.equal(
+    housingLogCanonicalFingerprint(input),
+    housingLogCanonicalFingerprint({ ...input, values: reorderedValues }),
+  );
+});
+
+test("housingLogCanonicalFingerprint changes when a value changes", () => {
+  const input = completeInput("A", "1");
+  const changed = {
+    ...input,
+    values: { ...input.values, "staff.1.name": "Someone else" },
+  };
+  assert.notEqual(
+    housingLogCanonicalFingerprint(input),
+    housingLogCanonicalFingerprint(changed),
+  );
+});
+
+test("housingLogCanonicalFingerprint changes when event order changes", () => {
+  const input: HousingLogDraftInput = {
+    ...completeInput("A", "1"),
+    events: [
+      { id: "e1", time: "20:00", activity: "First", initials: "AB" },
+      { id: "e2", time: "20:05", activity: "Second", initials: "AB" },
+    ],
+  };
+  const reordered = { ...input, events: [...input.events].reverse() };
+  assert.notEqual(
+    housingLogCanonicalFingerprint(input),
+    housingLogCanonicalFingerprint(reordered),
+  );
+});
+
+test("housingLogCanonicalFingerprint changes when a signature changes", () => {
+  const input = completeInput("A", "1");
+  const resigned = {
+    ...input,
+    signatures: { ...input.signatures, housingSupervisor: "different-signature" },
+  };
+  assert.notEqual(
+    housingLogCanonicalFingerprint(input),
+    housingLogCanonicalFingerprint(resigned),
+  );
+});
+
+test("housingLogCanonicalFingerprint ignores persistence metadata not part of its input type", () => {
+  const input = completeInput("A", "1");
+  const stored = {
+    ...input,
+    id: "generated-id",
+    status: "finalized" as const,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    finalizedAt: "2026-01-01T00:00:00.000Z",
+  };
+  assert.equal(
+    housingLogCanonicalFingerprint(input),
+    housingLogCanonicalFingerprint(stored),
   );
 });

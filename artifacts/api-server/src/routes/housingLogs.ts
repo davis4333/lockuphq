@@ -62,6 +62,12 @@ export function createHousingLogsRouter(
         issues: result.issues,
       });
     }
+    if (result.outcome === "submission_conflict") {
+      return res.status(409).json({
+        error:
+          "This Housing Log submission was already finalized, but the current local form has changed since that submission. Nothing on this device was cleared. An administrator should review the finalized record before continuing.",
+      });
+    }
     const body: HousingLogFinalizeConfirmation = {
       id: result.record.id,
       finalizedAt: result.record.finalizedAt!,

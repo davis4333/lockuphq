@@ -5,6 +5,7 @@ import express from "express";
 import {
   fieldsForConfig,
   getHousingLogConfig,
+  housingLogCanonicalFingerprint,
   type HousingLogDraftInput,
   type HousingLogFinalizeInput,
   type HousingLogValue,
@@ -18,6 +19,7 @@ import {
 } from "../housingLogs/repository";
 import { validateHousingLogForFinalization } from "../housingLogs/signatureValidation";
 import { createHousingLogsRouter } from "./housingLogs";
+import { createAdminHousingLogsRouter } from "./adminHousingLogs";
 import { jsonErrorHandler } from "../app";
 import healthRouter from "./health";
 
@@ -61,12 +63,14 @@ function finalizeInput(
 
 /**
  * A minimal in-memory stand-in exercising the same "check submissionId
- * first, then validate, then persist" contract as the real
- * `PostgresHousingLogRepository.finalizeSubmission` — a retried call with
- * the same submissionId returns the original result rather than creating a
- * second record, but two different submissionIds always create two records
- * even with identical content (duplicates are an admin-visible fact, not
- * something silently collapsed).
+ * first, compare canonical content, then validate, then persist" contract
+ * as the real `PostgresHousingLogRepository.finalizeSubmission`:
+ * - same submissionId + identical canonical content -> the original record
+ * - same submissionId + different canonical content -> a conflict, never a
+ *   silent overwrite or a fabricated second record
+ * - two different submissionIds always create two records even with
+ *   identical content (duplicates are an admin-visible fact, not something
+ *   silently collapsed)
  */
 class MemoryRepository implements HousingLogRepository {
   records = new Map<string, StoredHousingLog>();
@@ -93,7 +97,14 @@ class MemoryRepository implements HousingLogRepository {
     const existingId = this.bySubmissionId.get(submissionId);
     if (existingId) {
       const existing = this.records.get(existingId);
-      if (existing) return { outcome: "finalized", record: existing };
+      if (existing) {
+        const same =
+          housingLogCanonicalFingerprint(existing) ===
+          housingLogCanonicalFingerprint(input);
+        return same
+          ? { outcome: "finalized", record: existing }
+          : { outcome: "submission_conflict", existing };
+      }
     }
     const issues = this.validate(input);
     if (issues.length) return { outcome: "validation_failed", issues };
@@ -229,6 +240,125 @@ test("retrying the same submissionId is idempotent — no duplicate finalized re
   });
 });
 
+test("same submissionId with a changed field value returns a 409 conflict, not the stale record", async () => {
+  await withServer(async (baseUrl, repository) => {
+    const submissionId = randomUUID();
+    const input = completeInput();
+    const first = await finalize(baseUrl, finalizeInput(input, submissionId));
+    assert.equal(first.status, 200);
+    const firstId = ((await first.json()) as { id: string }).id;
+
+    const edited = { ...input, values: { ...input.values, "staff.1.name": "A changed name" } };
+    const retry = await finalize(baseUrl, finalizeInput(edited, submissionId));
+    assert.equal(retry.status, 409);
+    const body = (await retry.json()) as { error: string };
+    assert.match(body.error, /already finalized/i);
+    assert.match(body.error, /changed since/i);
+    assert.match(body.error, /nothing on this device was cleared/i);
+
+    // The original record is untouched — no overwrite, no second record.
+    assert.equal(repository.records.size, 1);
+    assert.equal(repository.records.get(firstId)?.values["staff.1.name"], input.values["staff.1.name"]);
+  });
+});
+
+test("same submissionId with an added event returns a 409 conflict", async () => {
+  await withServer(async (baseUrl, repository) => {
+    const submissionId = randomUUID();
+    const input = completeInput();
+    await finalize(baseUrl, finalizeInput(input, submissionId));
+
+    const withExtraEvent = {
+      ...input,
+      events: [
+        ...input.events,
+        { id: randomUUID(), time: "22:15", activity: "Late addition", initials: "AB" },
+      ],
+    };
+    const retry = await finalize(baseUrl, finalizeInput(withExtraEvent, submissionId));
+    assert.equal(retry.status, 409);
+    assert.equal(repository.records.size, 1);
+  });
+});
+
+test("same submissionId with reordered events returns a 409 conflict — entered order is part of the fingerprint", async () => {
+  await withServer(async (baseUrl, repository) => {
+    const submissionId = randomUUID();
+    const withEvents = {
+      ...completeInput(),
+      events: [
+        { id: "e1", time: "20:00", activity: "First", initials: "AB" },
+        { id: "e2", time: "20:05", activity: "Second", initials: "AB" },
+      ],
+    };
+    await finalize(baseUrl, finalizeInput(withEvents, submissionId));
+
+    const reordered = { ...withEvents, events: [...withEvents.events].reverse() };
+    const retry = await finalize(baseUrl, finalizeInput(reordered, submissionId));
+    assert.equal(retry.status, 409);
+    assert.equal(repository.records.size, 1);
+  });
+});
+
+test("same submissionId with a changed signature returns a 409 conflict", async () => {
+  await withServer(async (baseUrl, repository) => {
+    const submissionId = randomUUID();
+    const input = completeInput();
+    await finalize(baseUrl, finalizeInput(input, submissionId));
+
+    const resigned = {
+      ...input,
+      signatures: {
+        ...input.signatures,
+        // A different (still well-formed) signature image — genuinely
+        // different bytes, not a re-validation concern for this test.
+        housingSupervisor: signatureDataUrl("valid", 2),
+      },
+    };
+    const retry = await finalize(baseUrl, finalizeInput(resigned, submissionId));
+    assert.equal(retry.status, 409);
+    assert.equal(repository.records.size, 1);
+  });
+});
+
+test("same submissionId with genuinely identical content (different key order) is still a safe idempotent replay", async () => {
+  await withServer(async (baseUrl, repository) => {
+    const submissionId = randomUUID();
+    const input = completeInput();
+    const first = await finalize(baseUrl, finalizeInput(input, submissionId));
+    assert.equal(first.status, 200);
+
+    // Same values, reconstructed with different key insertion order — must
+    // still fingerprint as identical.
+    const reorderedValues = Object.fromEntries(
+      Object.entries(input.values).reverse(),
+    );
+    const retry = await finalize(
+      baseUrl,
+      finalizeInput({ ...input, values: reorderedValues }, submissionId),
+    );
+    assert.equal(retry.status, 200);
+    assert.equal(repository.records.size, 1);
+  });
+});
+
+test("a concurrent identical retry still produces exactly one finalized row", async () => {
+  await withServer(async (baseUrl, repository) => {
+    const submissionId = randomUUID();
+    const input = finalizeInput(completeInput(), submissionId);
+    const [first, second] = await Promise.all([
+      finalize(baseUrl, input),
+      finalize(baseUrl, input),
+    ]);
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+    const firstId = ((await first.json()) as { id: string }).id;
+    const secondId = ((await second.json()) as { id: string }).id;
+    assert.equal(firstId, secondId);
+    assert.equal(repository.records.size, 1);
+  });
+});
+
 test("two different submissionIds with identical content create two separate records", async () => {
   await withServer(async (baseUrl, repository) => {
     const input = completeInput();
@@ -268,6 +398,61 @@ test("there is no officer-facing draft GET, list, or unlock endpoint", async () 
     });
     assert.equal(patch.status, 404);
   });
+});
+
+test("an officer with no admin session cannot reach any admin-only Housing Log route", async () => {
+  const repository = new MemoryRepository();
+  const finalized = await repository.finalizeSubmission(
+    completeInput(),
+    randomUUID(),
+  );
+  assert.equal(finalized.outcome, "finalized");
+  const finalizedId =
+    finalized.outcome === "finalized" ? finalized.record.id : "";
+
+  const app = express();
+  app.use(express.json({ limit: "3mb" }));
+  // The full mounted surface, exactly as production wires it: both the
+  // officer router (one route) and the admin router (archive/downloads/
+  // packages), sharing the same repository.
+  app.use("/api", createHousingLogsRouter({ repository }));
+  app.use(
+    "/api",
+    createAdminHousingLogsRouter({ repository, passwordProvider: () => "admin-secret" }),
+  );
+  const server = app.listen(0);
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string")
+    throw new Error("Test server did not bind to a TCP port.");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  try {
+    const archive = await fetch(`${baseUrl}/api/admin/housing-logs/archive`);
+    assert.equal(archive.status, 401);
+
+    const excel = await fetch(
+      `${baseUrl}/api/admin/housing-logs/${finalizedId}/excel`,
+    );
+    assert.equal(excel.status, 401);
+
+    const zip = await fetch(
+      `${baseUrl}/api/admin/housing-logs/shift-package/2026-08-11/1`,
+    );
+    assert.equal(zip.status, 401);
+
+    const deliverySettings = await fetch(
+      `${baseUrl}/api/admin/housing-logs/delivery-settings`,
+    );
+    assert.equal(deliverySettings.status, 401);
+
+    // The officer-facing finalized record itself is never reachable by id.
+    const officerGet = await fetch(`${baseUrl}/api/housing-logs/${finalizedId}`);
+    assert.equal(officerGet.status, 404);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
 });
 
 test("invalid calendar dates are rejected before persistence", async () => {

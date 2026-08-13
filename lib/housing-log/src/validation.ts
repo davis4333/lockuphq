@@ -235,6 +235,56 @@ export function prepareHousingLog(
   };
 }
 
+export type HousingLogCanonicalContent = Pick<
+  HousingLogDraftInput,
+  | "logDate"
+  | "housingUnit"
+  | "shift"
+  | "templateVersion"
+  | "values"
+  | "events"
+  | "signatures"
+>;
+
+/** Recursively sorts object keys (arrays keep their order) so two logically
+ * identical objects with different key-insertion order produce the same
+ * JSON string. */
+function canonicalJson(value: unknown): string {
+  return JSON.stringify(value, function replacer(_key, val) {
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      const sorted: Record<string, unknown> = {};
+      for (const key of Object.keys(val as Record<string, unknown>).sort())
+        sorted[key] = (val as Record<string, unknown>)[key];
+      return sorted;
+    }
+    return val;
+  });
+}
+
+/**
+ * A stable fingerprint of everything that makes a Housing Log submission
+ * "the same log" — used to tell a legitimate idempotent finalize retry
+ * (unchanged local form, lost response) apart from a retry sent after the
+ * officer edited the form (which must never silently be treated as the
+ * same successful submission). Deliberately excludes generated persistence
+ * metadata (id, createdAt, updatedAt, finalizedAt, status): those are never
+ * part of what the officer is submitting. Event order matters and is
+ * preserved as-is; object key order never matters.
+ */
+export function housingLogCanonicalFingerprint(
+  content: HousingLogCanonicalContent,
+): string {
+  return canonicalJson({
+    logDate: content.logDate,
+    housingUnit: content.housingUnit,
+    shift: content.shift,
+    templateVersion: content.templateVersion,
+    values: content.values,
+    events: content.events,
+    signatures: content.signatures,
+  });
+}
+
 export function hasMeaningfulHousingLogContent(
   input: Pick<HousingLogDraftInput, "values" | "events" | "signatures">,
 ): boolean {

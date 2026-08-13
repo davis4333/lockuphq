@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq } from "drizzle-orm";
 import {
+  housingLogCanonicalFingerprint,
   prepareHousingLog,
   type HousingLogDraftInput,
   type HousingShift,
@@ -16,7 +17,15 @@ import { validateHousingLogForFinalization } from "./signatureValidation";
 
 export type FinalizeSubmissionResult =
   | { outcome: "finalized"; record: StoredHousingLog }
-  | { outcome: "validation_failed"; issues: ValidationIssue[] };
+  | { outcome: "validation_failed"; issues: ValidationIssue[] }
+  /**
+   * The same submissionId was already finalized, but with different
+   * canonical content — this is NOT a safe idempotent replay (the officer
+   * edited the form after a lost response). `existing` is the original
+   * finalized record for the route layer's message; it is never overwritten
+   * or replaced.
+   */
+  | { outcome: "submission_conflict"; existing: StoredHousingLog };
 
 export type FinalizedHousingLogMetadata = Pick<
   StoredHousingLog,
@@ -69,6 +78,25 @@ function toStored(row: HousingLogRow): StoredHousingLog {
   };
 }
 
+/**
+ * A submissionId that already matches a finalized row is only a safe
+ * idempotent replay if the incoming content is identical to what was
+ * actually persisted — otherwise the officer changed the form after a lost
+ * response, and returning "finalized" would make the client silently
+ * discard those changes.
+ */
+function resolveAgainstExisting(
+  existing: StoredHousingLog,
+  incoming: HousingLogDraftInput,
+): FinalizeSubmissionResult {
+  const same =
+    housingLogCanonicalFingerprint(existing) ===
+    housingLogCanonicalFingerprint(incoming);
+  return same
+    ? { outcome: "finalized", record: existing }
+    : { outcome: "submission_conflict", existing };
+}
+
 /** True when a `pg` error is the unique-constraint violation for `constraintName`. */
 function isUniqueConstraintViolation(
   error: unknown,
@@ -98,10 +126,11 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
     rawInput: HousingLogDraftInput,
     submissionId: string,
   ): Promise<FinalizeSubmissionResult> {
-    const existing = await this.findBySubmissionId(submissionId);
-    if (existing) return { outcome: "finalized", record: existing };
-
     const input = prepareHousingLog(rawInput);
+
+    const existing = await this.findBySubmissionId(submissionId);
+    if (existing) return resolveAgainstExisting(existing, input);
+
     const issues = validateHousingLogForFinalization(input);
     if (issues.length) return { outcome: "validation_failed", issues };
 
@@ -129,7 +158,8 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
     } catch (error) {
       // A genuine concurrent retry (two in-flight requests for the same
       // submissionId) can lose the pre-check race above; the unique index
-      // is the real guarantee against a duplicate finalized record.
+      // is the real guarantee against a duplicate finalized record. Whoever
+      // won the race is resolved the same way a sequential retry would be.
       if (
         isUniqueConstraintViolation(
           error,
@@ -137,7 +167,7 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
         )
       ) {
         const winner = await this.findBySubmissionId(submissionId);
-        if (winner) return { outcome: "finalized", record: winner };
+        if (winner) return resolveAgainstExisting(winner, input);
       }
       throw error;
     }

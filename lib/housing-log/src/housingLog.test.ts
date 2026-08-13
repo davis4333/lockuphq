@@ -363,3 +363,57 @@ test("meaningful-content detection distinguishes a blank draft from entered data
     true,
   );
 });
+
+test("intentionally absent staff slots validate as N/A, including time fields", () => {
+  const input = completeInput("A/H", "1");
+  const config = getHousingLogConfig("A/H", "1");
+  for (const item of fieldsForConfig(config)) {
+    if (item.key.startsWith("staff.1.")) input.values[item.key] = "N/A";
+  }
+  const issues = validateHousingLog(input);
+  assert.deepEqual(
+    issues.filter((issue) => issue.path.startsWith("values.staff.1.")),
+    [],
+  );
+});
+
+test("N/A is still rejected for time fields outside allowNa staff fields", () => {
+  const input = completeInput("A/H", "1");
+  input.values["securityChecks.1.time"] = "N/A";
+  const issues = validateHousingLog(input);
+  assert.ok(
+    issues.some(
+      (issue) =>
+        issue.path === "values.securityChecks.1.time" &&
+        issue.message.includes("valid time"),
+    ),
+  );
+});
+
+test("a present staff slot with missing fields still reports required issues", () => {
+  const input = completeInput("A/H", "1");
+  delete input.values["staff.2.name"];
+  input.values["staff.2.radio"] = "";
+  const issues = validateHousingLog(input);
+  assert.ok(issues.some((issue) => issue.path === "values.staff.2.name"));
+  assert.ok(issues.some((issue) => issue.path === "values.staff.2.radio"));
+});
+
+test("N/A staff times are rejected when the rest of the slot is present", () => {
+  const input = completeInput("A/H", "1");
+  // staff.1 keeps a real name and equipment, but the times are set to N/A —
+  // this is a present person with missing times, not an absent slot.
+  input.values["staff.1.assumedAt"] = "N/A";
+  input.values["staff.1.relievedAt"] = "N/A";
+  const issues = validateHousingLog(input);
+  assert.ok(
+    issues.some(
+      (issue) =>
+        issue.path === "values.staff.1.assumedAt" &&
+        issue.message.includes("valid time"),
+    ),
+  );
+  assert.ok(
+    issues.some((issue) => issue.path === "values.staff.1.relievedAt"),
+  );
+});

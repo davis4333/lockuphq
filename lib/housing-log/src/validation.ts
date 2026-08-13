@@ -89,6 +89,34 @@ export function validateHousingLog(
     });
   }
 
+  // An "N/A" time is only acceptable as part of an intentionally absent staff
+  // slot — i.e. when EVERY canonical field in that slot is the literal "N/A".
+  // A present staff member with a real name but an N/A time is still invalid.
+  const naStaffPrefixes = new Set<string>();
+  {
+    const slotFields = new Map<string, string[]>();
+    for (const definition of fieldsForConfig(config)) {
+      const match = /^(staff\.\d+)\./.exec(definition.key);
+      if (!match) continue;
+      const list = slotFields.get(match[1]) ?? [];
+      list.push(definition.key);
+      slotFields.set(match[1], list);
+    }
+    for (const [prefix, keys] of slotFields) {
+      if (
+        keys.every(
+          (key) => String(input.values[key] ?? "").trim() === "N/A",
+        )
+      ) {
+        naStaffPrefixes.add(prefix);
+      }
+    }
+  }
+  const inNaStaffSlot = (key: string): boolean => {
+    const match = /^(staff\.\d+)\./.exec(key);
+    return match !== null && naStaffPrefixes.has(match[1]);
+  };
+
   for (const definition of fieldsForConfig(config)) {
     const value = input.values[definition.key];
     if (definition.required && isBlankHousingLogValue(value)) {
@@ -110,7 +138,15 @@ export function validateHousingLog(
         message: `${definition.label} must be a whole number of zero or more.`,
       });
     }
-    if (definition.inputType === "time" && !timePattern.test(String(value))) {
+    if (
+      definition.inputType === "time" &&
+      !(
+        definition.allowNa &&
+        String(value).trim() === "N/A" &&
+        inNaStaffSlot(definition.key)
+      ) &&
+      !timePattern.test(String(value))
+    ) {
       issues.push({
         path: `values.${definition.key}`,
         label: definition.label,

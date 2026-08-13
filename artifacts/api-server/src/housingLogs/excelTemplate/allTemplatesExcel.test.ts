@@ -4,7 +4,9 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   fieldsForConfig,
+  getHousingLogConfig,
   housingLogConfigs,
+  validateHousingLog,
   type HousingLogConfig,
 } from "@workspace/housing-log";
 import JSZip from "jszip";
@@ -313,4 +315,41 @@ test("2_AH replaces residual source-workbook entries instead of carrying them in
     "Security check conducted in all areas of the housing unit by Sergeant / Officer J. Rutherford.",
   );
   assert.equal(readInlineCell(sheetXml, "D41"), "");
+});
+
+test("1_AH exports N/A for an intentionally absent staff slot without leaving blanks", async () => {
+  const record = createHousingLogStressRecord("A/H", "1", 1);
+  const config = getHousingLogConfig(record.housingUnit, record.shift);
+  const staffKeys = fieldsForConfig(config)
+    .map((item) => item.key)
+    .filter((key) => key.startsWith("staff.1."));
+  assert.ok(staffKeys.length >= 9);
+  for (const key of staffKeys) record.values[key] = "N/A";
+
+  // The canonical validator must accept the deliberately absent slot.
+  assert.deepEqual(
+    validateHousingLog(record).filter((issue) =>
+      issue.path.startsWith("values.staff.1."),
+    ),
+    [],
+  );
+
+  const result = await generateExcelHousingLog(
+    record,
+    registry.resolveRecord(record),
+  );
+  // Every canonical staff key must still be written to the workbook (no
+  // blanks merely because the UI card was collapsed).
+  for (const key of staffKeys)
+    assert.ok(
+      result.diagnostics.requiredFieldKeysWritten.includes(key),
+      `missing write for ${key}`,
+    );
+  const outputZip = await JSZip.loadAsync(result.bytes, { checkCRC32: true });
+  const targets = worksheetTargets(
+    await text(outputZip, "xl/workbook.xml"),
+    await text(outputZip, "xl/_rels/workbook.xml.rels"),
+  );
+  const sheetXml = await text(outputZip, targets.get("1_AH")!);
+  assert.ok(sheetXml.includes("N/A"));
 });

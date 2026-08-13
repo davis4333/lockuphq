@@ -37,9 +37,14 @@ import {
   computeWorkspaceStatus,
   housingLogTaskIds,
   housingLogTaskLabels,
+  isStaffSlotNA,
   shortFieldLabel,
+  STAFF_NA_VALUE,
+  staffFieldLabel,
+  staffSlotsForConfig,
   taskForPath,
   type HousingLogTaskId,
+  type StaffSlot,
 } from "@/lib/housingLogSections";
 import {
   createHousingLogDraft,
@@ -205,6 +210,7 @@ export default function HousingLog() {
   }, []);
 
   const resetForm = () => {
+    staffStashRef.current = {};
     setValues({});
     setEvents([]);
     setSignatures({});
@@ -239,6 +245,9 @@ export default function HousingLog() {
     setNotice(undefined);
     try {
       const record = await getHousingLog(resumeId);
+      // Never carry a value stash across logs — a slot marked present after
+      // resume must not recover another draft's staff values.
+      staffStashRef.current = {};
       setHousingUnit(record.housingUnit);
       setShift(record.shift);
       setLogDate(record.logDate);
@@ -264,6 +273,69 @@ export default function HousingLog() {
     setIssues((current) =>
       current.filter((issue) => issue.path !== `values.${key}`),
     );
+  };
+
+  // ── Staff slot presence (Sergeant / Officer N/A toggles) ──
+  const staffSlots = useMemo(
+    () => (config ? staffSlotsForConfig(config) : []),
+    [config],
+  );
+  const sergeantSlot = staffSlots.find((slot) => slot.kind === "sergeant");
+  const officerSlots = staffSlots.filter((slot) => slot.kind === "officer");
+  // Stash of the values a slot held before it was marked N/A, so toggling a
+  // position back on restores what the officer had typed instead of stale N/A.
+  const staffStashRef = useRef<Record<string, Record<string, HousingLogValue>>>(
+    {},
+  );
+
+  const markSlotAbsent = (slot: StaffSlot) => {
+    staffStashRef.current[slot.prefix] = Object.fromEntries(
+      slot.fields
+        .map((field) => [field.key, values[field.key]] as const)
+        .filter(
+          ([, value]) => String(value ?? "").trim() !== STAFF_NA_VALUE,
+        ),
+    );
+    setValues((current) => {
+      const next = { ...current };
+      for (const field of slot.fields) next[field.key] = STAFF_NA_VALUE;
+      return next;
+    });
+    setIssues((current) =>
+      current.filter(
+        (issue) => !issue.path.startsWith(`values.${slot.prefix}.`),
+      ),
+    );
+  };
+
+  const markSlotPresent = (slot: StaffSlot) => {
+    const stash = staffStashRef.current[slot.prefix] ?? {};
+    setValues((current) => {
+      const next = { ...current };
+      for (const field of slot.fields) {
+        const restored = stash[field.key];
+        // Never leave stale N/A behind once the position is active again.
+        if (restored !== undefined && String(restored).trim() !== "") {
+          next[field.key] = restored;
+        } else {
+          delete next[field.key];
+        }
+      }
+      return next;
+    });
+  };
+
+  const activeOfficerCount = officerSlots.filter(
+    (slot) => !isStaffSlotNA(slot, values),
+  ).length;
+
+  const setOfficerCount = (count: number) => {
+    officerSlots.forEach((slot, index) => {
+      const shouldBePresent = index < count;
+      const isPresent = !isStaffSlotNA(slot, values);
+      if (shouldBePresent && !isPresent) markSlotPresent(slot);
+      if (!shouldBePresent && isPresent) markSlotAbsent(slot);
+    });
   };
 
   const buildInput = (): HousingLogDraftInput => {
@@ -727,38 +799,189 @@ export default function HousingLog() {
                   {panelHeading("staff", "Staff & Equipment")}
                 </div>
                 <div className="mt-4 space-y-5">
-                  {config.sections.map((section) => (
-                    <fieldset
-                      key={section.key}
-                      className="rounded-lg border border-blue-400/20 p-3 sm:p-4"
-                    >
-                      <legend className="px-2 text-xs font-black uppercase tracking-[0.12em] text-blue-100">
-                        {section.key === "staff"
-                          ? "Staff on Duty"
-                          : section.key === "equipment"
+                  {/* Shift staffing selector */}
+                  {(sergeantSlot || officerSlots.length >= 2) && (
+                    <div className="rounded-lg border border-blue-400/25 bg-blue-950/40 p-3 sm:p-4">
+                      <h3 className="text-xs font-black uppercase tracking-[0.12em] text-blue-100">
+                        Shift Staffing
+                      </h3>
+                      <div className="mt-3 flex flex-wrap gap-x-8 gap-y-4">
+                        {sergeantSlot && (
+                          <fieldset>
+                            <legend className={hudLabel}>
+                              Sergeant / Supervisor present?
+                            </legend>
+                            <div
+                              className="mt-1 flex gap-2"
+                              role="group"
+                            >
+                              {(["Yes", "No"] as const).map((option) => {
+                                const present = !isStaffSlotNA(
+                                  sergeantSlot,
+                                  values,
+                                );
+                                const selected =
+                                  option === "Yes" ? present : !present;
+                                return (
+                                  <button
+                                    key={option}
+                                    type="button"
+                                    disabled={disabled}
+                                    aria-pressed={selected}
+                                    onClick={() => {
+                                      if (selected) return;
+                                      if (option === "No")
+                                        markSlotAbsent(sergeantSlot);
+                                      else markSlotPresent(sergeantSlot);
+                                    }}
+                                    className={`rounded-md border px-4 py-1.5 text-sm font-bold transition-colors ${
+                                      selected
+                                        ? "border-blue-300/70 bg-blue-500/30 text-white"
+                                        : "border-blue-400/25 bg-blue-950/50 text-blue-200/70 hover:text-white"
+                                    }`}
+                                  >
+                                    {option}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </fieldset>
+                        )}
+                        {officerSlots.length >= 2 && (
+                          <fieldset>
+                            <legend className={hudLabel}>
+                              Number of officers
+                            </legend>
+                            <div className="mt-1 flex gap-2" role="group">
+                              {officerSlots.map((_, index) => {
+                                const count = index + 1;
+                                const selected = activeOfficerCount === count;
+                                return (
+                                  <button
+                                    key={count}
+                                    type="button"
+                                    disabled={disabled}
+                                    aria-pressed={selected}
+                                    onClick={() => setOfficerCount(count)}
+                                    className={`rounded-md border px-4 py-1.5 text-sm font-bold transition-colors ${
+                                      selected
+                                        ? "border-blue-300/70 bg-blue-500/30 text-white"
+                                        : "border-blue-400/25 bg-blue-950/50 text-blue-200/70 hover:text-white"
+                                    }`}
+                                  >
+                                    {count}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </fieldset>
+                        )}
+                      </div>
+                      <p className="mt-2 text-[11px] text-blue-200/55">
+                        Positions marked absent are recorded as N/A on the
+                        official log and are not flagged as missing.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Person-specific cards */}
+                  {staffSlots.map((slot) => {
+                    const absent = isStaffSlotNA(slot, values);
+                    const heading =
+                      slot.kind === "sergeant"
+                        ? "Sergeant / Supervisor"
+                        : slot.position;
+                    if (absent) {
+                      return (
+                        <div
+                          key={slot.prefix}
+                          className="flex items-center justify-between rounded-lg border border-blue-400/15 bg-blue-950/30 px-3 py-2"
+                        >
+                          <p className="text-xs font-black uppercase tracking-[0.12em] text-blue-200/60">
+                            {heading}{" "}
+                            <span className="font-bold normal-case tracking-normal">
+                              — N/A (not assigned this shift)
+                            </span>
+                          </p>
+                          <button
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => markSlotPresent(slot)}
+                            className="rounded-md border border-blue-400/25 px-3 py-1 text-[11px] font-bold text-blue-200/70 hover:text-white"
+                          >
+                            Mark present
+                          </button>
+                        </div>
+                      );
+                    }
+                    return (
+                      <fieldset
+                        key={slot.prefix}
+                        className="rounded-lg border border-blue-400/20 p-3 sm:p-4"
+                      >
+                        <legend className="px-2 text-xs font-black uppercase tracking-[0.12em] text-blue-100">
+                          {heading}
+                        </legend>
+                        <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                          {slot.fields.map((definition) => (
+                            <FieldControl
+                              key={definition.key}
+                              definition={{
+                                ...definition,
+                                label: staffFieldLabel(slot, definition),
+                              }}
+                              value={values[definition.key]}
+                              disabled={disabled}
+                              error={errorPaths.has(
+                                `values.${definition.key}`,
+                              )}
+                              onChange={(value) =>
+                                setValue(definition.key, value)
+                              }
+                            />
+                          ))}
+                        </div>
+                      </fieldset>
+                    );
+                  })}
+
+                  {/* Shared unit equipment / accountability sections */}
+                  {config.sections
+                    .filter((section) => section.key !== "staff")
+                    .map((section) => (
+                      <fieldset
+                        key={section.key}
+                        className="rounded-lg border border-blue-400/20 p-3 sm:p-4"
+                      >
+                        <legend className="px-2 text-xs font-black uppercase tracking-[0.12em] text-blue-100">
+                          {section.key === "equipment"
                             ? "Equipment / Accountability"
                             : section.title}
-                      </legend>
-                      <p className="text-[11px] leading-relaxed text-blue-200/55">
-                        {section.title}
-                        {section.description ? ` — ${section.description}` : ""}
-                      </p>
-                      <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                        {section.fields.map((definition) => (
-                          <FieldControl
-                            key={definition.key}
-                            definition={definition}
-                            value={values[definition.key]}
-                            disabled={disabled}
-                            error={errorPaths.has(`values.${definition.key}`)}
-                            onChange={(value) =>
-                              setValue(definition.key, value)
-                            }
-                          />
-                        ))}
-                      </div>
-                    </fieldset>
-                  ))}
+                        </legend>
+                        <p className="text-[11px] leading-relaxed text-blue-200/55">
+                          {section.title}
+                          {section.description
+                            ? ` — ${section.description}`
+                            : ""}
+                        </p>
+                        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                          {section.fields.map((definition) => (
+                            <FieldControl
+                              key={definition.key}
+                              definition={definition}
+                              value={values[definition.key]}
+                              disabled={disabled}
+                              error={errorPaths.has(
+                                `values.${definition.key}`,
+                              )}
+                              onChange={(value) =>
+                                setValue(definition.key, value)
+                              }
+                            />
+                          ))}
+                        </div>
+                      </fieldset>
+                    ))}
                 </div>
               </section>
 

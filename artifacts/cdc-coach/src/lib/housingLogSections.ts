@@ -5,6 +5,7 @@ import {
   type FieldDefinition,
   type HousingLogConfig,
   type HousingLogDraftInput,
+  type HousingLogValue,
   type ValidationIssue,
 } from "@workspace/housing-log";
 
@@ -109,6 +110,80 @@ export function shortFieldLabel(definition: FieldDefinition): string {
     separator >= 0
       ? definition.label.slice(separator + " — ".length)
       : definition.label;
+  return short.charAt(0).toUpperCase() + short.slice(1);
+}
+
+/** N/A marker written into every field of an intentionally absent staff slot. */
+export const STAFF_NA_VALUE = "N/A";
+
+export type StaffSlotKind = "sergeant" | "officer" | "combined";
+
+export type StaffSlot = {
+  /** canonical key prefix, e.g. `staff.1` */
+  prefix: string;
+  /** position label from the canonical config, e.g. "Sergeant", "Officer 1" */
+  position: string;
+  kind: StaffSlotKind;
+  /** canonical fields belonging to this slot, straight from the config */
+  fields: FieldDefinition[];
+};
+
+/**
+ * Group the canonical staff-section fields into per-person slots. The slot
+ * list, ordering, positions, and fields all come from the config — nothing is
+ * hardcoded here.
+ */
+export function staffSlotsForConfig(config: HousingLogConfig): StaffSlot[] {
+  const staffSection = config.sections.find(
+    (section) => section.key === "staff",
+  );
+  if (!staffSection) return [];
+  const byPrefix = new Map<string, FieldDefinition[]>();
+  for (const field of staffSection.fields) {
+    const match = /^(staff\.\d+)\./.exec(field.key);
+    if (!match) continue;
+    const list = byPrefix.get(match[1]) ?? [];
+    list.push(field);
+    byPrefix.set(match[1], list);
+  }
+  return Array.from(byPrefix.entries()).map(([prefix, fields]) => {
+    const nameField = fields.find((field) => field.key === `${prefix}.name`);
+    const position = nameField
+      ? nameField.label.replace(/ name$/i, "")
+      : prefix;
+    const kind: StaffSlotKind =
+      position === "Sergeant"
+        ? "sergeant"
+        : /^Officer\b/.test(position)
+          ? "officer"
+          : "combined";
+    return { prefix, position, kind, fields };
+  });
+}
+
+/**
+ * A slot is intentionally absent when EVERY one of its canonical fields holds
+ * the literal N/A marker. Anything else (blank or partial) is a present slot
+ * with possibly missing information — the canonical validator handles that.
+ */
+export function isStaffSlotNA(
+  slot: StaffSlot,
+  values: Record<string, HousingLogValue>,
+): boolean {
+  return slot.fields.every(
+    (field) => String(values[field.key] ?? "").trim() === STAFF_NA_VALUE,
+  );
+}
+
+/** Display-only label inside a person card: strip the position prefix. */
+export function staffFieldLabel(
+  slot: StaffSlot,
+  definition: FieldDefinition,
+): string {
+  const prefix = `${slot.position} `;
+  const short = definition.label.startsWith(prefix)
+    ? definition.label.slice(prefix.length)
+    : definition.label;
   return short.charAt(0).toUpperCase() + short.slice(1);
 }
 

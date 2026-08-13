@@ -34,8 +34,14 @@ const staffFields = (positions: string[]): FieldDefinition[] =>
     const prefix = `staff.${index + 1}`;
     return [
       field(`${prefix}.name`, `${position} name`),
-      field(`${prefix}.assumedAt`, `${position} time assumed duties`, "time"),
-      field(`${prefix}.relievedAt`, `${position} time relieved`, "time"),
+      {
+        ...field(`${prefix}.assumedAt`, `${position} time assumed duties`, "time"),
+        allowNa: true,
+      },
+      {
+        ...field(`${prefix}.relievedAt`, `${position} time relieved`, "time"),
+        allowNa: true,
+      },
       field(`${prefix}.keyRing`, `${position} key ring`),
       field(`${prefix}.radio`, `${position} radio`),
       field(`${prefix}.chemicalAgent`, `${position} chemical-agent pouch`),

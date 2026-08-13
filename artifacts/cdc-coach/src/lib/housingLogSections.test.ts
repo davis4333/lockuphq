@@ -9,6 +9,10 @@ import {
 import {
   buildSectionIndex,
   canonicalFieldsWithPrefix,
+  isStaffSlotNA,
+  STAFF_NA_VALUE,
+  staffFieldLabel,
+  staffSlotsForConfig,
   computeWorkspaceStatus,
   housingLogTaskIds,
   shortFieldLabel,
@@ -179,4 +183,58 @@ test("shortFieldLabel strips the group prefix and capitalizes", () => {
   const timeField = midnight.find((f) => f.key.endsWith(".countTime"));
   assert.ok(timeField);
   assert.equal(shortFieldLabel(timeField), "Count time");
+});
+
+test("staff slots derive from config with correct kinds and fields", () => {
+  const config = getHousingLogConfig("A/H", "1");
+  const slots = staffSlotsForConfig(config);
+  assert.deepEqual(
+    slots.map((slot) => [slot.prefix, slot.position, slot.kind]),
+    [
+      ["staff.1", "Sergeant", "sergeant"],
+      ["staff.2", "Officer 1", "officer"],
+      ["staff.3", "Officer 2", "officer"],
+    ],
+  );
+  for (const slot of slots) assert.equal(slot.fields.length, 9);
+  // Infirmary has a single combined slot — no sergeant/officer toggles apply.
+  const infirmary = staffSlotsForConfig(getHousingLogConfig("Infirmary", "1"));
+  assert.equal(infirmary.length, 1);
+  assert.equal(infirmary[0].kind, "combined");
+  // B shift 3 has four officers.
+  const b3 = staffSlotsForConfig(getHousingLogConfig("B", "3"));
+  assert.equal(b3.filter((slot) => slot.kind === "officer").length, 4);
+});
+
+test("isStaffSlotNA requires every slot field to be the N/A marker", () => {
+  const config = getHousingLogConfig("A/H", "1");
+  const [sergeant] = staffSlotsForConfig(config);
+  const values: Record<string, HousingLogValue> = {};
+  assert.equal(isStaffSlotNA(sergeant, values), false);
+  for (const field of sergeant.fields) values[field.key] = STAFF_NA_VALUE;
+  assert.equal(isStaffSlotNA(sergeant, values), true);
+  values[sergeant.fields[0].key] = "SGT FAKE";
+  assert.equal(isStaffSlotNA(sergeant, values), false);
+});
+
+test("an absent staff slot leaves the staff section ready when the rest is complete", () => {
+  const config = getHousingLogConfig("A/H", "1");
+  const input = completeInput();
+  const slots = staffSlotsForConfig(config);
+  const sergeant = slots[0];
+  for (const field of sergeant.fields) input.values[field.key] = STAFF_NA_VALUE;
+  const status = computeWorkspaceStatus(config, input);
+  assert.equal(status.tasks.staff.remaining, 0);
+  assert.equal(status.tasks.staff.ready, true);
+  assert.equal(status.totalRemaining, 0);
+});
+
+test("staffFieldLabel strips the position prefix for card display", () => {
+  const config = getHousingLogConfig("A/H", "1");
+  const [sergeant] = staffSlotsForConfig(config);
+  const nameField = sergeant.fields.find((f) => f.key.endsWith(".name"));
+  const timeField = sergeant.fields.find((f) => f.key.endsWith(".assumedAt"));
+  assert.ok(nameField && timeField);
+  assert.equal(staffFieldLabel(sergeant, nameField), "Name");
+  assert.equal(staffFieldLabel(sergeant, timeField), "Time assumed duties");
 });

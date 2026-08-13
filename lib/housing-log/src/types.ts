@@ -25,6 +25,12 @@ export type FieldDefinition = {
   required: boolean;
   options?: readonly string[];
   help?: string;
+  /**
+   * Accepts the literal value "N/A" even when the input type would otherwise
+   * reject it (e.g. time fields). Used for staff-slot fields so an
+   * intentionally absent staff position can be marked N/A on the official log.
+   */
+  allowNa?: boolean;
 };
 
 export type FormSection = {

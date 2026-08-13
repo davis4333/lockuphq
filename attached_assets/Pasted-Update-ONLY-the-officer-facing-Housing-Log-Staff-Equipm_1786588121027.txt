@@ -1,0 +1,173 @@
+Update ONLY the officer-facing Housing Log Staff & Equipment workflow.
+
+The current redesigned /housing-log page is significantly better, but Staff & Equipment still does not match how actual housing-unit staffing works.
+
+REQUIRED STAFFING MODEL
+
+At the top of Staff & Equipment add a compact Shift Staffing selector:
+
+Sergeant / Supervisor Present?
+
+Yes
+No
+
+Number of Officers
+
+1
+2
+
+The UI must support at least these real-world combinations:
+
+Sergeant + 1 Officer
+Sergeant + 2 Officers
+2 Officers with no Sergeant
+
+Do NOT assume the Sergeant is always present.
+
+PERSON-SPECIFIC CARDS
+
+Reorganize Staff & Equipment into separate cards:
+
+Sergeant / Supervisor
+
+Contains only the staff/equipment/accountability fields belonging to the Sergeant/Supervisor slot.
+
+Officer 1
+
+Contains only Officer 1's staff/equipment/accountability fields.
+
+Officer 2
+
+Contains only Officer 2's staff/equipment/accountability fields.
+
+Do not mix equipment belonging to different staff members into one giant section.
+
+Each person's information should visually read as one coherent assignment.
+
+COLLAPSE / N/A BEHAVIOR
+
+If:
+
+Sergeant / Supervisor Present = No
+
+collapse that entire card to a compact row such as:
+
+Sergeant / Supervisor — N/A
+
+and mark every applicable official Housing Log field for that absent staff slot as N/A.
+
+If:
+
+Number of Officers = 1
+
+collapse Officer 2 to:
+
+Officer 2 — N/A
+
+and mark every applicable official Housing Log field belonging to Officer 2 as N/A.
+
+This must save space on screen and also produce the correct N/A values in the finalized official Excel Housing Log.
+
+CRITICAL VALIDATION RULE
+
+An intentionally absent staff slot must NOT cause required-field validation errors.
+
+Existing validation/finalization must understand the difference between:
+
+a staff member who is present but has missing required information
+a staff slot deliberately marked N/A
+
+Do not simply hide required fields with CSS while leaving them invalid in the underlying form.
+
+Use the existing canonical Housing Log field/configuration system wherever possible.
+
+Do not create an unrelated second form model.
+
+TOGGLING BACK
+
+If an admin/officer changes:
+
+Sergeant: No → Yes
+
+or
+
+Officers: 1 → 2
+
+restore the appropriate card and make its applicable fields editable/required again.
+
+Handle previously entered values safely.
+
+Do not silently submit stale N/A values once that staff position has been turned back on.
+
+EXCEL EXPORT
+
+Verify the editable .xlsx output.
+
+For absent staff positions:
+
+appropriate staff-name fields show N/A
+corresponding assumed/relieved/accountability/equipment fields that require an entry show N/A
+formatting remains unchanged
+no empty required blanks are left merely because the UI card was collapsed
+
+Do not alter unrelated official workbook wording or layout.
+
+DRAFT / RESUME
+
+Persist the staffing selections in the Housing Log draft.
+
+If the officer saves:
+
+Sergeant = No
+Officers = 2
+
+and later resumes the draft, the same staffing configuration and collapsed/expanded cards must return correctly.
+
+VISUAL DESIGN
+
+Keep the current redesigned Housing Log layout.
+
+This is a targeted Staff & Equipment improvement, not another whole-page redesign.
+
+Make the top staffing selector immediately understandable.
+
+Use strong headings:
+
+SERGEANT / SUPERVISOR
+
+OFFICER 1
+
+OFFICER 2
+
+Each expanded card should show its own relevant equipment fields.
+
+Collapsed N/A cards should take very little vertical space.
+
+TEST THESE SCENARIOS
+
+Using FAKE data only:
+
+Sergeant + 1 officer
+Sergeant + 2 officers
+No Sergeant + 2 officers
+Toggle Sergeant Yes → No
+Toggle Sergeant No → Yes
+Toggle Officers 2 → 1
+Toggle Officers 1 → 2
+Save and resume each staffing configuration
+Finalize with absent positions and verify validation accepts intentional N/A fields
+Generate the editable Excel workbook for each configuration and verify N/A appears in the correct official locations
+
+Run all existing Housing Log, Excel, API, client, signature, package, admin and delivery tests afterward.
+
+Do not weaken existing tests.
+
+Do not change unrelated Housing Log/admin/email functionality.
+
+Before deployment, visually inspect Staff & Equipment on desktop, tablet and mobile.
+
+Report exactly what state/model changes were needed because this feature affects validation/export behavior, not merely presentation.
+
+End with:
+
+STAFF & EQUIPMENT WORKFLOW REDESIGN COMPLETE — READY FOR REVIEW

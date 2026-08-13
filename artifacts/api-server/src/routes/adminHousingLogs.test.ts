@@ -4,6 +4,7 @@ import express from "express";
 import JSZip from "jszip";
 import type {
   HousingLogArchiveResponse,
+  HousingLogDeliverySettings,
   HousingLogDraftInput,
   HousingLogListFilters,
   HousingLogSignatures,
@@ -26,6 +27,13 @@ import {
   HousingLogWorkbookRegistry,
   registerOfficialHousingLogWorkbook,
 } from "../housingLogs/excelTemplate/workbookRegistry";
+import {
+  DuplicateHousingLogRecipientError,
+  HousingLogAdditionalRecipientNotFoundError,
+  HousingLogPrimaryRecipientRequiredError,
+  type HousingLogAdditionalRecipientPatch,
+  type HousingLogDeliverySettingsRepository,
+} from "../housingLogs/deliverySettings";
 import type { HousingLogShiftPackage } from "../housingLogs/shiftPackage";
 import { createAdminHousingLogsRouter } from "./adminHousingLogs";
 
@@ -103,6 +111,98 @@ class FailingAdminRepository extends AdminMemoryRepository {
     FinalizedHousingLogMetadata[]
   > {
     throw new Error("sensitive archive failure marker");
+  }
+}
+
+class AdminMemoryDeliverySettingsRepository implements HousingLogDeliverySettingsRepository {
+  state: Omit<HousingLogDeliverySettings, "deliveryRecipients"> = {
+    primaryEmail: null,
+    additionalRecipients: [],
+    createdAt: null,
+    updatedAt: null,
+  };
+  private nextId = 1;
+  private tick = 0;
+
+  private now() {
+    this.tick += 1;
+    return new Date(Date.UTC(2026, 7, 12, 12, 0, this.tick)).toISOString();
+  }
+
+  private isDuplicate(email: string, excludedId?: string) {
+    const key = email.toLowerCase();
+    return (
+      this.state.primaryEmail?.toLowerCase() === key ||
+      this.state.additionalRecipients.some(
+        (recipient) =>
+          recipient.id !== excludedId && recipient.email.toLowerCase() === key,
+      )
+    );
+  }
+
+  async read() {
+    return structuredClone(this.state);
+  }
+
+  async setPrimary(email: string) {
+    if (
+      this.state.additionalRecipients.some(
+        (recipient) => recipient.email.toLowerCase() === email.toLowerCase(),
+      )
+    )
+      throw new DuplicateHousingLogRecipientError();
+    const now = this.now();
+    this.state.primaryEmail = email;
+    this.state.createdAt ??= now;
+    this.state.updatedAt = now;
+  }
+
+  async addAdditional(email: string) {
+    if (!this.state.primaryEmail)
+      throw new HousingLogPrimaryRecipientRequiredError();
+    if (this.isDuplicate(email)) throw new DuplicateHousingLogRecipientError();
+    const now = this.now();
+    this.state.additionalRecipients.push({
+      id: `recipient-${this.nextId++}`,
+      email,
+      active: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    this.state.updatedAt = now;
+  }
+
+  async updateAdditional(
+    id: string,
+    patch: HousingLogAdditionalRecipientPatch,
+  ) {
+    const recipient = this.state.additionalRecipients.find(
+      (item) => item.id === id,
+    );
+    if (!recipient) throw new HousingLogAdditionalRecipientNotFoundError();
+    const email = patch.email ?? recipient.email;
+    if (this.isDuplicate(email, id))
+      throw new DuplicateHousingLogRecipientError();
+    recipient.email = email;
+    recipient.active = patch.active ?? recipient.active;
+    recipient.updatedAt = this.now();
+    this.state.updatedAt = recipient.updatedAt;
+  }
+
+  async removeAdditional(id: string) {
+    const index = this.state.additionalRecipients.findIndex(
+      (recipient) => recipient.id === id,
+    );
+    if (index < 0) return false;
+    this.state.additionalRecipients.splice(index, 1);
+    this.state.updatedAt = this.now();
+    return true;
+  }
+}
+
+class FailingDeliverySettingsRepository extends AdminMemoryDeliverySettingsRepository {
+  override async read(): Promise<never> {
+    throw new Error("sensitive recipient failure marker");
   }
 }
 
@@ -255,6 +355,7 @@ test("every Housing Log admin archive route rejects unauthorized sessions", asyn
         "/api/admin/housing-logs/archive",
         "/api/admin/housing-logs/unknown/excel",
         "/api/admin/housing-logs/shift-package/2026-08-12/2",
+        "/api/admin/housing-logs/delivery-settings",
       ]) {
         const response = await fetch(`${baseUrl}${path}`);
         assert.equal(response.status, 401);
@@ -338,6 +439,201 @@ test("shift package generation failures receive controlled JSON", async () => {
       const cookie = await login(baseUrl);
       const response = await fetch(
         `${baseUrl}/api/admin/housing-logs/shift-package/2026-08-12/2`,
+        { headers: { cookie } },
+      );
+      assert.equal(response.status, 500);
+      const body = (await response.json()) as { error: string };
+      assert.equal(
+        body.error,
+        "The request could not be completed. Try again.",
+      );
+      assert.equal(JSON.stringify(body).includes("sensitive"), false);
+    },
+  );
+});
+
+test("recipient settings API persists primary and additional recipient lifecycle without changing logs", async () => {
+  const logRepository = new AdminMemoryRepository([
+    finalizedRecord("immutable-log", "B", "1"),
+  ]);
+  const deliverySettingsRepository =
+    new AdminMemoryDeliverySettingsRepository();
+  const before = JSON.stringify(logRepository.records);
+  await withServer(
+    {
+      repository: logRepository,
+      deliverySettingsRepository,
+      passwordProvider: () => "correct horse",
+    },
+    async (baseUrl) => {
+      const cookie = await login(baseUrl);
+      const request = (path: string, init?: RequestInit) =>
+        fetch(`${baseUrl}${path}`, {
+          ...init,
+          headers: {
+            cookie,
+            ...(init?.body ? { "content-type": "application/json" } : {}),
+            ...init?.headers,
+          },
+        });
+      const root = "/api/admin/housing-logs/delivery-settings";
+
+      let response = await request(root);
+      assert.equal(response.status, 200);
+      let settings = (await response.json()) as HousingLogDeliverySettings;
+      assert.equal(settings.primaryEmail, null);
+      assert.deepEqual(settings.deliveryRecipients, []);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+
+      response = await request(`${root}/primary`, {
+        method: "PUT",
+        body: JSON.stringify({ email: "  Sergeant@Example.com " }),
+      });
+      assert.equal(response.status, 200);
+      settings = (await response.json()) as HousingLogDeliverySettings;
+      assert.equal(settings.primaryEmail, "Sergeant@Example.com");
+      assert.deepEqual(settings.deliveryRecipients, ["Sergeant@Example.com"]);
+
+      response = await request(`${root}/primary`, {
+        method: "PUT",
+        body: JSON.stringify({ email: "captain@example.com" }),
+      });
+      assert.equal(response.status, 200);
+      settings = (await response.json()) as HousingLogDeliverySettings;
+      assert.equal(settings.primaryEmail, "captain@example.com");
+
+      response = await request(`${root}/additional`, {
+        method: "POST",
+        body: JSON.stringify({ email: "backup@example.com" }),
+      });
+      assert.equal(response.status, 201);
+      settings = (await response.json()) as HousingLogDeliverySettings;
+      const recipientId = settings.additionalRecipients[0]!.id;
+      assert.deepEqual(settings.deliveryRecipients, [
+        "captain@example.com",
+        "backup@example.com",
+      ]);
+
+      response = await request(`${root}/additional/${recipientId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ active: false }),
+      });
+      assert.equal(response.status, 200);
+      settings = (await response.json()) as HousingLogDeliverySettings;
+      assert.equal(settings.additionalRecipients[0]!.active, false);
+      assert.deepEqual(settings.deliveryRecipients, ["captain@example.com"]);
+
+      response = await request(`${root}/additional/${recipientId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          email: "watchcommander@example.org",
+          active: true,
+        }),
+      });
+      assert.equal(response.status, 200);
+      settings = (await response.json()) as HousingLogDeliverySettings;
+      assert.deepEqual(settings.deliveryRecipients, [
+        "captain@example.com",
+        "watchcommander@example.org",
+      ]);
+
+      response = await request(`${root}/additional/${recipientId}`, {
+        method: "DELETE",
+      });
+      assert.equal(response.status, 200);
+      settings = (await response.json()) as HousingLogDeliverySettings;
+      assert.deepEqual(settings.additionalRecipients, []);
+      assert.deepEqual(settings.deliveryRecipients, ["captain@example.com"]);
+      assert.equal(JSON.stringify(logRepository.records), before);
+    },
+  );
+});
+
+test("recipient settings API validates malformed, duplicate, and unknown mutations", async () => {
+  const deliverySettingsRepository =
+    new AdminMemoryDeliverySettingsRepository();
+  await withServer(
+    {
+      repository: new AdminMemoryRepository(),
+      deliverySettingsRepository,
+      passwordProvider: () => "correct horse",
+    },
+    async (baseUrl) => {
+      const cookie = await login(baseUrl);
+      const root = `${baseUrl}/api/admin/housing-logs/delivery-settings`;
+      const mutate = (path: string, method: string, body: unknown) =>
+        fetch(`${root}${path}`, {
+          method,
+          headers: { cookie, "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+      let response = await mutate("/additional", "POST", {
+        email: "backup@example.com",
+      });
+      assert.equal(response.status, 409);
+      response = await mutate("/primary", "PUT", { email: "not-an-email" });
+      assert.equal(response.status, 400);
+      response = await mutate("/primary", "PUT", {
+        email: "primary@example.com",
+        unexpected: true,
+      });
+      assert.equal(response.status, 400);
+      response = await mutate("/primary", "PUT", {
+        email: "primary@example.com",
+      });
+      assert.equal(response.status, 200);
+      response = await mutate("/additional", "POST", {
+        email: "PRIMARY@EXAMPLE.COM",
+      });
+      assert.equal(response.status, 409);
+      response = await mutate("/additional/missing", "PATCH", {
+        active: "yes",
+      });
+      assert.equal(response.status, 400);
+      response = await mutate("/additional/missing", "DELETE", undefined);
+      assert.equal(response.status, 404);
+    },
+  );
+});
+
+test("expired sessions cannot read recipient settings", async () => {
+  let now = 1_000;
+  const sessions = new HousingLogAdminSessions(() => now, 100);
+  const token = sessions.issue();
+  now += 101;
+  await withServer(
+    {
+      repository: new AdminMemoryRepository(),
+      deliverySettingsRepository: new AdminMemoryDeliverySettingsRepository(),
+      passwordProvider: () => "correct horse",
+      sessions,
+    },
+    async (baseUrl) => {
+      const response = await fetch(
+        `${baseUrl}/api/admin/housing-logs/delivery-settings`,
+        {
+          headers: {
+            cookie: `${HOUSING_LOG_ADMIN_COOKIE}=${encodeURIComponent(token)}`,
+          },
+        },
+      );
+      assert.equal(response.status, 401);
+    },
+  );
+});
+
+test("recipient settings failures return generic controlled JSON", async () => {
+  await withServer(
+    {
+      repository: new AdminMemoryRepository(),
+      deliverySettingsRepository: new FailingDeliverySettingsRepository(),
+      passwordProvider: () => "correct horse",
+    },
+    async (baseUrl) => {
+      const cookie = await login(baseUrl);
+      const response = await fetch(
+        `${baseUrl}/api/admin/housing-logs/delivery-settings`,
         { headers: { cookie } },
       );
       assert.equal(response.status, 500);
@@ -489,6 +785,7 @@ test("authenticated archive and package routes report database unavailability wi
       for (const path of [
         "/api/admin/housing-logs/archive",
         "/api/admin/housing-logs/shift-package/2026-08-12/2",
+        "/api/admin/housing-logs/delivery-settings",
       ]) {
         const response = await fetch(`${baseUrl}${path}`, {
           headers: {

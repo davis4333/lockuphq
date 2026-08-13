@@ -1,5 +1,6 @@
 import type {
   HousingLogArchiveResponse,
+  HousingLogDeliverySettings,
   HousingShift,
 } from "@workspace/housing-log";
 
@@ -86,5 +87,65 @@ export async function downloadHousingLogShiftPackage(
   return downloadResponse(
     `/api/admin/housing-logs/shift-package/${encodeURIComponent(logDate)}/${encodeURIComponent(shift)}`,
     `Housing-Logs_${logDate}_Shift-${shift}.zip`,
+  );
+}
+
+async function deliverySettingsRequest(
+  endpoint: string,
+  init?: RequestInit,
+): Promise<HousingLogDeliverySettings> {
+  const response = await fetch(endpoint, {
+    credentials: "same-origin",
+    ...init,
+    headers: {
+      accept: "application/json",
+      ...(init?.body ? { "content-type": "application/json" } : {}),
+      ...init?.headers,
+    },
+  });
+  if (!response.ok) await errorFromResponse(response);
+  return response.json() as Promise<HousingLogDeliverySettings>;
+}
+
+const deliverySettingsBase = "/api/admin/housing-logs/delivery-settings";
+
+export function getHousingLogDeliverySettings(): Promise<HousingLogDeliverySettings> {
+  return deliverySettingsRequest(deliverySettingsBase);
+}
+
+export function setHousingLogPrimaryRecipient(
+  email: string,
+): Promise<HousingLogDeliverySettings> {
+  return deliverySettingsRequest(`${deliverySettingsBase}/primary`, {
+    method: "PUT",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function addHousingLogAdditionalRecipient(
+  email: string,
+): Promise<HousingLogDeliverySettings> {
+  return deliverySettingsRequest(`${deliverySettingsBase}/additional`, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function updateHousingLogAdditionalRecipient(
+  id: string,
+  patch: { email?: string; active?: boolean },
+): Promise<HousingLogDeliverySettings> {
+  return deliverySettingsRequest(
+    `${deliverySettingsBase}/additional/${encodeURIComponent(id)}`,
+    { method: "PATCH", body: JSON.stringify(patch) },
+  );
+}
+
+export function removeHousingLogAdditionalRecipient(
+  id: string,
+): Promise<HousingLogDeliverySettings> {
+  return deliverySettingsRequest(
+    `${deliverySettingsBase}/additional/${encodeURIComponent(id)}`,
+    { method: "DELETE" },
   );
 }

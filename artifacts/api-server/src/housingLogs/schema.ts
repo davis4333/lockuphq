@@ -1,4 +1,5 @@
 import {
+  boolean,
   check,
   date,
   index,
@@ -6,6 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type {
@@ -16,6 +18,8 @@ import type {
 import {
   HOUSING_LOG_FINALIZATION_CHECK_SQL,
   HOUSING_LOG_FINALIZATION_CONSTRAINT,
+  HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CHECK_SQL,
+  HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CONSTRAINT,
   HOUSING_LOG_STATUS_CHECK_SQL,
   HOUSING_LOG_STATUS_CONSTRAINT,
 } from "./schemaMigrations";
@@ -51,5 +55,51 @@ export const housingLogs = pgTable(
       HOUSING_LOG_FINALIZATION_CONSTRAINT,
       sql.raw(HOUSING_LOG_FINALIZATION_CHECK_SQL),
     ),
+  ],
+);
+
+export const housingLogDeliverySettings = pgTable(
+  "housing_log_delivery_settings",
+  {
+    id: text("id").primaryKey(),
+    primaryEmail: text("primary_email"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  () => [
+    check(
+      HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CONSTRAINT,
+      sql.raw(HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CHECK_SQL),
+    ),
+  ],
+);
+
+export const housingLogDeliveryRecipients = pgTable(
+  "housing_log_delivery_recipients",
+  {
+    id: text("id").primaryKey(),
+    settingsId: text("settings_id")
+      .notNull()
+      .references(() => housingLogDeliverySettings.id, {
+        onDelete: "cascade",
+      }),
+    email: text("email").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("housing_log_delivery_recipients_email_ci_idx").on(
+      sql`lower(${table.email})`,
+    ),
+    index("housing_log_delivery_recipients_active_idx").on(table.active),
   ],
 );

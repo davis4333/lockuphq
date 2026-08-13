@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getTableConfig } from "drizzle-orm/pg-core";
-import { housingLogs } from "./schema";
 import {
+  housingLogDeliveryRecipients,
+  housingLogDeliverySettings,
+  housingLogs,
+} from "./schema";
+import {
+  HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CHECK_SQL,
+  HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CONSTRAINT,
   HOUSING_LOG_FINALIZATION_CHECK_SQL,
   HOUSING_LOG_FINALIZATION_CONSTRAINT,
   HOUSING_LOG_STATUS_CHECK_SQL,
@@ -28,6 +34,49 @@ test("Drizzle and bootstrap migrations enforce the same lifecycle constraints", 
     migrationSql,
     /COALESCE\(finalized_at, updated_at, created_at, now\(\)\)/,
   );
+});
+
+test("delivery settings Drizzle schema matches the append-only migration", () => {
+  const settingsConfig = getTableConfig(housingLogDeliverySettings);
+  assert.ok(
+    settingsConfig.checks.some(
+      (constraint) =>
+        constraint.name === HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CONSTRAINT,
+    ),
+  );
+  const recipientConfig = getTableConfig(housingLogDeliveryRecipients);
+  assert.ok(
+    recipientConfig.indexes.some(
+      (index) =>
+        index.config.name === "housing_log_delivery_recipients_email_ci_idx" &&
+        index.config.unique,
+    ),
+  );
+  assert.equal(recipientConfig.foreignKeys.length, 1);
+
+  const migration = housingLogSchemaMigrations.find(
+    (item) => item.version === 2,
+  );
+  assert.ok(migration);
+  assert.match(
+    migration.sql,
+    /CREATE TABLE IF NOT EXISTS housing_log_delivery_settings/,
+  );
+  assert.match(
+    migration.sql,
+    /CREATE TABLE IF NOT EXISTS housing_log_delivery_recipients/,
+  );
+  assert.ok(
+    migration.sql.includes(
+      `CHECK (${HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CHECK_SQL})`,
+    ),
+  );
+  assert.match(
+    migration.sql,
+    /UNIQUE INDEX IF NOT EXISTS[\s\S]*lower\(email\)/,
+  );
+  assert.match(migration.sql, /ON DELETE CASCADE/);
+  assert.doesNotMatch(migration.sql, /ALTER TABLE housing_logs\b/);
 });
 
 test("Housing Log migrations are ordered and uniquely versioned", () => {

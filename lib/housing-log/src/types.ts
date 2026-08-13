@@ -126,6 +126,22 @@ export type HousingLogArchiveResponse = {
   expectedHousingUnits: HousingUnit[];
 };
 
+export type HousingLogAdditionalRecipient = {
+  id: string;
+  email: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type HousingLogDeliverySettings = {
+  primaryEmail: string | null;
+  additionalRecipients: HousingLogAdditionalRecipient[];
+  deliveryRecipients: string[];
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type HousingLogListFilters = {
   status?: HousingLogStatus;
   housingUnit?: HousingUnit;

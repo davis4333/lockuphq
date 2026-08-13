@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
 import {
   getHousingLogConfig,
   housingShifts,
@@ -17,6 +17,20 @@ import {
   setAdminSessionCookie,
   verifyAdminPassword,
 } from "../housingLogs/adminAuth";
+import {
+  addHousingLogAdditionalRecipient,
+  DuplicateHousingLogRecipientError,
+  getHousingLogDeliverySettings,
+  getHousingLogDeliverySettingsRepository,
+  HousingLogAdditionalRecipientNotFoundError,
+  HousingLogPrimaryRecipientRequiredError,
+  InvalidHousingLogDeliverySettingsInputError,
+  InvalidHousingLogRecipientEmailError,
+  removeHousingLogAdditionalRecipient,
+  setHousingLogPrimaryRecipient,
+  type HousingLogDeliverySettingsRepository,
+  updateHousingLogAdditionalRecipient,
+} from "../housingLogs/deliverySettings";
 import {
   getHousingLogRepository,
   type HousingLogRepository,
@@ -41,10 +55,41 @@ type AdminHousingLogsRouterOptions = {
     logDate: string,
     shift: HousingShift,
   ) => Promise<HousingLogShiftPackage>;
+  deliverySettingsRepository?: HousingLogDeliverySettingsRepository;
 };
 
 const safeFilePart = (value: string) =>
   value.replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+
+function isObjectBody(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasOnlyKeys(body: Record<string, unknown>, allowed: string[]) {
+  return Object.keys(body).every((key) => allowed.includes(key));
+}
+
+function sendDeliverySettingsError(error: unknown, response: Response) {
+  if (
+    error instanceof InvalidHousingLogRecipientEmailError ||
+    error instanceof InvalidHousingLogDeliverySettingsInputError
+  ) {
+    response.status(400).json({ error: (error as Error).message });
+    return true;
+  }
+  if (
+    error instanceof DuplicateHousingLogRecipientError ||
+    error instanceof HousingLogPrimaryRecipientRequiredError
+  ) {
+    response.status(409).json({ error: error.message });
+    return true;
+  }
+  if (error instanceof HousingLogAdditionalRecipientNotFoundError) {
+    response.status(404).json({ error: error.message });
+    return true;
+  }
+  return false;
+}
 
 export function createAdminHousingLogsRouter(
   options: AdminHousingLogsRouterOptions = {},
@@ -68,6 +113,9 @@ export function createAdminHousingLogsRouter(
         repository: records,
         workbookRegistry,
       }));
+  const deliverySettingsRepository =
+    options.deliverySettingsRepository ??
+    getHousingLogDeliverySettingsRepository();
 
   router.post("/admin/session", (request, response) => {
     const configuredPassword = passwordProvider();
@@ -114,7 +162,7 @@ export function createAdminHousingLogsRouter(
     if (requiresConfiguredDatabase && !(await ensureHousingLogSchema())) {
       response.status(503).json({
         error:
-          "Housing Log archive persistence is temporarily unavailable and will retry automatically.",
+          "Housing Log persistence is temporarily unavailable and will retry automatically.",
       });
       return;
     }
@@ -134,6 +182,105 @@ export function createAdminHousingLogsRouter(
     response.setHeader("Cache-Control", "no-store");
     response.json(body);
   });
+
+  router.get(
+    "/admin/housing-logs/delivery-settings",
+    async (_request, response) => {
+      const settings = await getHousingLogDeliverySettings(
+        deliverySettingsRepository,
+      );
+      response.setHeader("Cache-Control", "no-store");
+      response.json(settings);
+    },
+  );
+
+  router.put(
+    "/admin/housing-logs/delivery-settings/primary",
+    async (request, response) => {
+      if (
+        !isObjectBody(request.body) ||
+        !hasOnlyKeys(request.body, ["email"])
+      ) {
+        response.status(400).json({ error: "Provide only a primary email." });
+        return;
+      }
+      try {
+        const settings = await setHousingLogPrimaryRecipient(
+          request.body.email,
+          deliverySettingsRepository,
+        );
+        response.setHeader("Cache-Control", "no-store");
+        response.json(settings);
+      } catch (error) {
+        if (!sendDeliverySettingsError(error, response)) throw error;
+      }
+    },
+  );
+
+  router.post(
+    "/admin/housing-logs/delivery-settings/additional",
+    async (request, response) => {
+      if (
+        !isObjectBody(request.body) ||
+        !hasOnlyKeys(request.body, ["email"])
+      ) {
+        response.status(400).json({ error: "Provide only a recipient email." });
+        return;
+      }
+      try {
+        const settings = await addHousingLogAdditionalRecipient(
+          request.body.email,
+          deliverySettingsRepository,
+        );
+        response.setHeader("Cache-Control", "no-store");
+        response.status(201).json(settings);
+      } catch (error) {
+        if (!sendDeliverySettingsError(error, response)) throw error;
+      }
+    },
+  );
+
+  router.patch(
+    "/admin/housing-logs/delivery-settings/additional/:id",
+    async (request, response) => {
+      if (
+        !isObjectBody(request.body) ||
+        !hasOnlyKeys(request.body, ["email", "active"])
+      ) {
+        response.status(400).json({
+          error: "Provide only a recipient email or active state.",
+        });
+        return;
+      }
+      try {
+        const settings = await updateHousingLogAdditionalRecipient(
+          String(request.params["id"]),
+          request.body,
+          deliverySettingsRepository,
+        );
+        response.setHeader("Cache-Control", "no-store");
+        response.json(settings);
+      } catch (error) {
+        if (!sendDeliverySettingsError(error, response)) throw error;
+      }
+    },
+  );
+
+  router.delete(
+    "/admin/housing-logs/delivery-settings/additional/:id",
+    async (request, response) => {
+      try {
+        const settings = await removeHousingLogAdditionalRecipient(
+          String(request.params["id"]),
+          deliverySettingsRepository,
+        );
+        response.setHeader("Cache-Control", "no-store");
+        response.json(settings);
+      } catch (error) {
+        if (!sendDeliverySettingsError(error, response)) throw error;
+      }
+    },
+  );
 
   router.get(
     "/admin/housing-logs/shift-package/:logDate/:shift",

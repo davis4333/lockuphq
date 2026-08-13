@@ -48,6 +48,14 @@ export type HousingLogLocalWorkingState = {
   composer: HousingLogLocalComposerState;
   /** ISO timestamp of the last successful local save. */
   savedAt: string;
+  /**
+   * Set immediately after the server confirms a successful finalize, before
+   * the local record is removed. If IndexedDB removal then fails and this
+   * survives to a later page load, the officer must see "already finalized,
+   * remove the local copy" — never an editable draft — even though the
+   * server-side write already fully succeeded.
+   */
+  finalizedConfirmation?: { id: string; finalizedAt: string };
 };
 
 export function createSubmissionId(): string {

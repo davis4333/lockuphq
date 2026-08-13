@@ -267,6 +267,11 @@ export default function HousingLog() {
 
   // ── Clear Current Log confirmation ──
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [clearError, setClearError] = useState<string>();
+  // True once the server has confirmed finalization but the local IndexedDB
+  // copy could not (yet) be removed — the record is safely finalized either
+  // way; this only tracks whether the device still holds a stale local copy.
+  const [localClearPending, setLocalClearPending] = useState(false);
 
   // ── Demo mode (?demo=1) — proof-of-concept fake-data seeding only ──
   const [isDemoMode] = useState(
@@ -347,6 +352,19 @@ export default function HousingLog() {
       setActiveTask(state.activeTask as HousingLogTaskId);
     }
     setLocalSavedAt(new Date(state.savedAt));
+    // A local record that still carries a finalizedConfirmation means the
+    // server-side finalize already succeeded but removing this device's
+    // copy failed (or hadn't finished) before the page was left/reloaded.
+    // It must never come back as an editable draft.
+    if (state.finalizedConfirmation) {
+      setStatus("finalized");
+      setFinalizedAt(state.finalizedConfirmation.finalizedAt);
+      setLocalClearPending(true);
+    } else {
+      setStatus("draft");
+      setFinalizedAt(undefined);
+      setLocalClearPending(false);
+    }
   };
 
   // ── Restore on mount ──
@@ -390,8 +408,6 @@ export default function HousingLog() {
       skipNextAutosaveRef.current = true;
       applyLocalState(emptyHousingLogLocalWorkingState());
       setRestoreState("none");
-      setFinalizedAt(undefined);
-      setStatus("draft");
     });
     return () => {
       unsubscribeStatus();
@@ -400,6 +416,31 @@ export default function HousingLog() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Builds the local-store payload from current form state. `extra` lets
+  // the finalize flow stamp a `finalizedConfirmation` onto the same shape
+  // without duplicating this construction logic.
+  const buildLocalState = (
+    extra: Partial<HousingLogLocalWorkingState> = {},
+  ): HousingLogLocalWorkingState =>
+    toLocalWorkingState(emptyHousingLogLocalWorkingState(), {
+      submissionId,
+      housingUnit,
+      shift,
+      logDate,
+      templateVersion: config?.templateVersion,
+      values,
+      events,
+      signatures,
+      isDemoData,
+      activeTask,
+      composer: {
+        time: composerTime,
+        activity: composerActivity,
+        initials: composerInitials,
+      },
+      ...extra,
+    });
 
   // ── Debounced local autosave ──
   useEffect(() => {
@@ -412,23 +453,7 @@ export default function HousingLog() {
     setLocalSaveStatus("saving");
     const timer = setTimeout(() => {
       void (async () => {
-        const state = toLocalWorkingState(emptyHousingLogLocalWorkingState(), {
-          submissionId,
-          housingUnit,
-          shift,
-          logDate,
-          templateVersion: config?.templateVersion,
-          values,
-          events,
-          signatures,
-          isDemoData,
-          activeTask,
-          composer: {
-            time: composerTime,
-            activity: composerActivity,
-            initials: composerInitials,
-          },
-        });
+        const state = buildLocalState();
         const result = await saveHousingLogLocalState(state);
         if (result.ok) {
           setLocalSaveStatus("saved");
@@ -516,17 +541,46 @@ export default function HousingLog() {
   };
 
   const clearCurrentLog = async () => {
+    setClearError(undefined);
+    // Only claim success — and only reset the visible form — once the
+    // device copy is actually gone. A failed IndexedDB delete must never be
+    // reported as "cleared" nor discard what's still on screen.
+    const result = await clearHousingLogLocalState();
+    if (!result.ok) {
+      setClearError(
+        "The Housing Log could not be cleared from this device. Nothing was intentionally deleted. Try again before starting another Housing Log.",
+      );
+      setClearConfirmOpen(false);
+      return;
+    }
     resetFormState();
     setHousingUnit("");
     setShift("");
     setLogDate(today);
+    setLocalClearPending(false);
     skipNextAutosaveRef.current = true;
-    await clearHousingLogLocalState();
     tabLockRef.current?.announceCleared();
     setLocalSaveStatus("idle");
     setLocalSavedAt(undefined);
     setRestoreState("none");
     setClearConfirmOpen(false);
+  };
+
+  /** Retry action for a finalized record whose local copy failed to clear. */
+  const removeLocalCopy = async () => {
+    setClearError(undefined);
+    const result = await clearHousingLogLocalState();
+    if (!result.ok) {
+      setClearError(
+        "The Housing Log could not be cleared from this device. Nothing was intentionally deleted. Try again before starting another Housing Log.",
+      );
+      return;
+    }
+    setLocalClearPending(false);
+    skipNextAutosaveRef.current = true;
+    tabLockRef.current?.announceCleared();
+    setLocalSaveStatus("idle");
+    setLocalSavedAt(undefined);
   };
 
   // ── Demo seeding — populates the local form only; never saves server-side
@@ -701,14 +755,31 @@ export default function HousingLog() {
     try {
       // Never clear local data until the server confirms success — a
       // network failure, timeout, or validation rejection must leave this
-      // Housing Log completely intact for the officer to retry.
+      // Housing Log completely intact for the officer to retry. A 409 here
+      // means this submissionId already finalized with different content
+      // (the officer edited the form after an earlier lost response) — the
+      // server refused to silently treat this as the same submission, and
+      // the local data below is equally left untouched.
       const confirmation = await finalizeHousingLog({ ...input, submissionId });
       setStatus("finalized");
       setFinalizedAt(confirmation.finalizedAt);
       setNotice("Housing Log finalized successfully.");
       skipNextAutosaveRef.current = true;
-      await clearHousingLogLocalState();
-      tabLockRef.current?.announceCleared();
+      // The record is now safely finalized server-side regardless of what
+      // happens next. Stamp that fact into the local copy immediately, so
+      // if removing it below fails (or a reload happens before it
+      // finishes), this device can never show it again as an editable
+      // draft or resubmit it as a new record.
+      await saveHousingLogLocalState(
+        buildLocalState({ finalizedConfirmation: confirmation }),
+      );
+      const clearResult = await clearHousingLogLocalState();
+      if (clearResult.ok) {
+        setLocalClearPending(false);
+        tabLockRef.current?.announceCleared();
+      } else {
+        setLocalClearPending(true);
+      }
     } catch (error) {
       if (error instanceof HousingLogApiError && error.issues.length)
         setIssues(error.issues);
@@ -982,6 +1053,15 @@ export default function HousingLog() {
         </div>
       )}
 
+      {clearError && !localClearPending && (
+        <div
+          className="mb-3 rounded-lg border border-red-400/60 bg-red-950/60 px-4 py-2.5 text-xs font-bold text-red-100"
+          role="alert"
+        >
+          {clearError}
+        </div>
+      )}
+
       {/* ── Compact current-log summary header ── */}
       <div
         className={`${workPanel} sticky top-2 z-30 p-3 sm:p-4`}
@@ -1073,6 +1153,31 @@ export default function HousingLog() {
                 view, download, or correct it there. Start the next Housing
                 Log below.
               </p>
+              {localClearPending && (
+                <div className="mt-3 rounded-lg border border-amber-400/60 bg-amber-950/50 p-3">
+                  <p className="text-xs font-black uppercase tracking-[0.08em] text-amber-200">
+                    Device copy not yet removed
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-100/85">
+                    Finalization succeeded — the record is safely stored.
+                    This device's local copy of it could not be removed yet,
+                    though. It cannot be edited or resubmitted; try removing
+                    it below.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void removeLocalCopy()}
+                    className="mt-2 rounded-md border border-amber-300/60 bg-amber-900/40 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.08em] text-amber-50 hover:bg-amber-800/50"
+                  >
+                    Remove Local Copy
+                  </button>
+                  {clearError && (
+                    <p className="mt-2 text-[11px] text-amber-100" role="alert">
+                      {clearError}
+                    </p>
+                  )}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={startNextLog}
@@ -1682,7 +1787,7 @@ export default function HousingLog() {
                             setComposerTime(event.target.value);
                             setComposerError(undefined);
                           }}
-                          className={hudInput}
+                          className={`${hudInput} min-w-0 flex-1`}
                         />
                         <button
                           type="button"

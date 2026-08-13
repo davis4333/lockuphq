@@ -72,7 +72,20 @@ export function createHousingLogTabLock(): HousingLogTabLock {
     }
   };
 
-  channel.postMessage({ type: "announce", tabId } satisfies Message);
+  const announce = () => {
+    if (!settled)
+      channel.postMessage({ type: "announce", tabId } satisfies Message);
+  };
+  // A single announce can be lost if two tabs construct their
+  // BroadcastChannel within the same instant (message delivery can briefly
+  // lag behind construction) — re-announcing a couple of times inside the
+  // claim window is cheap insurance against that without adding any real
+  // coordination complexity.
+  announce();
+  const retryTimers = [
+    setTimeout(announce, Math.round(CLAIM_WINDOW_MS * 0.3)),
+    setTimeout(announce, Math.round(CLAIM_WINDOW_MS * 0.65)),
+  ];
   const claimTimer = setTimeout(() => {
     if (!settled) {
       settled = true;
@@ -95,6 +108,7 @@ export function createHousingLogTabLock(): HousingLogTabLock {
       channel.postMessage({ type: "cleared" } satisfies Message),
     close: () => {
       clearTimeout(claimTimer);
+      for (const timer of retryTimers) clearTimeout(timer);
       channel.close();
     },
   };

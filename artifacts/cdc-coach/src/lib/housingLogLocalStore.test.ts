@@ -46,3 +46,11 @@ test("a structurally valid record from a different schema version is still plaus
   assert.ok(isPlausibleWorkingState(state));
   assert.notEqual(state.schemaVersion, HOUSING_LOG_LOCAL_SCHEMA_VERSION);
 });
+
+test("a working state carrying a finalizedConfirmation is still plausible", () => {
+  const state = {
+    ...emptyHousingLogLocalWorkingState(),
+    finalizedConfirmation: { id: "abc", finalizedAt: "2026-08-13T00:00:00.000Z" },
+  };
+  assert.ok(isPlausibleWorkingState(state));
+});

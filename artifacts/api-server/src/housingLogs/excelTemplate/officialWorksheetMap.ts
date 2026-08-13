@@ -84,6 +84,21 @@ function blankValues(template: string, values: readonly string[]): string {
   return remaining.length ? `${output} [${remaining.join(" | ")}]` : output;
 }
 
+/**
+ * Every canonical time value is stored and rendered in unambiguous 24-hour
+ * HH:MM form, so an "AM / PM" (or "AM/PM") choice immediately following one
+ * in official template wording is always resolvable, never a genuine open
+ * question for the officer — leaving both words in a generated worksheet
+ * reads as an unfinished form. Resolves it to the single correct word.
+ */
+export function resolveAmPmPlaceholders(text: string): string {
+  return text.replace(
+    /\b([01]?\d|2[0-3]):([0-5]\d)(\s*)AM\s*\/\s*PM\b/gi,
+    (_match, hours: string, minutes: string, spacer: string) =>
+      `${hours}:${minutes}${spacer}${Number(hours) >= 12 ? "PM" : "AM"}`,
+  );
+}
+
 const write = (
   address: string,
   coverageKeys: readonly string[],
@@ -174,12 +189,30 @@ function findSpanEnd(
   };
   const ending = endings[key];
   if (!ending) return start;
-  return (
+  const endingRow =
     rows.find(
       (row) =>
         row.row >= start && row.row <= start + 5 && ending.test(rowText(row)),
-    )?.row ?? start
+    )?.row ?? start;
+  // The row matching the ending phrase doesn't always also carry this
+  // activity's fill-in blanks — some official worksheets wrap the same
+  // sentence across one extra row depending on shift wording length (e.g.
+  // 2_CDEFG's lockInspection puts "occupancy changes was conducted by" on
+  // one row and the "Sergeant / Officer ____, complete at ____" blanks on
+  // the next). Only reach past the ending row when the whole span up to
+  // it has no blanks at all — if a blank already exists in-span (as for
+  // preaAnnouncement, whose blank is on its very first row), extending
+  // further would just make the reverse fill-row search latch onto some
+  // unrelated later row's underscores instead.
+  const spanHasBlanks = rows.some(
+    (row) =>
+      row.row >= start && row.row <= endingRow && /_{2,}/.test(rowText(row)),
   );
+  if (!spanHasBlanks) {
+    const nextRow = rows.find((row) => row.row === endingRow + 1);
+    if (nextRow && /_{2,}/.test(rowText(nextRow))) return nextRow.row;
+  }
+  return endingRow;
 }
 
 function activityWrites(
@@ -434,14 +467,14 @@ function equipmentWrites(
       /Off-going shift advised the status of all passes/i,
       ["equipment.passesAccounted", "equipment.unaccountedPasses"],
       (record) =>
-        `condition. Off-going shift advised the status of all passes Yes / No [${stored(record, "equipment.passesAccounted")}], ` +
+        `condition. Off-going shift advised the status of all passes ${stored(record, "equipment.passesAccounted")}, ` +
         `any passes unaccounted for ${stored(record, "equipment.unaccountedPasses")},`,
     );
     add(
       /incident report submitted/i,
       ["equipment.incidentReport"],
       (record) =>
-        `Shift Supervisor notified, and an incident report submitted Yes / No / N/A [${stored(record, "equipment.incidentReport")}]`,
+        `Shift Supervisor notified, and an incident report submitted ${stored(record, "equipment.incidentReport")}`,
     );
   }
   add(
@@ -449,7 +482,7 @@ function equipmentWrites(
     ["equipment.firstAidSeal", "equipment.ppeKit"],
     (record) =>
       `First Aid Kit accounted for and secured with seal ${stored(record, "equipment.firstAidSeal")}, ` +
-      `PPE kit present Yes / No [${stored(record, "equipment.ppeKit")}], One-way breathing mask`,
+      `PPE kit present ${stored(record, "equipment.ppeKit")}, One-way breathing mask`,
   );
   add(
     /in first aid kit/i,
@@ -459,21 +492,21 @@ function equipmentWrites(
       "equipment.fireAlarm",
     ],
     (record) =>
-      `in first aid kit Yes / No [${stored(record, "equipment.breathingMask")}] ` +
-      `Fire extinguishers present / fully charged Yes / No [${stored(record, "equipment.fireExtinguishers")}] ` +
-      `Fire alarm operational Yes / No [${stored(record, "equipment.fireAlarm")}]`,
+      `in first aid kit ${stored(record, "equipment.breathingMask")} ` +
+      `Fire extinguishers present / fully charged ${stored(record, "equipment.fireExtinguishers")} ` +
+      `Fire alarm operational ${stored(record, "equipment.fireAlarm")}`,
   );
   add(
     /Equipment inventory conducted/i,
     ["equipment.inventoryComplete"],
     (record) =>
-      `Equipment inventory conducted, all assigned equipment accounted for and in serviceable condition Yes / No [${stored(record, "equipment.inventoryComplete")}]`,
+      `Equipment inventory conducted, all assigned equipment accounted for and in serviceable condition ${stored(record, "equipment.inventoryComplete")}`,
   );
   add(
     /Post orders read and signed/i,
     ["equipment.postOrders"],
     (record) =>
-      `Post orders read and signed by all Officers assigned Yes / No [${stored(record, "equipment.postOrders")}]`,
+      `Post orders read and signed by all Officers assigned ${stored(record, "equipment.postOrders")}`,
   );
   if (config.housingUnit !== "Infirmary") {
     add(

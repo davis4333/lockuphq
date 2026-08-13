@@ -17,6 +17,7 @@ import {
   generateSignatureStrokePoints,
   groupForFieldKey,
   seededRng,
+  shiftRelativeMinutes,
 } from "./housingLogDemoSeed";
 
 const FAKE_SIGNATURE = "data:image/png;base64,dGVzdA==";
@@ -105,14 +106,22 @@ test("count totals reconcile from seeded component values", () => {
   }
 });
 
-test("events are generated in strictly increasing entered order", () => {
+test("events are generated in strictly increasing entered order, across a midnight rollover", () => {
+  // B/1 is the overnight shift (23:00 -> 07:00): a naive string comparison
+  // of HH:MM values breaks the moment the timeline crosses midnight, which
+  // is exactly why validateHousingLog's sortEventsChronologically refuses
+  // to sort by time string. shiftRelativeMinutes unwraps the rollover the
+  // same way the generator itself schedules the timeline.
   const config = getHousingLogConfig("B", "1");
   const seed = generateCompleteDemoValues(config, seededRng(99));
   assert.ok(seed.events.length >= 6);
   for (let index = 1; index < seed.events.length; index += 1) {
-    const previous = seed.events[index - 1]!.time;
-    const current = seed.events[index]!.time;
-    assert.ok(current >= previous, `${previous} should precede ${current}`);
+    const previous = shiftRelativeMinutes(config.shift, seed.events[index - 1]!.time);
+    const current = shiftRelativeMinutes(config.shift, seed.events[index]!.time);
+    assert.ok(
+      current > previous,
+      `${seed.events[index - 1]!.time} should precede ${seed.events[index]!.time}`,
+    );
   }
 });
 

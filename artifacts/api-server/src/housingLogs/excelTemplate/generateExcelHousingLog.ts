@@ -2,7 +2,10 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import JSZip from "jszip";
 import { fieldsForConfig, getHousingLogConfig } from "@workspace/housing-log";
-import { buildOfficialWorksheetLayout } from "./officialWorksheetMap.ts";
+import {
+  buildOfficialWorksheetLayout,
+  resolveAmPmPlaceholders,
+} from "./officialWorksheetMap.ts";
 import type { HousingLogWorkbookTemplate } from "./workbookRegistry.ts";
 import type { HousingLogDocumentRecord } from "../documentSpike/types.ts";
 
@@ -576,7 +579,7 @@ export async function generateExcelHousingLog(
 
   const requiredFieldKeysWritten: string[] = [];
   for (const cell of layout.writes) {
-    const value = cell.value(record);
+    const value = resolveAmPmPlaceholders(cell.value(record));
     if (cell.address.startsWith("B") && value.length > 180)
       throw new HousingLogExcelOverflowError(
         cell.address,

@@ -39,7 +39,16 @@ import {
   type ValidationIssue,
 } from "@workspace/housing-log";
 import PageShell, { hudInput, hudLabel } from "@/components/PageShell";
-import SignaturePad from "@/components/SignaturePad";
+import SignaturePad, {
+  type SignaturePadHandle,
+} from "@/components/SignaturePad";
+import {
+  cryptoRng,
+  generateCompleteDemoValues,
+  generateIncompleteDemoValues,
+  generateSignatureStrokePoints,
+  type DemoRng,
+} from "@/lib/housingLogDemoSeed";
 import {
   buildSectionIndex,
   canonicalFieldsWithPrefix,
@@ -178,6 +187,18 @@ export default function HousingLog() {
     Partial<Record<HousingLogTaskId, HTMLHeadingElement | null>>
   >({});
 
+  // ── Demo mode (?demo=1) — proof-of-concept fake-data seeding only ──
+  const [isDemoMode] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("demo") === "1",
+  );
+  const [isDemoData, setIsDemoData] = useState(false);
+  const [demoBusy, setDemoBusy] = useState(false);
+  const signaturePadRefs = useRef<
+    Partial<Record<string, SignaturePadHandle | null>>
+  >({});
+
   const config = useMemo(
     () =>
       housingUnit && shift
@@ -241,6 +262,7 @@ export default function HousingLog() {
     setNotice(undefined);
     setLastSavedAt(undefined);
     setAccessCode(undefined);
+    setIsDemoData(false);
   };
 
   const confirmDiscard = (): boolean =>
@@ -276,6 +298,7 @@ export default function HousingLog() {
     setStatus(record.status);
     setLastSavedAt(new Date(record.updatedAt));
     setAccessCode(undefined);
+    setIsDemoData(false);
   };
 
   const resumeDraft = async () => {
@@ -350,6 +373,61 @@ export default function HousingLog() {
 
   const isSessionExpiredError = (error: unknown): boolean =>
     error instanceof HousingLogApiError && error.status === 403;
+
+  // ── Demo seeding — populates the form only; never saves/finalizes and
+  // never bypasses validation. Signatures are drawn through the same
+  // SignaturePad canvas/onChange path (and the same isPlausibleSignatureInk
+  // gate) a real hand-drawn signature uses. ──
+  const drawDemoSignature = (key: string, rng: DemoRng) => {
+    signaturePadRefs.current[key]?.drawSyntheticStroke(
+      generateSignatureStrokePoints(rng),
+    );
+  };
+
+  const seedCompleteDemo = () => {
+    if (!config || disabled) return;
+    setDemoBusy(true);
+    const rng = cryptoRng();
+    const seed = generateCompleteDemoValues(config, rng);
+    setValues(seed.values);
+    setEvents(seed.events);
+    setIssues([]);
+    setIsDemoData(true);
+    setNotice("Complete demo data generated — every field is filled.");
+    requestAnimationFrame(() => {
+      for (const signature of config.signatures)
+        drawDemoSignature(signature.key, rng);
+      setDemoBusy(false);
+    });
+  };
+
+  const seedIncompleteDemo = () => {
+    if (!config || disabled) return;
+    setDemoBusy(true);
+    const rng = cryptoRng();
+    const seed = generateIncompleteDemoValues(config, rng);
+    setValues(seed.values);
+    setEvents(seed.events);
+    setIssues([]);
+    setIsDemoData(true);
+    const omittedCount =
+      seed.omittedValueKeys.length + seed.omitSignatureKeys.length;
+    setNotice(
+      `Incomplete demo data generated — ${omittedCount} required item${omittedCount === 1 ? "" : "s"} intentionally left blank.`,
+    );
+    requestAnimationFrame(() => {
+      for (const signature of config.signatures)
+        if (!seed.omitSignatureKeys.includes(signature.key))
+          drawDemoSignature(signature.key, rng);
+      setDemoBusy(false);
+    });
+  };
+
+  const confirmDemoDataPersist = (): boolean =>
+    !isDemoData ||
+    window.confirm(
+      "This Housing Log contains generated DEMO data. Continue anyway?",
+    );
 
   const setValue = (key: string, value: HousingLogValue) => {
     setValues((current) => ({ ...current, [key]: value }));
@@ -458,6 +536,7 @@ export default function HousingLog() {
 
   const saveDraft = async () => {
     if (!config || !logDate) return;
+    if (!confirmDemoDataPersist()) return;
     setBusy(true);
     setNotice(undefined);
     try {
@@ -499,6 +578,7 @@ export default function HousingLog() {
 
   const generateLog = async () => {
     if (!config) return;
+    if (!confirmDemoDataPersist()) return;
     const input = buildInput();
     const nextIssues = validateHousingLog(input);
     setIssues(nextIssues);
@@ -699,6 +779,17 @@ export default function HousingLog() {
       icon={ClipboardList}
       maxWidthClass="max-w-6xl"
     >
+      {isDemoMode && (
+        <div
+          className="mb-3 rounded-lg border-2 border-dashed border-fuchsia-400 bg-[repeating-linear-gradient(135deg,rgba(217,70,239,0.25)_0,rgba(217,70,239,0.25)_10px,rgba(88,28,135,0.35)_10px,rgba(88,28,135,0.35)_20px)] px-4 py-2.5 text-center"
+          role="status"
+        >
+          <span className="text-xs font-black uppercase tracking-[0.18em] text-fuchsia-100">
+            Demo Mode — Generated Fake Data
+          </span>
+        </div>
+      )}
+
       {/* ── Compact current-log summary header ── */}
       <div
         className={`${workPanel} sticky top-2 z-30 p-3 sm:p-4`}
@@ -942,6 +1033,37 @@ export default function HousingLog() {
                 Official source: worksheet {config.sourceSheet} · template
                 version {config.templateVersion}
               </p>
+            )}
+            {isDemoMode && config && (
+              <div className="mt-4 rounded-lg border border-fuchsia-400/50 bg-fuchsia-950/30 p-3">
+                <div className="text-[10px] font-black uppercase tracking-[0.14em] text-fuchsia-200">
+                  Demo Seeding
+                </div>
+                <p className="mt-1 text-[10px] leading-relaxed text-fuchsia-100/70">
+                  Fills the form with random fake data for this unit and
+                  shift. Every click generates different values. Nothing is
+                  saved automatically — Save Draft and Finalize will warn you
+                  first.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={seedCompleteDemo}
+                    disabled={disabled || demoBusy}
+                    className="rounded-md border border-emerald-400/60 bg-emerald-600/25 px-3 py-2 text-[10px] font-black uppercase tracking-[0.08em] text-emerald-100 hover:bg-emerald-500/35 disabled:opacity-40"
+                  >
+                    Seed Complete Demo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={seedIncompleteDemo}
+                    disabled={disabled || demoBusy}
+                    className="rounded-md border border-amber-400/60 bg-amber-600/20 px-3 py-2 text-[10px] font-black uppercase tracking-[0.08em] text-amber-100 hover:bg-amber-500/30 disabled:opacity-40"
+                  >
+                    Seed Incomplete Demo
+                  </button>
+                </div>
+              </div>
             )}
             <div className="mt-4 border-t border-blue-400/20 pt-4">
               <label className={hudLabel} htmlFor="housing-log-resume">
@@ -1750,6 +1872,9 @@ export default function HousingLog() {
                         {signature.label}
                       </h4>
                       <SignaturePad
+                        ref={(node) => {
+                          signaturePadRefs.current[signature.key] = node;
+                        }}
                         label={signature.label}
                         value={signatures[signature.key]}
                         disabled={disabled}

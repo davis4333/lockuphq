@@ -1,9 +1,8 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
-  useEffect,
-  type FormEvent,
   type ReactNode,
 } from "react";
 import {
@@ -13,9 +12,8 @@ import {
   CircleDot,
   ClipboardList,
   Plus,
-  RotateCcw,
-  Save,
   Trash2,
+  X,
 } from "lucide-react";
 import {
   calculateCountTotal,
@@ -28,14 +26,11 @@ import {
   prepareHousingLog,
   validateHousingLog,
   type FieldDefinition,
-  type HousingLogDraftInput,
   type HousingLogEvent,
-  type HousingLogSummary,
   type HousingLogSignatures,
   type HousingLogValue,
   type HousingShift,
   type HousingUnit,
-  type StoredHousingLog,
   type ValidationIssue,
 } from "@workspace/housing-log";
 import PageShell, { hudInput, hudLabel } from "@/components/PageShell";
@@ -64,17 +59,23 @@ import {
   type HousingLogTaskId,
   type StaffSlot,
 } from "@/lib/housingLogSections";
+import { finalizeHousingLog, HousingLogApiError } from "@/lib/housingLogApi";
 import {
-  createHousingLogDraft,
-  finalizeHousingLog,
-  getHousingLog,
-  HousingLogApiError,
-  listHousingLogDrafts,
-  unlockHousingLogDraft,
-  updateHousingLogDraft,
-} from "@/lib/housingLogApi";
+  clearHousingLogLocalState,
+  createSubmissionId,
+  emptyHousingLogLocalWorkingState,
+  loadHousingLogLocalState,
+  saveHousingLogLocalState,
+  type HousingLogLocalWorkingState,
+} from "@/lib/housingLogLocalStore";
+import {
+  createHousingLogTabLock,
+  type HousingLogTabLock,
+  type HousingLogTabStatus,
+} from "@/lib/housingLogTabLock";
 
 const today = getEasternCalendarDate();
+const AUTOSAVE_DEBOUNCE_MS = 500;
 
 // Calm, opaque working surface — the themed artwork stays around the
 // workspace instead of showing through behind dense form fields.
@@ -212,6 +213,14 @@ type TaskStatusVisual = {
   detail: string;
 };
 
+/** Build the payload sent to the local store from the component's live state. */
+function toLocalWorkingState(
+  base: HousingLogLocalWorkingState,
+  patch: Partial<HousingLogLocalWorkingState>,
+): HousingLogLocalWorkingState {
+  return { ...base, ...patch, savedAt: new Date().toISOString() };
+}
+
 export default function HousingLog() {
   const [housingUnit, setHousingUnit] = useState<HousingUnit | "">("");
   const [shift, setShift] = useState<HousingShift | "">("");
@@ -220,28 +229,44 @@ export default function HousingLog() {
   const [events, setEvents] = useState<HousingLogEvent[]>([]);
   const [signatures, setSignatures] = useState<HousingLogSignatures>({});
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
-  const [draftId, setDraftId] = useState<string>();
+  const [submissionId, setSubmissionId] = useState<string>(() =>
+    createSubmissionId(),
+  );
   const [status, setStatus] = useState<"draft" | "finalized">("draft");
   const [notice, setNotice] = useState<string>();
-  const [lastSavedAt, setLastSavedAt] = useState<Date>();
+  const [finalizeError, setFinalizeError] = useState<string>();
+  const [finalizedAt, setFinalizedAt] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const [savedDrafts, setSavedDrafts] = useState<HousingLogSummary[]>([]);
-  const [resumeId, setResumeId] = useState("");
-  const [accessCode, setAccessCode] = useState<string>();
-  const [unlockCodeInput, setUnlockCodeInput] = useState("");
-  const [unlockError, setUnlockError] = useState<string>();
-  const [unlocking, setUnlocking] = useState(false);
-  // Set when a PATCH/finalize call comes back 403 mid-edit (session expired
-  // or restarted) — the in-progress form values are kept exactly as-is; only
-  // re-authorization is needed before Save/Finalize will succeed again.
-  const [sessionExpired, setSessionExpired] = useState(false);
-  const [reauthCode, setReauthCode] = useState("");
-  const [reauthBusy, setReauthBusy] = useState(false);
-  const [reauthError, setReauthError] = useState<string>();
   const [activeTask, setActiveTask] = useState<HousingLogTaskId>("setup");
   const panelHeadingRefs = useRef<
     Partial<Record<HousingLogTaskId, HTMLHeadingElement | null>>
   >({});
+
+  // ── Local-only working state (IndexedDB) — restore / autosave / storage health ──
+  const [restoreState, setRestoreState] = useState<
+    "loading" | "restored" | "none" | "incompatible" | "unavailable"
+  >("loading");
+  const [restoreBannerDismissed, setRestoreBannerDismissed] = useState(false);
+  const [localSaveStatus, setLocalSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "unavailable"
+  >("idle");
+  const [localSavedAt, setLocalSavedAt] = useState<Date>();
+  const [storageWarning, setStorageWarning] = useState<string>();
+  const hydratedRef = useRef(false);
+  const skipNextAutosaveRef = useRef(false);
+
+  // ── Same-device cross-tab coordination ──
+  const [tabStatus, setTabStatus] = useState<HousingLogTabStatus>("active");
+  const tabLockRef = useRef<HousingLogTabLock | undefined>(undefined);
+
+  // ── Unit/shift/date change guard (protects the one local working log) ──
+  const [pendingChange, setPendingChange] = useState<
+    { housingUnit: HousingUnit | ""; shift: HousingShift | ""; logDate: string }
+    | undefined
+  >();
+
+  // ── Clear Current Log confirmation ──
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   // ── Demo mode (?demo=1) — proof-of-concept fake-data seeding only ──
   const [isDemoMode] = useState(
@@ -270,7 +295,8 @@ export default function HousingLog() {
     () => new Set(issues.map((issue) => issue.path)),
     [issues],
   );
-  const disabled = busy || status === "finalized";
+  const readOnlyTab = tabStatus === "secondary";
+  const disabled = busy || status === "finalized" || readOnlyTab;
   const hasMeaningfulData = hasMeaningfulHousingLogContent({
     values,
     events,
@@ -295,143 +321,216 @@ export default function HousingLog() {
     );
   }, [config, housingUnit, shift, logDate, values, events, signatures]);
 
-  const refreshSavedDrafts = async () => {
-    try {
-      setSavedDrafts(await listHousingLogDrafts());
-    } catch {
-      setSavedDrafts([]);
+  // ── Quick Event Entry composer state (declared early so restore can seed it) ──
+  const [composerTime, setComposerTime] = useState("");
+  const [composerActivity, setComposerActivity] = useState("");
+  const [composerInitials, setComposerInitials] = useState("");
+  const [composerError, setComposerError] = useState<string>();
+  const composerTimeRef = useRef<HTMLInputElement>(null);
+
+  const applyLocalState = (state: HousingLogLocalWorkingState) => {
+    setSubmissionId(state.submissionId);
+    setHousingUnit(state.housingUnit);
+    setShift(state.shift);
+    setLogDate(state.logDate || today);
+    setValues(state.values);
+    setEvents(state.events);
+    setSignatures(state.signatures);
+    setIsDemoData(state.isDemoData);
+    setComposerTime(state.composer.time);
+    setComposerActivity(state.composer.activity);
+    setComposerInitials(state.composer.initials);
+    if (
+      state.activeTask &&
+      (housingLogTaskIds as readonly string[]).includes(state.activeTask)
+    ) {
+      setActiveTask(state.activeTask as HousingLogTaskId);
     }
+    setLocalSavedAt(new Date(state.savedAt));
   };
 
+  // ── Restore on mount ──
   useEffect(() => {
-    void refreshSavedDrafts();
+    let cancelled = false;
+    void (async () => {
+      const result = await loadHousingLogLocalState();
+      if (cancelled) return;
+      if (!result.ok) {
+        setRestoreState(
+          result.reason === "unavailable" ? "unavailable" : "incompatible",
+        );
+        hydratedRef.current = true;
+        return;
+      }
+      if (!result.state) {
+        setRestoreState("none");
+        hydratedRef.current = true;
+        return;
+      }
+      skipNextAutosaveRef.current = true;
+      applyLocalState(result.state);
+      setRestoreState("restored");
+      hydratedRef.current = true;
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const resetForm = () => {
+  // ── Same-device tab coordination ──
+  useEffect(() => {
+    const lock = createHousingLogTabLock();
+    tabLockRef.current = lock;
+    setTabStatus(lock.getStatus());
+    const unsubscribeStatus = lock.subscribe(setTabStatus);
+    const unsubscribeCleared = lock.subscribeCleared(() => {
+      // Another tab cleared the shared local working log — drop whatever
+      // this tab has in memory instead of ever writing it back.
+      skipNextAutosaveRef.current = true;
+      applyLocalState(emptyHousingLogLocalWorkingState());
+      setRestoreState("none");
+      setFinalizedAt(undefined);
+      setStatus("draft");
+    });
+    return () => {
+      unsubscribeStatus();
+      unsubscribeCleared();
+      lock.close();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Debounced local autosave ──
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (readOnlyTab) return; // never let a secondary tab overwrite the active tab's data
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
+    }
+    setLocalSaveStatus("saving");
+    const timer = setTimeout(() => {
+      void (async () => {
+        const state = toLocalWorkingState(emptyHousingLogLocalWorkingState(), {
+          submissionId,
+          housingUnit,
+          shift,
+          logDate,
+          templateVersion: config?.templateVersion,
+          values,
+          events,
+          signatures,
+          isDemoData,
+          activeTask,
+          composer: {
+            time: composerTime,
+            activity: composerActivity,
+            initials: composerInitials,
+          },
+        });
+        const result = await saveHousingLogLocalState(state);
+        if (result.ok) {
+          setLocalSaveStatus("saved");
+          setLocalSavedAt(new Date());
+          setStorageWarning(undefined);
+        } else {
+          setLocalSaveStatus("unavailable");
+          setStorageWarning(
+            "This Housing Log could not be saved on this device. Keep this page open and contact a supervisor/administrator.",
+          );
+        }
+      })();
+    }, AUTOSAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    submissionId,
+    housingUnit,
+    shift,
+    logDate,
+    values,
+    events,
+    signatures,
+    isDemoData,
+    activeTask,
+    composerTime,
+    composerActivity,
+    composerInitials,
+    readOnlyTab,
+  ]);
+
+  const resetFormState = () => {
     staffStashRef.current = {};
     setValues({});
     setEvents([]);
     setSignatures({});
     setIssues([]);
-    setDraftId(undefined);
     setStatus("draft");
     setNotice(undefined);
-    setLastSavedAt(undefined);
-    setAccessCode(undefined);
+    setFinalizeError(undefined);
+    setFinalizedAt(undefined);
     setIsDemoData(false);
+    setComposerTime("");
+    setComposerActivity("");
+    setComposerInitials("");
+    setComposerError(undefined);
+    setActiveTask("setup");
+    setSubmissionId(createSubmissionId());
   };
 
-  const confirmDiscard = (): boolean =>
-    !hasMeaningfulData ||
-    window.confirm(
-      "Changing this selection will clear the Housing Log data currently shown. Continue?",
+  const startNewLog = (
+    nextUnit: HousingUnit | "",
+    nextShift: HousingShift | "",
+    nextDate: string,
+  ) => {
+    resetFormState();
+    setHousingUnit(nextUnit);
+    setShift(nextShift);
+    setLogDate(nextDate);
+  };
+
+  const requestSelectionChange = (
+    nextUnit: HousingUnit | "",
+    nextShift: HousingShift | "",
+    nextDate: string,
+  ) => {
+    const changed =
+      nextUnit !== housingUnit || nextShift !== shift || nextDate !== logDate;
+    if (!changed) return;
+    if (!hasMeaningfulData) {
+      startNewLog(nextUnit, nextShift, nextDate);
+      return;
+    }
+    setPendingChange({ housingUnit: nextUnit, shift: nextShift, logDate: nextDate });
+  };
+
+  const confirmPendingChange = () => {
+    if (!pendingChange) return;
+    startNewLog(
+      pendingChange.housingUnit,
+      pendingChange.shift,
+      pendingChange.logDate,
     );
-
-  const changeHousingUnit = (next: HousingUnit | "") => {
-    if (!confirmDiscard()) return;
-    resetForm();
-    setHousingUnit(next);
+    setPendingChange(undefined);
   };
 
-  const changeShift = (next: HousingShift | "") => {
-    if (!confirmDiscard()) return;
-    resetForm();
-    setShift(next);
+  const clearCurrentLog = async () => {
+    resetFormState();
+    setHousingUnit("");
+    setShift("");
+    setLogDate(today);
+    skipNextAutosaveRef.current = true;
+    await clearHousingLogLocalState();
+    tabLockRef.current?.announceCleared();
+    setLocalSaveStatus("idle");
+    setLocalSavedAt(undefined);
+    setRestoreState("none");
+    setClearConfirmOpen(false);
   };
 
-  const applyResumedRecord = (record: StoredHousingLog) => {
-    // Never carry a value stash across logs — a slot marked present after
-    // resume must not recover another draft's staff values.
-    staffStashRef.current = {};
-    setHousingUnit(record.housingUnit);
-    setShift(record.shift);
-    setLogDate(record.logDate);
-    setValues(record.values);
-    setEvents(record.events);
-    setSignatures(record.signatures);
-    setIssues([]);
-    setDraftId(record.id);
-    setStatus(record.status);
-    setLastSavedAt(new Date(record.updatedAt));
-    setAccessCode(undefined);
-    setIsDemoData(false);
-  };
-
-  const resumeDraft = async () => {
-    if (!resumeId || !confirmDiscard()) return;
-    setBusy(true);
-    setNotice(undefined);
-    try {
-      const record = await getHousingLog(resumeId);
-      applyResumedRecord(record);
-      setNotice(`Draft resumed — ${record.id}`);
-    } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Draft could not be reopened.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const unlockAndResume = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!confirmDiscard()) return;
-    setUnlocking(true);
-    setUnlockError(undefined);
-    setNotice(undefined);
-    try {
-      const { draftId: unlockedId } = await unlockHousingLogDraft(
-        unlockCodeInput,
-      );
-      const record = await getHousingLog(unlockedId);
-      applyResumedRecord(record);
-      setUnlockCodeInput("");
-      setNotice(`Draft unlocked — ${record.id}`);
-      await refreshSavedDrafts();
-    } catch (error) {
-      setUnlockError(
-        error instanceof Error
-          ? error.message
-          : "The draft could not be unlocked.",
-      );
-    } finally {
-      setUnlocking(false);
-    }
-  };
-
-  const reauthorizeCurrentDraft = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!draftId) return;
-    setReauthBusy(true);
-    setReauthError(undefined);
-    try {
-      const { draftId: unlockedId } = await unlockHousingLogDraft(reauthCode);
-      if (unlockedId !== draftId) {
-        setReauthError(
-          "That access code unlocks a different draft. Enter this draft's own code.",
-        );
-        return;
-      }
-      setSessionExpired(false);
-      setReauthCode("");
-      setNotice(
-        "Access restored. Nothing you entered was lost — try Save again.",
-      );
-    } catch (error) {
-      setReauthError(
-        error instanceof Error ? error.message : "Could not unlock this draft.",
-      );
-    } finally {
-      setReauthBusy(false);
-    }
-  };
-
-  const isSessionExpiredError = (error: unknown): boolean =>
-    error instanceof HousingLogApiError && error.status === 403;
-
-  // ── Demo seeding — populates the form only; never saves/finalizes and
-  // never bypasses validation. Signatures are drawn through the same
+  // ── Demo seeding — populates the local form only; never saves server-side
+  // or bypasses validation. Signatures are drawn through the same
   // SignaturePad canvas/onChange path (and the same isPlausibleSignatureInk
   // gate) a real hand-drawn signature uses. ──
   const drawDemoSignature = (key: string, rng: DemoRng) => {
@@ -555,64 +654,6 @@ export default function HousingLog() {
     });
   };
 
-  const buildInput = (): HousingLogDraftInput => {
-    if (!config || !housingUnit || !shift)
-      throw new Error("Select a housing unit and shift.");
-    return prepareHousingLog({
-      logDate,
-      housingUnit,
-      shift,
-      templateVersion: config.templateVersion,
-      values,
-      events,
-      signatures,
-    });
-  };
-
-  const persistDraft = async (): Promise<{ id: string }> => {
-    const input = buildInput();
-    if (draftId) {
-      const record = await updateHousingLogDraft(draftId, input);
-      setValues(record.values);
-      setEvents(record.events);
-      setStatus(record.status);
-      setLastSavedAt(new Date());
-      return record;
-    }
-    const record = await createHousingLogDraft(input);
-    setDraftId(record.id);
-    setValues(record.values);
-    setEvents(record.events);
-    setStatus(record.status);
-    setLastSavedAt(new Date());
-    setAccessCode(record.accessCode);
-    await refreshSavedDrafts();
-    return record;
-  };
-
-  const saveDraft = async () => {
-    if (!config || !logDate) return;
-    if (!confirmDemoDataPersist()) return;
-    setBusy(true);
-    setNotice(undefined);
-    try {
-      const record = await persistDraft();
-      setNotice(`Draft saved — ${record.id}`);
-      await refreshSavedDrafts();
-    } catch (error) {
-      if (isSessionExpiredError(error)) {
-        setSessionExpired(true);
-        setNotice(undefined);
-      } else {
-        setNotice(
-          error instanceof Error ? error.message : "Draft could not be saved.",
-        );
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const goToTask = (task: HousingLogTaskId) => {
     setActiveTask(task);
     requestAnimationFrame(() => {
@@ -632,13 +673,21 @@ export default function HousingLog() {
     });
   };
 
-  const generateLog = async () => {
-    if (!config) return;
+  const finalize = async () => {
+    if (!config || !housingUnit || !shift || readOnlyTab) return;
     if (!confirmDemoDataPersist()) return;
-    const input = buildInput();
+    const input = prepareHousingLog({
+      logDate,
+      housingUnit,
+      shift,
+      templateVersion: config.templateVersion,
+      values,
+      events,
+      signatures,
+    });
     const nextIssues = validateHousingLog(input);
     setIssues(nextIssues);
-    setNotice(undefined);
+    setFinalizeError(undefined);
     if (nextIssues.length) {
       setActiveTask("review");
       requestAnimationFrame(() =>
@@ -650,26 +699,34 @@ export default function HousingLog() {
     }
     setBusy(true);
     try {
-      const draft = await persistDraft();
-      const finalized = await finalizeHousingLog(draft.id);
-      setStatus(finalized.status);
-      setNotice(`Housing Log finalized successfully — ${finalized.id}`);
-      await refreshSavedDrafts();
+      // Never clear local data until the server confirms success — a
+      // network failure, timeout, or validation rejection must leave this
+      // Housing Log completely intact for the officer to retry.
+      const confirmation = await finalizeHousingLog({ ...input, submissionId });
+      setStatus("finalized");
+      setFinalizedAt(confirmation.finalizedAt);
+      setNotice("Housing Log finalized successfully.");
+      skipNextAutosaveRef.current = true;
+      await clearHousingLogLocalState();
+      tabLockRef.current?.announceCleared();
     } catch (error) {
-      if (isSessionExpiredError(error)) {
-        setSessionExpired(true);
-      } else {
-        if (error instanceof HousingLogApiError && error.issues.length)
-          setIssues(error.issues);
-        setNotice(
-          error instanceof Error
-            ? error.message
-            : "Housing Log could not be finalized.",
-        );
-      }
+      if (error instanceof HousingLogApiError && error.issues.length)
+        setIssues(error.issues);
+      setFinalizeError(
+        error instanceof Error
+          ? error.message
+          : "Housing Log could not be finalized. Nothing was lost — try again.",
+      );
     } finally {
       setBusy(false);
     }
+  };
+
+  const startNextLog = () => {
+    resetFormState();
+    setHousingUnit("");
+    setShift("");
+    setLogDate(today);
   };
 
   // ── Quick Event Entry composer ──
@@ -677,12 +734,6 @@ export default function HousingLog() {
   // composer stays visible while the history grows, and submitting appends
   // directly to the existing event model (see logComposedEvent below) — no
   // blank row is ever created just by navigating to this panel.
-  const [composerTime, setComposerTime] = useState("");
-  const [composerActivity, setComposerActivity] = useState("");
-  const [composerInitials, setComposerInitials] = useState("");
-  const [composerError, setComposerError] = useState<string>();
-  const composerTimeRef = useRef<HTMLInputElement>(null);
-
   const nowTime = (): string => {
     const now = new Date();
     return `${String(now.getHours()).padStart(2, "0")}:${String(
@@ -828,6 +879,15 @@ export default function HousingLog() {
     ? `${workspace.readySections} of ${housingLogTaskIds.length} sections ready • ${workspace.totalRemaining} required ${workspace.totalRemaining === 1 ? "item" : "items"} remaining`
     : "Select a housing unit and shift to begin";
 
+  const localStatusLabel = (() => {
+    if (readOnlyTab) return "Read-only — active in another tab";
+    if (localSaveStatus === "unavailable") return "Not saved on this device";
+    if (localSaveStatus === "saving") return "Saving on this device…";
+    if (localSavedAt)
+      return `Saved on this device ${localSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    return "Not yet saved on this device";
+  })();
+
   return (
     <PageShell
       title="Housing Log"
@@ -843,6 +903,82 @@ export default function HousingLog() {
           <span className="text-xs font-black uppercase tracking-[0.18em] text-fuchsia-100">
             Demo Mode — Generated Fake Data
           </span>
+        </div>
+      )}
+
+      {tabStatus === "secondary" && (
+        <div
+          className="mb-3 rounded-lg border border-amber-400/60 bg-amber-950/60 px-4 py-2.5 text-center text-xs font-bold text-amber-100"
+          role="status"
+        >
+          Housing Log is already open in another tab on this device. This tab
+          is read-only. If that tab is closed, refresh this page to continue
+          here.
+        </div>
+      )}
+
+      {restoreState === "restored" &&
+        !restoreBannerDismissed &&
+        housingUnit &&
+        shift && (
+          <div
+            className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-emerald-400/50 bg-emerald-950/40 px-4 py-3"
+            role="status"
+          >
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.1em] text-emerald-200">
+                {housingUnitLabels[housingUnit]} • {shiftName(shift)} •{" "}
+                {logDate}
+              </p>
+              <p className="mt-1 text-[11px] text-emerald-100/80">
+                Working Housing Log restored from this device. Continue where
+                you left off.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRestoreBannerDismissed(true)}
+              className="shrink-0 rounded-md p-1 text-emerald-200/70 hover:text-white"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        )}
+
+      {(restoreState === "incompatible" || restoreState === "unavailable") && (
+        <div
+          className="mb-3 rounded-lg border border-amber-400/60 bg-amber-950/50 px-4 py-3"
+          role="alert"
+        >
+          <p className="text-xs font-black uppercase tracking-[0.1em] text-amber-200">
+            {restoreState === "incompatible"
+              ? "Saved local Housing Log could not be restored"
+              : "This device cannot save a Housing Log locally"}
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-amber-100/80">
+            {restoreState === "incompatible"
+              ? "A Housing Log saved on this device is in a format this version can no longer read. It has not been changed or submitted."
+              : "Local saving is unavailable in this browser. You can keep working, but nothing will be saved if you leave this page — finalize before navigating away."}
+          </p>
+          {restoreState === "incompatible" && (
+            <button
+              type="button"
+              onClick={() => setClearConfirmOpen(true)}
+              className="mt-2 rounded-md border border-amber-300/50 bg-amber-900/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-amber-50 hover:bg-amber-800/50"
+            >
+              Clear Current Log
+            </button>
+          )}
+        </div>
+      )}
+
+      {storageWarning && (
+        <div
+          className="mb-3 rounded-lg border border-red-400/60 bg-red-950/60 px-4 py-2.5 text-xs font-bold text-red-100"
+          role="alert"
+        >
+          {storageWarning}
         </div>
       )}
 
@@ -869,13 +1005,11 @@ export default function HousingLog() {
                     : "border-blue-400/40 bg-blue-500/10 text-blue-200"
                 }`}
               >
-                {status === "finalized" ? "Finalized" : "Draft"}
+                {status === "finalized" ? "Finalized" : "Working"}
               </span>
             </div>
             <p className="mt-1 truncate text-[11px] text-blue-200/60">
-              {readySummary}
-              {lastSavedAt &&
-                ` • Last saved ${lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+              {readySummary} • {localStatusLabel}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -889,12 +1023,11 @@ export default function HousingLog() {
             </button>
             <button
               type="button"
-              onClick={saveDraft}
-              disabled={disabled || !config || !logDate}
-              className="inline-flex items-center gap-1.5 rounded-md border border-blue-200/60 bg-blue-400/25 px-3 py-2 text-xs font-black text-blue-50 hover:border-blue-100/80 disabled:opacity-40"
+              onClick={() => setClearConfirmOpen(true)}
+              disabled={busy || readOnlyTab || (!hasMeaningfulData && !config)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-red-400/40 bg-red-950/30 px-3 py-2 text-xs font-bold text-red-200 hover:border-red-300/60 disabled:opacity-40"
             >
-              <Save className="h-4 w-4" aria-hidden />{" "}
-              {busy ? "Saving…" : "Save Draft"}
+              <Trash2 className="h-4 w-4" aria-hidden /> Clear Current Log
             </button>
           </div>
         </div>
@@ -904,81 +1037,6 @@ export default function HousingLog() {
           </p>
         )}
       </div>
-
-      {accessCode && (
-        <div
-          className="mt-3 rounded-xl border border-amber-400/70 bg-amber-950/70 p-4 text-amber-50"
-          role="status"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-xs font-black uppercase tracking-[0.14em] text-amber-200">
-                Draft Access Code
-              </div>
-              <div className="mt-1 font-mono text-2xl font-black tracking-[0.15em]">
-                {accessCode}
-              </div>
-              <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-amber-100/80">
-                Write this down or share it with another staff member who
-                legitimately needs to open this same log. Anyone with this
-                code can view and edit this draft for the rest of the shift —
-                this is a prototype shared-draft protection, not individual
-                officer sign-in. It will not be shown again after you leave
-                this page.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() =>
-                void navigator.clipboard?.writeText(accessCode).then(
-                  () => setNotice("Access code copied."),
-                  () => undefined,
-                )
-              }
-              className="shrink-0 rounded-md border border-amber-300/60 bg-amber-900/40 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-50 hover:bg-amber-800/50"
-            >
-              Copy Code
-            </button>
-          </div>
-        </div>
-      )}
-
-      {sessionExpired && (
-        <form
-          onSubmit={reauthorizeCurrentDraft}
-          className="mt-3 rounded-xl border border-red-400/60 bg-red-950/70 p-4 text-red-50"
-        >
-          <div className="text-xs font-black uppercase tracking-[0.14em] text-red-200">
-            Access expired
-          </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-red-100/85">
-            This draft's access session ended. Nothing you entered here has
-            been lost — enter the draft access code again to continue.
-          </p>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <input
-              value={reauthCode}
-              onChange={(event) => setReauthCode(event.target.value)}
-              placeholder="XXXX-XXXX"
-              autoComplete="off"
-              className={`${hudInput} sm:max-w-[220px]`}
-              aria-label="Draft access code"
-            />
-            <button
-              type="submit"
-              disabled={reauthBusy || !reauthCode.trim()}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-red-300/60 bg-red-800/40 px-4 py-2 text-xs font-black text-red-50 disabled:opacity-40"
-            >
-              {reauthBusy ? "Unlocking…" : "Unlock and Continue"}
-            </button>
-          </div>
-          {reauthError && (
-            <p className="mt-2 text-[11px] text-red-100" role="alert">
-              {reauthError}
-            </p>
-          )}
-        </form>
-      )}
 
       {/* ── Mobile / tablet task navigator ── */}
       <nav
@@ -1006,11 +1064,22 @@ export default function HousingLog() {
             >
               <div className="flex items-center gap-2 font-bold">
                 <CheckCircle2 className="h-5 w-5" aria-hidden /> Housing Log
-                finalized
+                finalized successfully
               </div>
               <p className="mt-1 text-sm text-emerald-200/75">
-                This stored record is read-only. Record ID: {draftId}
+                {finalizedAt &&
+                  `Finalized ${new Date(finalizedAt).toLocaleString()}. `}
+                This shift's Housing Log now belongs to the admin archive —
+                view, download, or correct it there. Start the next Housing
+                Log below.
               </p>
+              <button
+                type="button"
+                onClick={startNextLog}
+                className="mt-3 rounded-md border border-emerald-300/60 bg-emerald-800/40 px-4 py-2 text-xs font-black uppercase tracking-[0.08em] text-emerald-50 hover:bg-emerald-700/50"
+              >
+                Start Next Housing Log
+              </button>
             </div>
           )}
 
@@ -1025,7 +1094,8 @@ export default function HousingLog() {
             </div>
             <p className="mt-1 text-xs text-blue-200/60">
               Choose the housing unit and shift to load the official
-              requirements, or resume a saved draft.
+              requirements. This device keeps one working Housing Log — it
+              saves itself automatically.
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
               <div>
@@ -1038,7 +1108,11 @@ export default function HousingLog() {
                   disabled={disabled}
                   value={housingUnit}
                   onChange={(event) =>
-                    changeHousingUnit(event.target.value as HousingUnit | "")
+                    requestSelectionChange(
+                      event.target.value as HousingUnit | "",
+                      shift,
+                      logDate,
+                    )
                   }
                 >
                   <option value="">Select…</option>
@@ -1059,7 +1133,11 @@ export default function HousingLog() {
                   disabled={disabled}
                   value={shift}
                   onChange={(event) =>
-                    changeShift(event.target.value as HousingShift | "")
+                    requestSelectionChange(
+                      housingUnit,
+                      event.target.value as HousingShift | "",
+                      logDate,
+                    )
                   }
                 >
                   <option value="">Select…</option>
@@ -1079,7 +1157,13 @@ export default function HousingLog() {
                   type="date"
                   value={logDate}
                   disabled={disabled}
-                  onChange={(event) => setLogDate(event.target.value)}
+                  onChange={(event) =>
+                    requestSelectionChange(
+                      housingUnit,
+                      shift,
+                      event.target.value,
+                    )
+                  }
                   className={`${hudInput} ${errorPaths.has("logDate") ? "border-red-400 ring-2 ring-red-400/25" : ""}`}
                 />
               </div>
@@ -1098,7 +1182,7 @@ export default function HousingLog() {
                 <p className="mt-1 text-[10px] leading-relaxed text-fuchsia-100/70">
                   Fills the form with random fake data for this unit and
                   shift. Every click generates different values. Nothing is
-                  saved automatically — Save Draft and Finalize will warn you
+                  sent to the server automatically — Finalize will warn you
                   first.
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -1121,80 +1205,6 @@ export default function HousingLog() {
                 </div>
               </div>
             )}
-            <div className="mt-4 border-t border-blue-400/20 pt-4">
-              <label className={hudLabel} htmlFor="housing-log-resume">
-                Unlocked / Recent Drafts
-              </label>
-              <p className="mb-2 text-[10px] leading-relaxed text-blue-200/55">
-                Only drafts this browser has already unlocked appear here.
-                Housing Logs are not listed openly — opening a draft anyone
-                else created requires its access code.
-              </p>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <select
-                  id="housing-log-resume"
-                  className={hudInput}
-                  disabled={busy || savedDrafts.length === 0}
-                  value={resumeId}
-                  onChange={(event) => setResumeId(event.target.value)}
-                >
-                  <option value="">
-                    {savedDrafts.length
-                      ? "Select a draft…"
-                      : "No unlocked drafts in this browser yet"}
-                  </option>
-                  {savedDrafts.map((draft) => (
-                    <option key={draft.id} value={draft.id}>
-                      {draft.logDate} · {housingUnitLabels[draft.housingUnit]} ·{" "}
-                      {shiftName(draft.shift)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  disabled={busy || !resumeId}
-                  onClick={resumeDraft}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-blue-300/50 bg-blue-500/15 px-4 py-2 text-xs font-bold text-blue-100 disabled:opacity-40"
-                >
-                  <RotateCcw className="h-4 w-4" aria-hidden /> Resume Draft
-                </button>
-              </div>
-            </div>
-            <form
-              onSubmit={unlockAndResume}
-              className="mt-4 border-t border-blue-400/20 pt-4"
-            >
-              <label className={hudLabel} htmlFor="housing-log-unlock-code">
-                Enter Draft Access Code
-              </label>
-              <p className="mb-2 text-[10px] leading-relaxed text-blue-200/55">
-                Have a code from another officer or an earlier session on a
-                different device? Enter it here to unlock and resume that
-                draft.
-              </p>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <input
-                  id="housing-log-unlock-code"
-                  value={unlockCodeInput}
-                  onChange={(event) => setUnlockCodeInput(event.target.value)}
-                  placeholder="XXXX-XXXX"
-                  autoComplete="off"
-                  className={hudInput}
-                />
-                <button
-                  type="submit"
-                  disabled={unlocking || !unlockCodeInput.trim()}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-emerald-400/50 bg-emerald-500/15 px-4 py-2 text-xs font-bold text-emerald-100 disabled:opacity-40"
-                >
-                  {unlocking ? "Unlocking…" : "Unlock Draft"}
-                </button>
-              </div>
-              {unlockError && (
-                <p className="mt-2 text-[11px] text-red-300" role="alert">
-                  {unlockError}
-                </p>
-              )}
-            </form>
             {config ? (
               <div className="mt-4 rounded-lg border border-blue-300/30 bg-blue-500/10 p-3">
                 <p className="text-xs text-blue-100">
@@ -1962,37 +1972,117 @@ export default function HousingLog() {
                   ))}
                 </div>
 
+                {finalizeError && (
+                  <p
+                    className="mt-4 rounded-md border border-red-400/50 bg-red-950/50 px-3 py-2 text-xs text-red-100"
+                    role="alert"
+                  >
+                    {finalizeError} Nothing has been lost — this Housing Log
+                    remains saved on this device. You can retry.
+                  </p>
+                )}
+
                 <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-blue-400/20 pt-4">
                   <div className="min-w-0 text-xs text-blue-200/65">
-                    {notice ??
-                      (draftId ? `Draft ID: ${draftId}` : "Not yet saved")}
+                    {localStatusLabel}
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={saveDraft}
-                      disabled={disabled || !logDate}
-                      className="inline-flex items-center gap-2 rounded-md border border-blue-300/50 bg-blue-500/15 px-4 py-2.5 text-xs font-bold text-blue-100 disabled:opacity-40"
-                    >
-                      <Save className="h-4 w-4" aria-hidden />{" "}
-                      {busy ? "Saving…" : "Save Draft"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={generateLog}
-                      disabled={disabled}
-                      className="inline-flex items-center gap-2 rounded-md border border-emerald-300/60 bg-emerald-500/20 px-4 py-2.5 text-xs font-black uppercase tracking-[0.08em] text-emerald-100 disabled:opacity-40"
-                    >
-                      <CheckCircle2 className="h-4 w-4" aria-hidden /> Finalize
-                      Housing Log
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={finalize}
+                    disabled={disabled}
+                    className="inline-flex items-center gap-2 rounded-md border border-emerald-300/60 bg-emerald-500/20 px-4 py-2.5 text-xs font-black uppercase tracking-[0.08em] text-emerald-100 disabled:opacity-40"
+                  >
+                    <CheckCircle2 className="h-4 w-4" aria-hidden />{" "}
+                    {busy ? "Finalizing…" : "Finalize Housing Log"}
+                  </button>
                 </div>
               </section>
             </>
           )}
         </div>
       </div>
+
+      {/* ── Unit/shift/date change guard — protects the one local working log ── */}
+      {pendingChange && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="housing-log-change-guard-title"
+        >
+          <div className="w-full max-w-md rounded-xl border border-blue-400/40 bg-[#0a1330] p-5">
+            <h2
+              id="housing-log-change-guard-title"
+              className="text-sm font-black uppercase tracking-[0.1em] text-blue-100"
+            >
+              Unfinished Housing Log on this device
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-blue-200/75">
+              You already have an unfinished{" "}
+              {housingUnit ? housingUnitLabels[housingUnit] : "Housing Log"}
+              {shift ? ` / ${shiftName(shift)}` : ""} Housing Log saved on
+              this device. Changing the unit, shift, or date starts a
+              different Housing Log.
+            </p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row-reverse">
+              <button
+                type="button"
+                onClick={() => setPendingChange(undefined)}
+                className="inline-flex items-center justify-center rounded-md border border-blue-300/60 bg-blue-500/20 px-4 py-2 text-xs font-black text-blue-50"
+              >
+                Continue Current Log
+              </button>
+              <button
+                type="button"
+                onClick={confirmPendingChange}
+                className="inline-flex items-center justify-center rounded-md border border-red-400/50 bg-red-950/40 px-4 py-2 text-xs font-bold text-red-200 hover:border-red-300/70"
+              >
+                Clear Current Log and Start New
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Clear Current Log confirmation ── */}
+      {clearConfirmOpen && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="housing-log-clear-title"
+        >
+          <div className="w-full max-w-md rounded-xl border border-red-400/40 bg-[#0a1330] p-5">
+            <h2
+              id="housing-log-clear-title"
+              className="text-sm font-black uppercase tracking-[0.1em] text-red-200"
+            >
+              Clear this unfinished Housing Log?
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-blue-200/75">
+              This will permanently remove the Housing Log currently saved on
+              this device. Finalized Housing Logs stored in the admin archive
+              will not be affected.
+            </p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row-reverse">
+              <button
+                type="button"
+                onClick={() => void clearCurrentLog()}
+                className="inline-flex items-center justify-center rounded-md border border-red-400/60 bg-red-600/25 px-4 py-2 text-xs font-black uppercase tracking-[0.06em] text-red-100 hover:bg-red-500/35"
+              >
+                Clear Current Log
+              </button>
+              <button
+                type="button"
+                onClick={() => setClearConfirmOpen(false)}
+                className="inline-flex items-center justify-center rounded-md border border-blue-300/50 bg-blue-500/15 px-4 py-2 text-xs font-bold text-blue-100"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }

@@ -1,8 +1,6 @@
 import type {
-  HousingLogDraftCreated,
-  HousingLogDraftInput,
-  HousingLogSummary,
-  StoredHousingLog,
+  HousingLogFinalizeConfirmation,
+  HousingLogFinalizeInput,
   ValidationIssue,
 } from "@workspace/housing-log";
 
@@ -52,53 +50,18 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 /**
- * The server response includes `accessCode` in plaintext exactly once, at
- * creation time. The caller must display it to the officer — it is never
- * returned again by any other endpoint.
+ * The only officer-facing server call: submits the complete local working
+ * Housing Log for canonical validation and atomic persistence. `submissionId`
+ * is a stable id generated once per local working record (see
+ * `housingLogLocalStore.ts`) so a retried call after a network failure or
+ * timeout can never create a duplicate finalized record. Nothing is sent
+ * anywhere else — there is no server draft to create, save, list, or resume.
  */
-export function createHousingLogDraft(
-  input: HousingLogDraftInput,
-): Promise<HousingLogDraftCreated> {
-  return request("/api/housing-logs", {
+export function finalizeHousingLog(
+  input: HousingLogFinalizeInput,
+): Promise<HousingLogFinalizeConfirmation> {
+  return request("/api/housing-logs/finalize", {
     method: "POST",
     body: JSON.stringify(input),
-  });
-}
-
-export function updateHousingLogDraft(
-  id: string,
-  input: HousingLogDraftInput,
-): Promise<StoredHousingLog> {
-  return request(`/api/housing-logs/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    body: JSON.stringify(input),
-  });
-}
-
-export function finalizeHousingLog(id: string): Promise<StoredHousingLog> {
-  return request(`/api/housing-logs/${encodeURIComponent(id)}/finalize`, {
-    method: "POST",
-    body: "{}",
-  });
-}
-
-export function getHousingLog(id: string): Promise<StoredHousingLog> {
-  return request(`/api/housing-logs/${encodeURIComponent(id)}`);
-}
-
-/**
- * Session-scoped: the server only ever returns drafts this browser has
- * already unlocked (by creating or entering the access code for). This is
- * intentionally not a directory of every draft in the system.
- */
-export function listHousingLogDrafts(): Promise<HousingLogSummary[]> {
-  return request("/api/housing-logs?status=draft");
-}
-
-/** Unlocks a draft by its officer-entered access code for this browser session. */
-export function unlockHousingLogDraft(code: string): Promise<{ draftId: string }> {
-  return request("/api/housing-logs/unlock", {
-    method: "POST",
-    body: JSON.stringify({ code }),
   });
 }

@@ -95,12 +95,49 @@ function shiftName(shift: HousingShift | ""): string {
         : "";
 }
 
+/**
+ * Fields whose real-world values are short codes (key-ring IDs, cuff/radio
+ * numbers, initials, seals, alarms) or inherently short input types (time,
+ * number, choice) get a narrow control instead of a full-card-width one —
+ * the control width should match the data ("C1", "153B"), not the label.
+ */
+function isCompactField(definition: FieldDefinition): boolean {
+  if (
+    definition.inputType === "time" ||
+    definition.inputType === "number" ||
+    definition.inputType === "choice"
+  ) {
+    return true;
+  }
+  if (definition.inputType !== "text") return false;
+  const key = definition.key.toLowerCase();
+  return /keyring|radio|cuff|bodyalarm|seal|chemicalagent|initials$/.test(
+    key,
+  );
+}
+
+/**
+ * Optional, editable suggestions for short known key-ring style codes (e.g.
+ * a unit's key ring commonly runs {UNIT}, {UNIT}1 … {UNIT}6). These are
+ * hints only — rendered via <datalist> so any legitimate value that doesn't
+ * match the pattern remains freely enterable.
+ */
+function keyRingSuggestions(
+  definition: FieldDefinition,
+  housingUnit: HousingUnit | "",
+): string[] | undefined {
+  if (!housingUnit) return undefined;
+  if (!/keyring|acceptedkeyrings/i.test(definition.key)) return undefined;
+  return [housingUnit, ...Array.from({ length: 6 }, (_, i) => `${housingUnit}${i + 1}`)];
+}
+
 type FieldControlProps = {
   definition: FieldDefinition;
   value: HousingLogValue | undefined;
   disabled: boolean;
   error: boolean;
   onChange: (value: HousingLogValue) => void;
+  suggestions?: string[];
 };
 
 function FieldControl({
@@ -109,7 +146,9 @@ function FieldControl({
   disabled,
   error,
   onChange,
+  suggestions,
 }: FieldControlProps) {
+  const compact = isCompactField(definition);
   const className = `${hudInput} ${error ? "border-red-400 ring-2 ring-red-400/25" : ""}`;
   const common = {
     id: targetId(`values.${definition.key}`),
@@ -118,8 +157,15 @@ function FieldControl({
     value: value ?? "",
     className,
   };
+  const listId = suggestions ? `${common.id}-list` : undefined;
+  const spanClass =
+    definition.inputType === "textarea"
+      ? "col-span-full"
+      : compact
+        ? ""
+        : "sm:col-span-2";
   return (
-    <div className={definition.inputType === "textarea" ? "sm:col-span-2" : ""}>
+    <div className={spanClass}>
       <label className={hudLabel} htmlFor={common.id}>
         {definition.label}
       </label>
@@ -139,13 +185,23 @@ function FieldControl({
           ))}
         </select>
       ) : (
-        <input
-          {...common}
-          type={definition.inputType}
-          min={definition.inputType === "number" ? 0 : undefined}
-          step={definition.inputType === "number" ? 1 : undefined}
-          onChange={(event) => onChange(event.target.value)}
-        />
+        <>
+          <input
+            {...common}
+            type={definition.inputType}
+            list={listId}
+            min={definition.inputType === "number" ? 0 : undefined}
+            step={definition.inputType === "number" ? 1 : undefined}
+            onChange={(event) => onChange(event.target.value)}
+          />
+          {listId && (
+            <datalist id={listId}>
+              {suggestions?.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
+          )}
+        </>
       )}
     </div>
   );
@@ -1296,7 +1352,7 @@ export default function HousingLog() {
                         <legend className="px-2 text-xs font-black uppercase tracking-[0.12em] text-blue-100">
                           {heading}
                         </legend>
-                        <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                        <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                           {slot.fields.map((definition) => (
                             <FieldControl
                               key={definition.key}
@@ -1308,6 +1364,10 @@ export default function HousingLog() {
                               disabled={disabled}
                               error={errorPaths.has(
                                 `values.${definition.key}`,
+                              )}
+                              suggestions={keyRingSuggestions(
+                                definition,
+                                housingUnit,
                               )}
                               onChange={(value) =>
                                 setValue(definition.key, value)
@@ -1338,7 +1398,7 @@ export default function HousingLog() {
                             ? ` — ${section.description}`
                             : ""}
                         </p>
-                        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                           {section.fields.map((definition) => (
                             <FieldControl
                               key={definition.key}
@@ -1347,6 +1407,10 @@ export default function HousingLog() {
                               disabled={disabled}
                               error={errorPaths.has(
                                 `values.${definition.key}`,
+                              )}
+                              suggestions={keyRingSuggestions(
+                                definition,
+                                housingUnit,
                               )}
                               onChange={(value) =>
                                 setValue(definition.key, value)

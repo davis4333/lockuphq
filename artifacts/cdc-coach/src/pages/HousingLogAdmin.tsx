@@ -4,10 +4,12 @@ import {
   Archive,
   Download,
   FileSpreadsheet,
+  MailCheck,
   LogOut,
 } from "lucide-react";
 import type {
   HousingLogArchiveResponse,
+  HousingLogManualEmailResult,
   HousingShift,
 } from "@workspace/housing-log";
 import PageShell, {
@@ -19,6 +21,7 @@ import HousingLogDeliveryRecipients from "@/components/HousingLogDeliveryRecipie
 import {
   downloadHousingLogExcel,
   downloadHousingLogShiftPackage,
+  emailHousingLogShiftPackage,
   getHousingLogArchive,
   HousingLogAdminApiError,
   loginHousingLogAdmin,
@@ -54,6 +57,14 @@ export default function HousingLogAdmin() {
   const [downloadingPackage, setDownloadingPackage] = useState<string | null>(
     null,
   );
+  const [sendingPackage, setSendingPackage] = useState<string | null>(null);
+  const [recipientCount, setRecipientCount] = useState(0);
+  const [emailResult, setEmailResult] =
+    useState<HousingLogManualEmailResult | null>(null);
+  const [emailError, setEmailError] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
 
   const loadArchive = async () => {
     setLoading(true);
@@ -69,6 +80,9 @@ export default function HousingLogAdmin() {
       ) {
         setArchive(null);
         setAuthenticated(false);
+        setRecipientCount(0);
+        setEmailResult(null);
+        setEmailError(null);
       } else {
         setError(
           requestError instanceof Error
@@ -123,6 +137,9 @@ export default function HousingLogAdmin() {
       setArchive(null);
       setAuthenticated(false);
       setError("");
+      setRecipientCount(0);
+      setEmailResult(null);
+      setEmailError(null);
     }
   };
 
@@ -138,6 +155,9 @@ export default function HousingLogAdmin() {
       ) {
         setAuthenticated(false);
         setArchive(null);
+        setRecipientCount(0);
+        setEmailResult(null);
+        setEmailError(null);
       }
       setError(
         requestError instanceof Error
@@ -162,6 +182,9 @@ export default function HousingLogAdmin() {
       ) {
         setAuthenticated(false);
         setArchive(null);
+        setRecipientCount(0);
+        setEmailResult(null);
+        setEmailError(null);
       }
       setError(
         requestError instanceof Error
@@ -170,6 +193,39 @@ export default function HousingLogAdmin() {
       );
     } finally {
       setDownloadingPackage(null);
+    }
+  };
+
+  const emailPackage = async (logDate: string, shift: HousingShift) => {
+    const key = `${logDate}-${shift}`;
+    setSendingPackage(key);
+    setEmailResult(null);
+    setEmailError(null);
+    try {
+      setEmailResult(await emailHousingLogShiftPackage(logDate, shift));
+    } catch (requestError) {
+      if (
+        requestError instanceof HousingLogAdminApiError &&
+        requestError.status === 401
+      ) {
+        setAuthenticated(false);
+        setArchive(null);
+      }
+      if (
+        !(
+          requestError instanceof HousingLogAdminApiError &&
+          requestError.status === 401
+        )
+      )
+        setEmailError({
+          key,
+          message:
+            requestError instanceof Error
+              ? requestError.message
+              : "The shift package could not be emailed.",
+        });
+    } finally {
+      setSendingPackage(null);
     }
   };
 
@@ -240,7 +296,13 @@ export default function HousingLogAdmin() {
             onUnauthorized={() => {
               setArchive(null);
               setAuthenticated(false);
+              setRecipientCount(0);
+              setEmailResult(null);
+              setEmailError(null);
             }}
+            onSettingsChange={(settings) =>
+              setRecipientCount(settings.deliveryRecipients.length)
+            }
           />
           <section className={`${hudPanel} p-4 sm:p-5`}>
             <div className="mb-4 flex flex-col gap-3 border-b border-blue-400/25 pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -309,7 +371,7 @@ export default function HousingLogAdmin() {
                                       <summary className="cursor-pointer px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-blue-200 marker:text-blue-400">
                                         {shiftLabel[shift.shift]}
                                       </summary>
-                                      <div className="mx-3 mb-3 flex flex-col gap-2 rounded-md border border-blue-400/25 bg-blue-950/25 p-3 sm:flex-row sm:items-center sm:justify-between">
+                                      <div className="mx-3 mb-3 flex flex-col gap-3 rounded-md border border-blue-400/25 bg-blue-950/25 p-3 lg:flex-row lg:items-center lg:justify-between">
                                         <div>
                                           <div className="text-[9px] font-black uppercase tracking-[0.14em] text-blue-300/65">
                                             Shift package status
@@ -321,33 +383,96 @@ export default function HousingLogAdmin() {
                                                 : "text-amber-300"
                                             }`}
                                           >
+                                            {shift.packageState === "complete"
+                                              ? "COMPLETE"
+                                              : "INCOMPLETE"}
+                                          </div>
+                                          <div className="mt-0.5 text-[9px] uppercase tracking-[0.08em] text-blue-200/50">
                                             {
                                               packageStateLabel[
                                                 shift.packageState
                                               ]
                                             }
                                           </div>
+                                          <div className="mt-1 text-[10px] text-blue-200/60">
+                                            {date.logDate} ·{" "}
+                                            {shiftLabel[shift.shift]} ·{" "}
+                                            {recipientCount} active recipient
+                                            {recipientCount === 1 ? "" : "s"}
+                                          </div>
+                                          {shift.packageState !==
+                                            "complete" && (
+                                            <div className="mt-2 text-[10px] font-semibold text-amber-200">
+                                              This package is incomplete. It can
+                                              still be emailed.
+                                            </div>
+                                          )}
+                                          {emailResult?.logDate ===
+                                            date.logDate &&
+                                            emailResult.shift ===
+                                              shift.shift && (
+                                              <div className="mt-2 text-[10px] font-semibold text-emerald-200">
+                                                Sent successfully to{" "}
+                                                {emailResult.recipientCount}{" "}
+                                                recipient
+                                                {emailResult.recipientCount ===
+                                                1
+                                                  ? ""
+                                                  : "s"}
+                                                . Package status:{" "}
+                                                {emailResult.packageStatus}.
+                                              </div>
+                                            )}
+                                          {emailError?.key ===
+                                            `${date.logDate}-${shift.shift}` && (
+                                            <div className="mt-2 text-[10px] font-semibold text-red-200">
+                                              {emailError.message} Use Email
+                                              Shift Package to retry.
+                                            </div>
+                                          )}
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            void downloadPackage(
-                                              date.logDate,
-                                              shift.shift,
-                                            )
-                                          }
-                                          disabled={
-                                            downloadingPackage ===
+                                        <div className="flex flex-col gap-2 sm:flex-row">
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              void downloadPackage(
+                                                date.logDate,
+                                                shift.shift,
+                                              )
+                                            }
+                                            disabled={
+                                              downloadingPackage ===
+                                              `${date.logDate}-${shift.shift}`
+                                            }
+                                            className="inline-flex items-center justify-center gap-2 rounded border border-blue-300/50 bg-blue-700/30 px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-blue-50 hover:bg-blue-600/45 disabled:opacity-50"
+                                          >
+                                            <Download className="h-3.5 w-3.5" />
+                                            {downloadingPackage ===
                                             `${date.logDate}-${shift.shift}`
-                                          }
-                                          className="inline-flex items-center justify-center gap-2 rounded border border-blue-300/50 bg-blue-700/30 px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-blue-50 hover:bg-blue-600/45 disabled:opacity-50"
-                                        >
-                                          <Download className="h-3.5 w-3.5" />
-                                          {downloadingPackage ===
-                                          `${date.logDate}-${shift.shift}`
-                                            ? "Building Package…"
-                                            : "Download Shift Package"}
-                                        </button>
+                                              ? "Building Package…"
+                                              : "Download Shift Package"}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              void emailPackage(
+                                                date.logDate,
+                                                shift.shift,
+                                              )
+                                            }
+                                            disabled={
+                                              sendingPackage ===
+                                              `${date.logDate}-${shift.shift}`
+                                            }
+                                            className="inline-flex items-center justify-center gap-2 rounded border border-emerald-300/50 bg-emerald-800/30 px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-50 hover:bg-emerald-700/45 disabled:opacity-50"
+                                          >
+                                            <MailCheck className="h-3.5 w-3.5" />
+                                            {sendingPackage ===
+                                            `${date.logDate}-${shift.shift}`
+                                              ? "Emailing Package…"
+                                              : "Email Shift Package"}
+                                          </button>
+                                        </div>
                                       </div>
                                       <div className="grid gap-2 px-3 pb-3 md:grid-cols-2">
                                         {shift.units.map((slot) => (

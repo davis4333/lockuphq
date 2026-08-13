@@ -16,6 +16,14 @@ import type {
   HousingLogValue,
 } from "@workspace/housing-log";
 import {
+  HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CHECK_SQL,
+  HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CONSTRAINT,
+  HOUSING_LOG_DELIVERY_ATTEMPT_LIFECYCLE_CHECK_SQL,
+  HOUSING_LOG_DELIVERY_ATTEMPT_LIFECYCLE_CONSTRAINT,
+  HOUSING_LOG_DELIVERY_ATTEMPT_STATUS_CHECK_SQL,
+  HOUSING_LOG_DELIVERY_ATTEMPT_STATUS_CONSTRAINT,
+  HOUSING_LOG_DELIVERY_ATTEMPT_TRIGGER_CHECK_SQL,
+  HOUSING_LOG_DELIVERY_ATTEMPT_TRIGGER_CONSTRAINT,
   HOUSING_LOG_FINALIZATION_CHECK_SQL,
   HOUSING_LOG_FINALIZATION_CONSTRAINT,
   HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CHECK_SQL,
@@ -101,5 +109,63 @@ export const housingLogDeliveryRecipients = pgTable(
       sql`lower(${table.email})`,
     ),
     index("housing_log_delivery_recipients_active_idx").on(table.active),
+  ],
+);
+
+export const housingLogDeliveryAttempts = pgTable(
+  "housing_log_delivery_attempts",
+  {
+    id: text("id").primaryKey(),
+    logDate: date("log_date", { mode: "string" }).notNull(),
+    shift: text("shift").notNull(),
+    triggerType: text("trigger_type").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    packageCompleteness: text("package_completeness").notNull(),
+    packageSha256: text("package_sha256").notNull(),
+    recipients: jsonb("recipients").$type<string[]>().notNull(),
+    providerMessageId: text("provider_message_id"),
+    status: text("status").notNull(),
+    failureCategory: text("failure_category"),
+    failureMessage: text("failure_message"),
+    initiatedBy: text("initiated_by").notNull(),
+  },
+  (table) => [
+    index("housing_log_delivery_attempts_date_shift_idx").on(
+      table.logDate,
+      table.shift,
+      table.startedAt,
+    ),
+    index("housing_log_delivery_attempts_status_idx").on(table.status),
+    check(
+      HOUSING_LOG_DELIVERY_ATTEMPT_STATUS_CONSTRAINT,
+      sql.raw(HOUSING_LOG_DELIVERY_ATTEMPT_STATUS_CHECK_SQL),
+    ),
+    check(
+      HOUSING_LOG_DELIVERY_ATTEMPT_TRIGGER_CONSTRAINT,
+      sql.raw(HOUSING_LOG_DELIVERY_ATTEMPT_TRIGGER_CHECK_SQL),
+    ),
+    check(
+      HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CONSTRAINT,
+      sql.raw(HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CHECK_SQL),
+    ),
+    check(
+      HOUSING_LOG_DELIVERY_ATTEMPT_LIFECYCLE_CONSTRAINT,
+      sql.raw(HOUSING_LOG_DELIVERY_ATTEMPT_LIFECYCLE_CHECK_SQL),
+    ),
+    check(
+      "housing_log_delivery_attempts_checksum_check",
+      sql.raw("package_sha256 ~ '^[0-9a-f]{64}$'"),
+    ),
+    check(
+      "housing_log_delivery_attempts_recipients_check",
+      sql.raw(
+        "jsonb_typeof(recipients) = 'array' AND jsonb_array_length(recipients) > 0",
+      ),
+    ),
+    check(
+      "housing_log_delivery_attempts_initiator_check",
+      sql.raw("initiated_by = 'admin'"),
+    ),
   ],
 );

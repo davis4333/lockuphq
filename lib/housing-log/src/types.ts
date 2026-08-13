@@ -142,6 +142,20 @@ export type HousingLogDeliverySettings = {
   updatedAt: string | null;
 };
 
+export type HousingLogPackageCompleteness = "COMPLETE" | "INCOMPLETE";
+
+export type HousingLogManualEmailResult = {
+  attemptId: string;
+  logDate: string;
+  shift: HousingShift;
+  packageStatus: HousingLogPackageCompleteness;
+  recipientCount: number;
+  includedLogCount: number;
+  missingHousingUnits: HousingUnit[];
+  duplicateHousingUnits: HousingUnit[];
+  sentAt: string;
+};
+
 export type HousingLogListFilters = {
   status?: HousingLogStatus;
   housingUnit?: HousingUnit;

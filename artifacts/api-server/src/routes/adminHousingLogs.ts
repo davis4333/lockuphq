@@ -41,6 +41,15 @@ import {
   type HousingLogShiftPackage,
 } from "../housingLogs/shiftPackage";
 import {
+  getHousingLogDeliveryAttemptRepository,
+  type HousingLogDeliveryAttemptRepository,
+} from "../housingLogs/deliveryAttempts";
+import type { HousingLogEmailProvider } from "../housingLogs/emailProvider";
+import {
+  HousingLogManualEmailError,
+  sendHousingLogShiftPackageEmail,
+} from "../housingLogs/manualEmailDelivery";
+import {
   HousingLogWorkbookRegistry,
   registerOfficialHousingLogWorkbook,
 } from "../housingLogs/excelTemplate/workbookRegistry";
@@ -56,6 +65,8 @@ type AdminHousingLogsRouterOptions = {
     shift: HousingShift,
   ) => Promise<HousingLogShiftPackage>;
   deliverySettingsRepository?: HousingLogDeliverySettingsRepository;
+  deliveryAttemptRepository?: HousingLogDeliveryAttemptRepository;
+  emailProviderFactory?: () => HousingLogEmailProvider;
 };
 
 const safeFilePart = (value: string) =>
@@ -116,6 +127,9 @@ export function createAdminHousingLogsRouter(
   const deliverySettingsRepository =
     options.deliverySettingsRepository ??
     getHousingLogDeliverySettingsRepository();
+  const deliveryAttemptRepository =
+    options.deliveryAttemptRepository ??
+    getHousingLogDeliveryAttemptRepository();
 
   router.post("/admin/session", (request, response) => {
     const configuredPassword = passwordProvider();
@@ -309,6 +323,46 @@ export function createAdminHousingLogsRouter(
       response.setHeader("X-Content-Type-Options", "nosniff");
       response.setHeader("Content-Length", String(generated.bytes.length));
       response.status(200).send(generated.bytes);
+    },
+  );
+
+  router.post(
+    "/admin/housing-logs/shift-package/:logDate/:shift/send",
+    async (request, response) => {
+      const logDate = String(request.params["logDate"]);
+      const rawShift = String(request.params["shift"]);
+      if (!isValidHousingLogDate(logDate)) {
+        response.status(400).json({
+          error: "Enter a real package date in YYYY-MM-DD format.",
+        });
+        return;
+      }
+      if (!housingShifts.includes(rawShift as HousingShift)) {
+        response.status(400).json({ error: "Invalid Housing Log shift." });
+        return;
+      }
+      try {
+        const result = await sendHousingLogShiftPackageEmail(
+          logDate,
+          rawShift as HousingShift,
+          {
+            deliverySettingsRepository,
+            attemptRepository: deliveryAttemptRepository,
+            ...(options.emailProviderFactory
+              ? { emailProviderFactory: options.emailProviderFactory }
+              : {}),
+            packageBuilder: shiftPackageBuilder,
+          },
+        );
+        response.setHeader("Cache-Control", "no-store, private");
+        response.status(200).json(result);
+      } catch (error) {
+        if (error instanceof HousingLogManualEmailError) {
+          response.status(error.httpStatus).json({ error: error.message });
+          return;
+        }
+        throw error;
+      }
     },
   );
 

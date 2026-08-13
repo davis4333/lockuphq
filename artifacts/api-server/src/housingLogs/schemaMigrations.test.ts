@@ -4,11 +4,16 @@ import { getTableConfig } from "drizzle-orm/pg-core";
 import {
   housingLogDeliveryRecipients,
   housingLogDeliverySettings,
+  housingLogDeliveryAttempts,
   housingLogs,
 } from "./schema";
 import {
   HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CHECK_SQL,
   HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CONSTRAINT,
+  HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CONSTRAINT,
+  HOUSING_LOG_DELIVERY_ATTEMPT_LIFECYCLE_CONSTRAINT,
+  HOUSING_LOG_DELIVERY_ATTEMPT_STATUS_CONSTRAINT,
+  HOUSING_LOG_DELIVERY_ATTEMPT_TRIGGER_CONSTRAINT,
   HOUSING_LOG_FINALIZATION_CHECK_SQL,
   HOUSING_LOG_FINALIZATION_CONSTRAINT,
   HOUSING_LOG_STATUS_CHECK_SQL,
@@ -88,5 +93,41 @@ test("Housing Log migrations are ordered and uniquely versioned", () => {
   assert.equal(new Set(versions).size, versions.length);
   assert.ok(
     versions.every((version) => Number.isSafeInteger(version) && version > 0),
+  );
+});
+
+test("delivery-attempt ledger schema matches the append-only lifecycle migration", () => {
+  const config = getTableConfig(housingLogDeliveryAttempts);
+  const checkNames = config.checks.map((constraint) => constraint.name);
+  for (const name of [
+    HOUSING_LOG_DELIVERY_ATTEMPT_STATUS_CONSTRAINT,
+    HOUSING_LOG_DELIVERY_ATTEMPT_TRIGGER_CONSTRAINT,
+    HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CONSTRAINT,
+    HOUSING_LOG_DELIVERY_ATTEMPT_LIFECYCLE_CONSTRAINT,
+    "housing_log_delivery_attempts_checksum_check",
+    "housing_log_delivery_attempts_recipients_check",
+    "housing_log_delivery_attempts_initiator_check",
+  ])
+    assert.ok(checkNames.includes(name));
+
+  const migration = housingLogSchemaMigrations.find(
+    (item) => item.version === 3,
+  );
+  assert.ok(migration);
+  assert.match(
+    migration.sql,
+    /CREATE TABLE IF NOT EXISTS housing_log_delivery_attempts/,
+  );
+  assert.match(migration.sql, /status IN \('sending', 'sent', 'failed'\)/);
+  assert.match(migration.sql, /trigger_type = 'manual'/);
+  assert.match(
+    migration.sql,
+    /package_completeness IN \('COMPLETE', 'INCOMPLETE'\)/,
+  );
+  assert.match(migration.sql, /jsonb_array_length\(recipients\) > 0/);
+  assert.doesNotMatch(migration.sql, /ALTER TABLE housing_logs\b/);
+  assert.doesNotMatch(
+    migration.sql,
+    /ALTER TABLE housing_log_delivery_settings\b/,
   );
 });

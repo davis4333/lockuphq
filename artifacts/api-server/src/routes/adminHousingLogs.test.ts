@@ -10,6 +10,7 @@ import type {
   HousingLogSignatures,
   HousingLogSummary,
   HousingShift,
+  HousingLogPackageCompleteness,
   StoredHousingLog,
 } from "@workspace/housing-log";
 import { jsonErrorHandler } from "../app";
@@ -35,6 +36,15 @@ import {
   type HousingLogDeliverySettingsRepository,
 } from "../housingLogs/deliverySettings";
 import type { HousingLogShiftPackage } from "../housingLogs/shiftPackage";
+import type {
+  HousingLogDeliveryAttempt,
+  HousingLogDeliveryAttemptRepository,
+  StartHousingLogDeliveryAttempt,
+} from "../housingLogs/deliveryAttempts";
+import type {
+  HousingLogEmailPackage,
+  HousingLogEmailProvider,
+} from "../housingLogs/emailProvider";
 import { createAdminHousingLogsRouter } from "./adminHousingLogs";
 
 class AdminMemoryRepository implements HousingLogRepository {
@@ -206,6 +216,51 @@ class FailingDeliverySettingsRepository extends AdminMemoryDeliverySettingsRepos
   }
 }
 
+class AdminMemoryDeliveryAttempts implements HousingLogDeliveryAttemptRepository {
+  attempts: HousingLogDeliveryAttempt[] = [];
+  async start(input: StartHousingLogDeliveryAttempt) {
+    const attempt: HousingLogDeliveryAttempt = {
+      id: `attempt-${this.attempts.length + 1}`,
+      ...input,
+      triggerType: "manual",
+      completedAt: null,
+      providerMessageId: null,
+      status: "sending",
+      failureCategory: null,
+      failureMessage: null,
+      initiatedBy: "admin",
+    };
+    this.attempts.push(attempt);
+    return structuredClone(attempt);
+  }
+  async markSent(id: string, messageId: string, completedAt: Date) {
+    const attempt = this.attempts.find((item) => item.id === id)!;
+    attempt.status = "sent";
+    attempt.providerMessageId = messageId;
+    attempt.completedAt = completedAt;
+  }
+  async markFailed(
+    id: string,
+    category: string,
+    message: string,
+    completedAt: Date,
+  ) {
+    const attempt = this.attempts.find((item) => item.id === id)!;
+    attempt.status = "failed";
+    attempt.failureCategory = category;
+    attempt.failureMessage = message;
+    attempt.completedAt = completedAt;
+  }
+}
+
+class AdminCapturingEmailProvider implements HousingLogEmailProvider {
+  messages: HousingLogEmailPackage[] = [];
+  async sendHousingLogPackage(message: HousingLogEmailPackage) {
+    this.messages.push(message);
+    return { messageId: "provider-message" };
+  }
+}
+
 type TestServerOptions = Parameters<typeof createAdminHousingLogsRouter>[0];
 
 async function withServer(
@@ -355,6 +410,7 @@ test("every Housing Log admin archive route rejects unauthorized sessions", asyn
         "/api/admin/housing-logs/archive",
         "/api/admin/housing-logs/unknown/excel",
         "/api/admin/housing-logs/shift-package/2026-08-12/2",
+        "/api/admin/housing-logs/shift-package/2026-08-12/2/send",
         "/api/admin/housing-logs/delivery-settings",
       ]) {
         const response = await fetch(`${baseUrl}${path}`);
@@ -448,6 +504,144 @@ test("shift package generation failures receive controlled JSON", async () => {
         "The request could not be completed. Try again.",
       );
       assert.equal(JSON.stringify(body).includes("sensitive"), false);
+    },
+  );
+});
+
+test("manual-send API validates input and delivers the existing package through the protected boundary", async () => {
+  const records = new AdminMemoryRepository([
+    finalizedRecord("immutable-manual-email-log", "B", "2"),
+  ]);
+  const settings = new AdminMemoryDeliverySettingsRepository();
+  await settings.setPrimary("primary@example.com");
+  await settings.addAdditional("active@example.com");
+  await settings.addAdditional("inactive@example.com");
+  await settings.updateAdditional("recipient-2", { active: false });
+  const attempts = new AdminMemoryDeliveryAttempts();
+  const provider = new AdminCapturingEmailProvider();
+  let packageCalls = 0;
+  const packageBytes = Buffer.from("exact Phase 2D package bytes");
+  const packageCompleteness: HousingLogPackageCompleteness = "INCOMPLETE";
+  const recordsBefore = JSON.stringify([...records.records]);
+  const settingsBefore = JSON.stringify(settings.state);
+
+  await withServer(
+    {
+      repository: records,
+      passwordProvider: () => "correct horse",
+      deliverySettingsRepository: settings,
+      deliveryAttemptRepository: attempts,
+      emailProviderFactory: () => provider,
+      shiftPackageBuilder: async (logDate, shift) => {
+        packageCalls += 1;
+        return {
+          bytes: packageBytes,
+          filename: `Housing-Logs_${logDate}_Shift-${shift}.zip`,
+          manifest: {
+            manifestVersion: 1,
+            packageDate: logDate,
+            shift,
+            generatedAt: "2026-08-12T22:00:00.000Z",
+            completenessStatus: packageCompleteness,
+            expectedHousingUnits: [
+              "A/H",
+              "B",
+              "C",
+              "D",
+              "E",
+              "F",
+              "G",
+              "Infirmary",
+            ],
+            includedLogs: [],
+            missingHousingUnits: ["C"],
+            duplicateHousingUnitSlots: [],
+          },
+        };
+      },
+    },
+    async (baseUrl) => {
+      const unauthorized = await fetch(
+        `${baseUrl}/api/admin/housing-logs/shift-package/2026-08-12/2/send`,
+        { method: "POST" },
+      );
+      assert.equal(unauthorized.status, 401);
+
+      const cookie = await login(baseUrl);
+      for (const path of [
+        "/api/admin/housing-logs/shift-package/2026-02-30/2/send",
+        "/api/admin/housing-logs/shift-package/2026-08-12/4/send",
+      ]) {
+        const invalid = await fetch(`${baseUrl}${path}`, {
+          method: "POST",
+          headers: { cookie },
+        });
+        assert.equal(invalid.status, 400);
+      }
+      assert.equal(packageCalls, 0);
+
+      const response = await fetch(
+        `${baseUrl}/api/admin/housing-logs/shift-package/2026-08-12/2/send`,
+        { method: "POST", headers: { cookie } },
+      );
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+      const body = (await response.json()) as {
+        packageStatus: string;
+        recipientCount: number;
+        missingHousingUnits: string[];
+      };
+      assert.equal(body.packageStatus, "INCOMPLETE");
+      assert.equal(body.recipientCount, 2);
+      assert.deepEqual(body.missingHousingUnits, ["C"]);
+      assert.equal(packageCalls, 1);
+      assert.deepEqual(provider.messages[0]!.recipients, [
+        "primary@example.com",
+        "active@example.com",
+      ]);
+      assert.strictEqual(provider.messages[0]!.attachment.bytes, packageBytes);
+      assert.equal(attempts.attempts[0]!.status, "sent");
+      assert.equal(JSON.stringify([...records.records]), recordsBefore);
+      assert.equal(JSON.stringify(settings.state), settingsBefore);
+    },
+  );
+});
+
+test("manual-send API reports no recipients and expired sessions without generating a package", async () => {
+  let packageCalls = 0;
+  const sessions = new HousingLogAdminSessions();
+  await withServer(
+    {
+      repository: new AdminMemoryRepository(),
+      passwordProvider: () => "correct horse",
+      sessions,
+      deliverySettingsRepository: new AdminMemoryDeliverySettingsRepository(),
+      deliveryAttemptRepository: new AdminMemoryDeliveryAttempts(),
+      emailProviderFactory: () => new AdminCapturingEmailProvider(),
+      shiftPackageBuilder: async () => {
+        packageCalls += 1;
+        throw new Error("must not run");
+      },
+    },
+    async (baseUrl) => {
+      const cookie = await login(baseUrl);
+      const noRecipients = await fetch(
+        `${baseUrl}/api/admin/housing-logs/shift-package/2026-08-12/2/send`,
+        { method: "POST", headers: { cookie } },
+      );
+      assert.equal(noRecipients.status, 409);
+      assert.deepEqual(await noRecipients.json(), {
+        error: "No Housing Log delivery recipients are configured.",
+      });
+      assert.equal(packageCalls, 0);
+
+      sessions.revoke(cookie.split("=", 2)[1]);
+      const expired = await fetch(
+        `${baseUrl}/api/admin/housing-logs/shift-package/2026-08-12/2/send`,
+        { method: "POST", headers: { cookie } },
+      );
+      assert.equal(expired.status, 401);
+      assert.equal(packageCalls, 0);
     },
   );
 });
@@ -782,12 +976,14 @@ test("authenticated archive and package routes report database unavailability wi
       passwordProvider: () => "correct horse",
     },
     async (baseUrl) => {
-      for (const path of [
-        "/api/admin/housing-logs/archive",
-        "/api/admin/housing-logs/shift-package/2026-08-12/2",
-        "/api/admin/housing-logs/delivery-settings",
+      for (const [path, method] of [
+        ["/api/admin/housing-logs/archive", "GET"],
+        ["/api/admin/housing-logs/shift-package/2026-08-12/2", "GET"],
+        ["/api/admin/housing-logs/shift-package/2026-08-12/2/send", "POST"],
+        ["/api/admin/housing-logs/delivery-settings", "GET"],
       ]) {
         const response = await fetch(`${baseUrl}${path}`, {
+          method,
           headers: {
             cookie: `${HOUSING_LOG_ADMIN_COOKIE}=${encodeURIComponent(token)}`,
           },

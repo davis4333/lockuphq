@@ -8,6 +8,22 @@ export const HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CONSTRAINT =
   "housing_log_delivery_settings_singleton_check";
 export const HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CHECK_SQL =
   "id = 'default'";
+export const HOUSING_LOG_DELIVERY_ATTEMPT_STATUS_CONSTRAINT =
+  "housing_log_delivery_attempts_status_check";
+export const HOUSING_LOG_DELIVERY_ATTEMPT_STATUS_CHECK_SQL =
+  "status IN ('sending', 'sent', 'failed')";
+export const HOUSING_LOG_DELIVERY_ATTEMPT_TRIGGER_CONSTRAINT =
+  "housing_log_delivery_attempts_trigger_check";
+export const HOUSING_LOG_DELIVERY_ATTEMPT_TRIGGER_CHECK_SQL =
+  "trigger_type = 'manual'";
+export const HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CONSTRAINT =
+  "housing_log_delivery_attempts_completeness_check";
+export const HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CHECK_SQL =
+  "package_completeness IN ('COMPLETE', 'INCOMPLETE')";
+export const HOUSING_LOG_DELIVERY_ATTEMPT_LIFECYCLE_CONSTRAINT =
+  "housing_log_delivery_attempts_lifecycle_check";
+export const HOUSING_LOG_DELIVERY_ATTEMPT_LIFECYCLE_CHECK_SQL =
+  "(status = 'sending' AND completed_at IS NULL AND provider_message_id IS NULL AND failure_category IS NULL AND failure_message IS NULL) OR (status = 'sent' AND completed_at IS NOT NULL AND provider_message_id IS NOT NULL AND failure_category IS NULL AND failure_message IS NULL) OR (status = 'failed' AND completed_at IS NOT NULL AND provider_message_id IS NULL AND failure_category IS NOT NULL AND failure_message IS NOT NULL)";
 
 export type HousingLogSchemaMigration = {
   version: number;
@@ -86,6 +102,47 @@ export const housingLogSchemaMigrations: HousingLogSchemaMigration[] = [
         ON housing_log_delivery_recipients (lower(email));
       CREATE INDEX IF NOT EXISTS housing_log_delivery_recipients_active_idx
         ON housing_log_delivery_recipients (active);
+    `,
+  },
+  {
+    version: 3,
+    description: "Create Housing Log delivery attempt ledger",
+    sql: `
+      CREATE TABLE IF NOT EXISTS housing_log_delivery_attempts (
+        id text PRIMARY KEY,
+        log_date date NOT NULL,
+        shift text NOT NULL,
+        trigger_type text NOT NULL,
+        started_at timestamptz NOT NULL,
+        completed_at timestamptz NULL,
+        package_completeness text NOT NULL,
+        package_sha256 text NOT NULL,
+        recipients jsonb NOT NULL,
+        provider_message_id text NULL,
+        status text NOT NULL,
+        failure_category text NULL,
+        failure_message text NULL,
+        initiated_by text NOT NULL,
+        CONSTRAINT ${HOUSING_LOG_DELIVERY_ATTEMPT_STATUS_CONSTRAINT}
+          CHECK (${HOUSING_LOG_DELIVERY_ATTEMPT_STATUS_CHECK_SQL}),
+        CONSTRAINT ${HOUSING_LOG_DELIVERY_ATTEMPT_TRIGGER_CONSTRAINT}
+          CHECK (${HOUSING_LOG_DELIVERY_ATTEMPT_TRIGGER_CHECK_SQL}),
+        CONSTRAINT ${HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CONSTRAINT}
+          CHECK (${HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CHECK_SQL}),
+        CONSTRAINT ${HOUSING_LOG_DELIVERY_ATTEMPT_LIFECYCLE_CONSTRAINT}
+          CHECK (${HOUSING_LOG_DELIVERY_ATTEMPT_LIFECYCLE_CHECK_SQL}),
+        CONSTRAINT housing_log_delivery_attempts_checksum_check
+          CHECK (package_sha256 ~ '^[0-9a-f]{64}$'),
+        CONSTRAINT housing_log_delivery_attempts_recipients_check
+          CHECK (jsonb_typeof(recipients) = 'array' AND jsonb_array_length(recipients) > 0),
+        CONSTRAINT housing_log_delivery_attempts_initiator_check
+          CHECK (initiated_by = 'admin')
+      );
+
+      CREATE INDEX IF NOT EXISTS housing_log_delivery_attempts_date_shift_idx
+        ON housing_log_delivery_attempts (log_date, shift, started_at);
+      CREATE INDEX IF NOT EXISTS housing_log_delivery_attempts_status_idx
+        ON housing_log_delivery_attempts (status);
     `,
   },
 ];

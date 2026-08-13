@@ -1,6 +1,7 @@
 import type {
   HousingLogArchiveResponse,
   HousingLogDeliverySettings,
+  HousingLogManualEmailResult,
   HousingShift,
 } from "@workspace/housing-log";
 
@@ -88,6 +89,22 @@ export async function downloadHousingLogShiftPackage(
     `/api/admin/housing-logs/shift-package/${encodeURIComponent(logDate)}/${encodeURIComponent(shift)}`,
     `Housing-Logs_${logDate}_Shift-${shift}.zip`,
   );
+}
+
+export async function emailHousingLogShiftPackage(
+  logDate: string,
+  shift: HousingShift,
+): Promise<HousingLogManualEmailResult> {
+  const response = await fetch(
+    `/api/admin/housing-logs/shift-package/${encodeURIComponent(logDate)}/${encodeURIComponent(shift)}/send`,
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { accept: "application/json" },
+    },
+  );
+  if (!response.ok) await errorFromResponse(response);
+  return response.json() as Promise<HousingLogManualEmailResult>;
 }
 
 async function deliverySettingsRequest(

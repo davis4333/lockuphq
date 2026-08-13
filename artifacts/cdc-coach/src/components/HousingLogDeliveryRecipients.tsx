@@ -13,10 +13,12 @@ import {
 
 type DeliveryRecipientsProps = {
   onUnauthorized: () => void;
+  onSettingsChange?: (settings: HousingLogDeliverySettings) => void;
 };
 
 export default function HousingLogDeliveryRecipients({
   onUnauthorized,
+  onSettingsChange,
 }: DeliveryRecipientsProps) {
   const [settings, setSettings] = useState<HousingLogDeliverySettings | null>(
     null,
@@ -38,12 +40,17 @@ export default function HousingLogDeliveryRecipients({
     setError(requestError instanceof Error ? requestError.message : fallback);
   };
 
+  const applySettings = (result: HousingLogDeliverySettings) => {
+    setSettings(result);
+    onSettingsChange?.(result);
+  };
+
   const load = async () => {
     setLoading(true);
     setError("");
     try {
       const result = await getHousingLogDeliverySettings();
-      setSettings(result);
+      applySettings(result);
       setPrimaryEmail(result.primaryEmail ?? "");
     } catch (requestError) {
       handleError(requestError, "Delivery recipients could not be loaded.");
@@ -62,7 +69,7 @@ export default function HousingLogDeliveryRecipients({
     setError("");
     try {
       const result = await setHousingLogPrimaryRecipient(primaryEmail);
-      setSettings(result);
+      applySettings(result);
       setPrimaryEmail(result.primaryEmail ?? "");
     } catch (requestError) {
       handleError(requestError, "The primary recipient could not be saved.");
@@ -77,7 +84,7 @@ export default function HousingLogDeliveryRecipients({
     setError("");
     try {
       const result = await addHousingLogAdditionalRecipient(additionalEmail);
-      setSettings(result);
+      applySettings(result);
       setAdditionalEmail("");
     } catch (requestError) {
       handleError(requestError, "The additional recipient could not be added.");
@@ -90,7 +97,7 @@ export default function HousingLogDeliveryRecipients({
     setSaving(id);
     setError("");
     try {
-      setSettings(await updateHousingLogAdditionalRecipient(id, { active }));
+      applySettings(await updateHousingLogAdditionalRecipient(id, { active }));
     } catch (requestError) {
       handleError(requestError, "The recipient status could not be changed.");
     } finally {
@@ -102,7 +109,7 @@ export default function HousingLogDeliveryRecipients({
     setSaving(id);
     setError("");
     try {
-      setSettings(await removeHousingLogAdditionalRecipient(id));
+      applySettings(await removeHousingLogAdditionalRecipient(id));
     } catch (requestError) {
       handleError(requestError, "The recipient could not be removed.");
     } finally {
@@ -119,8 +126,8 @@ export default function HousingLogDeliveryRecipients({
           </h2>
           <p className="mt-1 max-w-3xl text-xs leading-relaxed text-blue-200/60">
             The primary recipient and every active additional recipient will
-            receive the same Housing Log shift package when delivery is added.
-            Inactive recipients receive nothing.
+            receive the same Housing Log shift package when an administrator
+            emails it. Inactive recipients receive nothing.
           </p>
         </div>
         <button

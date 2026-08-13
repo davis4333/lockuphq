@@ -50,8 +50,10 @@ export class InvalidHousingLogDeliverySettingsInputError extends Error {
 }
 
 export class DuplicateHousingLogRecipientError extends Error {
-  constructor() {
-    super("That email address is already configured as a recipient.");
+  constructor(
+    message = "That email address is already configured as a recipient.",
+  ) {
+    super(message);
     this.name = "DuplicateHousingLogRecipientError";
   }
 }
@@ -158,7 +160,10 @@ export class PostgresHousingLogDeliverySettingsRepository implements HousingLogD
           sql`lower(${housingLogDeliveryRecipients.email}) = ${email.toLowerCase()}`,
         )
         .limit(1);
-      if (duplicate) throw new DuplicateHousingLogRecipientError();
+      if (duplicate)
+        throw new DuplicateHousingLogRecipientError(
+          "That address is already an Additional Recipient. Remove it there before making it the Primary Recipient.",
+        );
       await transaction
         .update(housingLogDeliverySettings)
         .set({ primaryEmail: email, updatedAt: new Date() })

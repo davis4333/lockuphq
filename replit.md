@@ -11,6 +11,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 - Housing Log Phase 1 uses `DATABASE_URL` for draft/finalized structured records and applies its small ordered migration list through `housing_log_schema_migrations`. If initialization fails, only Housing Log routes return 503 and retry independently; the remaining LockUpHQ API continues normally.
+- Housing Log admin access requires `HOUSING_LOG_ADMIN_PASSWORD` in Replit Secrets. Manual email delivery additionally requires `RESEND_API_KEY` and `HOUSING_LOG_EMAIL_FROM` (a verified Resend sender such as `LockUpHQ <housing-logs@example.gov>`). These values remain server-only. The primary recipient is placed in `To`; active additional recipients are sent as `BCC` so their addresses are not exposed to one another.
 - Required env (DR Writer app): `ANTHROPIC_API_KEY` — the `dr-writer-app` artifact boots in `AI_MODE=live` and exits if the key is missing (server-only; never exposed to the browser or logged)
 
 ## Stack

@@ -125,32 +125,42 @@ export type StoredHousingLog = HousingLogDraftInput & {
   finalizedAt: string | null;
 };
 
-export type HousingLogSummary = Pick<
-  StoredHousingLog,
-  | "id"
-  | "logDate"
-  | "shift"
-  | "housingUnit"
-  | "templateVersion"
-  | "status"
-  | "createdAt"
-  | "updatedAt"
-  | "finalizedAt"
->;
-
 /**
- * Response shape returned exactly once, at creation time, so the officer can
- * record/share the plaintext access code. It is never returned again — the
- * server only ever stores a salted hash (see api-server `draftAccess.ts`).
+ * The pre-split combined physical-unit value used before A Dorm and H Dorm
+ * were separated into independent physical units sharing the AH template
+ * family (see `configs.ts`'s `familyFor`). No longer selectable by officers
+ * and never produced by new writes — retained only so pre-existing
+ * finalized rows can still be displayed/exported safely by admin instead of
+ * crashing archive/package code that only knows the current unit list.
+ * Never automatically migrated to "A" or "H" — that identity is genuinely
+ * ambiguous and must not be guessed.
  */
-export type HousingLogDraftCreated = StoredHousingLog & {
-  accessCode: string;
+export const legacyHousingUnits = ["A/H"] as const;
+export type LegacyHousingUnit = (typeof legacyHousingUnits)[number];
+
+export const legacyHousingUnitLabels: Record<LegacyHousingUnit, string> = {
+  "A/H": "Legacy A/H",
 };
+
+export function isKnownHousingUnit(value: string): value is HousingUnit {
+  return (housingUnits as readonly string[]).includes(value);
+}
+
+export function isLegacyHousingUnit(
+  value: string,
+): value is LegacyHousingUnit {
+  return (legacyHousingUnits as readonly string[]).includes(value);
+}
 
 export type HousingLogArchiveRecord = Pick<
   StoredHousingLog,
-  "id" | "logDate" | "shift" | "housingUnit" | "templateVersion" | "finalizedAt"
+  "id" | "logDate" | "shift" | "templateVersion" | "finalizedAt"
 > & {
+  /**
+   * Usually a canonical `HousingUnit`. May be a `LegacyHousingUnit` for rows
+   * finalized before the A/H split — see `isLegacyHousingUnit`.
+   */
+  housingUnit: HousingUnit | LegacyHousingUnit;
   sourceSheet: string;
   finalizedAt: string;
 };
@@ -188,13 +198,6 @@ export type HousingLogManualEmailResult = {
   missingHousingUnits: HousingUnit[];
   duplicateHousingUnits: HousingUnit[];
   sentAt: string;
-};
-
-export type HousingLogListFilters = {
-  status?: HousingLogStatus;
-  housingUnit?: HousingUnit;
-  shift?: HousingShift;
-  logDate?: string;
 };
 
 export type ValidationIssue = {
@@ -276,19 +279,26 @@ export const housingLogDraftInputSchema = z.object({
   }),
 });
 
-export const housingLogUpdateSchema = housingLogDraftInputSchema.partial();
+/**
+ * A client-generated idempotency key, one per local unfinished Housing Log.
+ * The server uses it to guarantee that a retried finalize submission (after
+ * a network failure, timeout, or duplicate click) can never create a second
+ * finalized record — see api-server `repository.ts`'s `finalizeSubmission`.
+ */
+export const housingLogSubmissionIdSchema = z.string().trim().min(8).max(100);
 
-export const housingLogListFiltersSchema = z
-  .object({
-    status: z.enum(housingLogStatuses).optional(),
-    housingUnit: z.enum(housingUnits).optional(),
-    shift: z.enum(housingShifts).optional(),
-    logDate: housingLogDateSchema.optional(),
-  })
-  .strict();
+export const housingLogFinalizeInputSchema = housingLogDraftInputSchema.extend(
+  { submissionId: housingLogSubmissionIdSchema },
+);
 
-export const housingLogDraftUnlockSchema = z
-  .object({
-    code: z.string().trim().min(1).max(40),
-  })
-  .strict();
+export type HousingLogFinalizeInput = HousingLogDraftInput & {
+  submissionId: string;
+};
+
+/** Minimal confirmation returned after a successful finalize — the officer
+ * page has no further use for the record's contents, so nothing beyond an
+ * id and timestamp is echoed back. */
+export type HousingLogFinalizeConfirmation = {
+  id: string;
+  finalizedAt: string;
+};

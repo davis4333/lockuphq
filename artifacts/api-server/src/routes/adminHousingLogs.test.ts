@@ -6,9 +6,6 @@ import type {
   HousingLogArchiveResponse,
   HousingLogDeliverySettings,
   HousingLogDraftInput,
-  HousingLogListFilters,
-  HousingLogSignatures,
-  HousingLogSummary,
   HousingShift,
   HousingLogPackageCompleteness,
   StoredHousingLog,
@@ -21,7 +18,7 @@ import {
 import { createHousingLogStressRecord } from "../housingLogs/documentSpike/stressFixture";
 import {
   type FinalizedHousingLogMetadata,
-  type FinalizeHousingLogResult,
+  type FinalizeSubmissionResult,
   type HousingLogRepository,
 } from "../housingLogs/repository";
 import {
@@ -54,25 +51,8 @@ class AdminMemoryRepository implements HousingLogRepository {
     for (const record of records) this.records.set(record.id, record);
   }
 
-  async create(
-    _input: HousingLogDraftInput,
-    _accessCodeHash: string,
-  ): Promise<StoredHousingLog> {
-    throw new Error("not used");
-  }
-
-  async findDraftByAccessCodeHash(): Promise<
-    { id: string; status: StoredHousingLog["status"] } | undefined
-  > {
-    throw new Error("not used");
-  }
-
   async get(id: string): Promise<StoredHousingLog | undefined> {
     return this.records.get(id);
-  }
-
-  async list(_filters: HousingLogListFilters): Promise<HousingLogSummary[]> {
-    throw new Error("not used");
   }
 
   async listFinalizedArchive(): Promise<FinalizedHousingLogMetadata[]> {
@@ -112,15 +92,10 @@ class AdminMemoryRepository implements HousingLogRepository {
     );
   }
 
-  async updateDraft(
-    _id: string,
+  async finalizeSubmission(
     _input: HousingLogDraftInput,
-    _signaturePatch?: HousingLogSignatures,
-  ): Promise<StoredHousingLog | undefined> {
-    throw new Error("not used");
-  }
-
-  async finalizeDraft(_id: string): Promise<FinalizeHousingLogResult> {
+    _submissionId: string,
+  ): Promise<FinalizeSubmissionResult> {
     throw new Error("not used");
   }
 }
@@ -467,6 +442,7 @@ test("shift package endpoint validates inputs and returns a protected no-store Z
         "Infirmary",
       ],
       duplicateHousingUnitSlots: [],
+      legacyLogs: [],
     },
   };
   await withServer(
@@ -586,6 +562,7 @@ test("manual-send API validates input and delivers the existing package through 
             includedLogs: [],
             missingHousingUnits: ["C"],
             duplicateHousingUnitSlots: [],
+            legacyLogs: [],
           },
         };
       },

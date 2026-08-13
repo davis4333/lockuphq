@@ -1,6 +1,5 @@
 import { Router, type IRouter, type Response } from "express";
 import {
-  getHousingLogConfig,
   housingShifts,
   housingUnits,
   isValidHousingLogDate,
@@ -8,6 +7,7 @@ import {
   type HousingShift,
 } from "@workspace/housing-log";
 import { ensureHousingLogSchema } from "../housingLogs/db";
+import { sourceSheetForHousingLogUnit } from "../housingLogs/legacyHousingUnit";
 import {
   clearAdminSessionCookie,
   cookieValue,
@@ -189,8 +189,10 @@ export function createAdminHousingLogsRouter(
       expectedHousingUnits: [...housingUnits],
       records: finalized.map((record) => ({
         ...record,
-        sourceSheet: getHousingLogConfig(record.housingUnit, record.shift)
-          .sourceSheet,
+        sourceSheet: sourceSheetForHousingLogUnit(
+          record.housingUnit,
+          record.shift,
+        ),
       })),
     };
     response.setHeader("Cache-Control", "no-store");

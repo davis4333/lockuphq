@@ -5,17 +5,14 @@ import JSZip from "jszip";
 import {
   housingUnits,
   type HousingLogDraftInput,
-  type HousingLogListFilters,
-  type HousingLogSignatures,
-  type HousingLogSummary,
   type HousingShift,
   type HousingUnit,
   type StoredHousingLog,
 } from "@workspace/housing-log";
 import { createHousingLogStressRecord } from "./documentSpike/stressFixture";
 import type {
+  FinalizeSubmissionResult,
   FinalizedHousingLogMetadata,
-  FinalizeHousingLogResult,
   HousingLogRepository,
 } from "./repository";
 import {
@@ -42,25 +39,8 @@ class PackageMemoryRepository implements HousingLogRepository {
     this.records = records.map((record) => structuredClone(record));
   }
 
-  async create(
-    _input: HousingLogDraftInput,
-    _accessCodeHash: string,
-  ): Promise<StoredHousingLog> {
-    throw new Error("not used");
-  }
-
-  async findDraftByAccessCodeHash(): Promise<
-    { id: string; status: StoredHousingLog["status"] } | undefined
-  > {
-    throw new Error("not used");
-  }
-
   async get(id: string): Promise<StoredHousingLog | undefined> {
     return this.records.find((record) => record.id === id);
-  }
-
-  async list(_filters: HousingLogListFilters): Promise<HousingLogSummary[]> {
-    throw new Error("not used");
   }
 
   async listFinalizedArchive(): Promise<FinalizedHousingLogMetadata[]> {
@@ -81,15 +61,10 @@ class PackageMemoryRepository implements HousingLogRepository {
       .map((record) => structuredClone(record));
   }
 
-  async updateDraft(
-    _id: string,
+  async finalizeSubmission(
     _input: HousingLogDraftInput,
-    _signaturePatch?: HousingLogSignatures,
-  ): Promise<StoredHousingLog | undefined> {
-    throw new Error("not used");
-  }
-
-  async finalizeDraft(_id: string): Promise<FinalizeHousingLogResult> {
+    _submissionId: string,
+  ): Promise<FinalizeSubmissionResult> {
     throw new Error("not used");
   }
 }
@@ -322,6 +297,45 @@ test("A Dorm and H Dorm are independent physical units that never satisfy or dup
   assert.match(readInlineCell(hSheetXml, "A1") ?? "", /HOUSING UNIT\s+H\b/);
   assert.doesNotMatch(readInlineCell(aSheetXml, "A1") ?? "", /HOUSING UNIT\s+H\b/);
   assert.doesNotMatch(readInlineCell(hSheetXml, "A1") ?? "", /HOUSING UNIT\s+A\b/);
+});
+
+test("a legacy pre-split A/H record does not crash package generation, is excluded from A/H missing/duplicate detection, and is labeled distinctly", async () => {
+  const legacyRecord: StoredHousingLog = {
+    ...record("A", "legacy-ah-record"),
+    // Simulates a row finalized before the A/H split — the DB column is
+    // unconstrained text, so this value can genuinely exist even though it
+    // is outside the current HousingUnit union.
+    housingUnit: "A/H" as HousingUnit,
+  };
+  const generated = await buildHousingLogShiftPackage(
+    PACKAGE_DATE,
+    PACKAGE_SHIFT,
+    {
+      repository: new PackageMemoryRepository([
+        legacyRecord,
+        ...onePerExpectedUnit(),
+      ]),
+      workbookRegistry: registry(),
+      generateWorkbook: fakeWorkbookGenerator,
+      now: () => FIXED_GENERATED_AT,
+    },
+  );
+  const { zip, manifest } = await loadPackage(generated.bytes);
+  // Every canonical unit (including A and H) is independently satisfied —
+  // the legacy row never fills either slot.
+  assert.equal(manifest.completenessStatus, "COMPLETE");
+  assert.deepEqual(manifest.missingHousingUnits, []);
+  assert.deepEqual(manifest.duplicateHousingUnitSlots, []);
+  assert.equal(manifest.includedLogs.length, housingUnits.length);
+  assert.ok(
+    !manifest.includedLogs.some((item) => item.recordId === "legacy-ah-record"),
+  );
+  // The legacy row is still exported, just in its own clearly-labeled bucket.
+  assert.equal(manifest.legacyLogs.length, 1);
+  assert.equal(manifest.legacyLogs[0]!.recordId, "legacy-ah-record");
+  assert.equal(manifest.legacyLogs[0]!.legacyHousingUnit, "A/H");
+  assert.match(manifest.legacyLogs[0]!.filename, /_A-H_LEGACY\.xlsx$/);
+  assert.ok(zip.file(manifest.legacyLogs[0]!.filename));
 });
 
 test("all expected units plus duplicates preserve historical templates and valid XLSX files", async () => {

@@ -1,8 +1,8 @@
 import path from "node:path";
 import { access } from "node:fs/promises";
-import { getHousingLogConfig } from "@workspace/housing-log";
 import { resolveHousingLogAssetRoot } from "../documentSpike/templateRegistry.ts";
 import type { HousingLogDocumentRecord } from "../documentSpike/types.ts";
+import { sourceSheetForHousingLogUnit } from "../legacyHousingUnit.ts";
 
 export type HousingLogWorkbookTemplate = {
   templateVersion: string;
@@ -19,10 +19,10 @@ export class HousingLogWorkbookRegistry {
   }
 
   resolveRecord(record: HousingLogDocumentRecord): HousingLogWorkbookTemplate {
-    const sourceSheet = getHousingLogConfig(
+    const sourceSheet = sourceSheetForHousingLogUnit(
       record.housingUnit,
       record.shift,
-    ).sourceSheet;
+    );
     const workbookPath = this.templates.get(record.templateVersion);
     if (!workbookPath)
       throw new Error(

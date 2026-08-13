@@ -52,6 +52,7 @@ const packageResult = (
       status === "INCOMPLETE"
         ? [{ housingUnit: "B", recordCount: 2, recordIds: ["one", "two"] }]
         : [],
+    legacyLogs: [],
   },
 });
 

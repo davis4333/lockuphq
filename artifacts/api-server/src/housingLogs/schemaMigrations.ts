@@ -26,6 +26,8 @@ export const HOUSING_LOG_DELIVERY_ATTEMPT_LIFECYCLE_CHECK_SQL =
   "(status = 'sending' AND completed_at IS NULL AND provider_message_id IS NULL AND failure_category IS NULL AND failure_message IS NULL) OR (status = 'sent' AND completed_at IS NOT NULL AND provider_message_id IS NOT NULL AND failure_category IS NULL AND failure_message IS NULL) OR (status = 'failed' AND completed_at IS NOT NULL AND provider_message_id IS NULL AND failure_category IS NOT NULL AND failure_message IS NOT NULL)";
 export const HOUSING_LOG_ACCESS_CODE_HASH_UNIQUE_INDEX =
   "housing_logs_access_code_hash_unique_idx";
+export const HOUSING_LOG_SUBMISSION_ID_UNIQUE_INDEX =
+  "housing_logs_submission_id_unique_idx";
 
 export type HousingLogSchemaMigration = {
   version: number;
@@ -155,6 +157,17 @@ export const housingLogSchemaMigrations: HousingLogSchemaMigration[] = [
 
       CREATE UNIQUE INDEX IF NOT EXISTS ${HOUSING_LOG_ACCESS_CODE_HASH_UNIQUE_INDEX}
         ON housing_logs (access_code_hash) WHERE access_code_hash IS NOT NULL;
+    `,
+  },
+  {
+    version: 5,
+    description:
+      "Add client submission-id idempotency key for direct finalize-only writes",
+    sql: `
+      ALTER TABLE housing_logs ADD COLUMN IF NOT EXISTS submission_id text NULL;
+
+      CREATE UNIQUE INDEX IF NOT EXISTS ${HOUSING_LOG_SUBMISSION_ID_UNIQUE_INDEX}
+        ON housing_logs (submission_id) WHERE submission_id IS NOT NULL;
     `,
   },
 ];

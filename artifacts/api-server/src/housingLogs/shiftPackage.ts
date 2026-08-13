@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import JSZip from "jszip";
 import {
   housingUnits,
+  isKnownHousingUnit,
   type HousingShift,
   type HousingUnit,
   type StoredHousingLog,
@@ -30,6 +31,22 @@ export type HousingLogShiftPackageIncludedLog = {
   sha256: string;
 };
 
+/**
+ * A finalized row whose housing_unit is not one of the current canonical
+ * units (in practice, only the pre-A/H-split "A/H" combined value). Kept
+ * entirely separate from `includedLogs` so it can never satisfy or corrupt
+ * A/H missing-log or duplicate-log detection.
+ */
+export type HousingLogShiftPackageLegacyLog = {
+  recordId: string;
+  legacyHousingUnit: string;
+  finalizedAt: string;
+  templateVersion: string;
+  sourceSheet: string;
+  filename: string;
+  sha256: string;
+};
+
 export type HousingLogShiftPackageManifest = {
   manifestVersion: 1;
   packageDate: string;
@@ -44,6 +61,7 @@ export type HousingLogShiftPackageManifest = {
     recordCount: number;
     recordIds: string[];
   }>;
+  legacyLogs: HousingLogShiftPackageLegacyLog[];
 };
 
 export type HousingLogShiftPackage = {
@@ -119,10 +137,22 @@ export async function buildHousingLogShiftPackage(
       );
   }
 
+  // Rows finalized before the A/H split (housing_unit = "A/H") never match a
+  // current unit slot. They must not crash package generation, must not
+  // count toward any A/H missing/duplicate detection, but their real
+  // finalized content is still worth including in the package — kept in a
+  // clearly separate bucket instead (see `legacyLogs` below).
+  const canonicalRecords = records.filter((record) =>
+    isKnownHousingUnit(record.housingUnit),
+  );
+  const legacyRecords = records.filter(
+    (record) => !isKnownHousingUnit(record.housingUnit),
+  );
+
   const recordsByUnit = new Map<HousingUnit, StoredHousingLog[]>(
     housingUnits.map((unit) => [unit, []]),
   );
-  for (const record of records)
+  for (const record of canonicalRecords)
     recordsByUnit.get(record.housingUnit)!.push(record);
 
   const missingHousingUnits = housingUnits.filter(
@@ -170,6 +200,26 @@ export async function buildHousingLogShiftPackage(
     }
   }
 
+  const legacyLogs: HousingLogShiftPackageLegacyLog[] = [];
+  for (const [index, record] of legacyRecords.entries()) {
+    const template = registry.resolveRecord(record);
+    const generated = await generateWorkbook(record, template);
+    const filename = `Housing-Log_${logDate}_Shift-${shift}_${safeFilePart(record.housingUnit)}_LEGACY${legacyRecords.length > 1 ? `-${index + 1}` : ""}.xlsx`;
+    zip.file(filename, generated.bytes, {
+      date: PACKAGE_ZIP_DATE,
+      createFolders: false,
+    });
+    legacyLogs.push({
+      recordId: record.id,
+      legacyHousingUnit: record.housingUnit,
+      finalizedAt: record.finalizedAt!,
+      templateVersion: record.templateVersion,
+      sourceSheet: template.sourceSheet,
+      filename,
+      sha256: checksum(generated.bytes),
+    });
+  }
+
   const manifest: HousingLogShiftPackageManifest = {
     manifestVersion: 1,
     packageDate: logDate,
@@ -183,6 +233,7 @@ export async function buildHousingLogShiftPackage(
     includedLogs,
     missingHousingUnits,
     duplicateHousingUnitSlots,
+    legacyLogs,
   };
   zip.file("manifest.json", `${JSON.stringify(manifest, null, 2)}\n`, {
     date: PACKAGE_ZIP_DATE,

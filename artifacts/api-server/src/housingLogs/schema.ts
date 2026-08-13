@@ -31,6 +31,7 @@ import {
   HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CONSTRAINT,
   HOUSING_LOG_STATUS_CHECK_SQL,
   HOUSING_LOG_STATUS_CONSTRAINT,
+  HOUSING_LOG_SUBMISSION_ID_UNIQUE_INDEX,
 } from "./schemaMigrations";
 
 export const housingLogs = pgTable(
@@ -48,13 +49,23 @@ export const housingLogs = pgTable(
     signatures: jsonb("signatures").$type<HousingLogSignatures>().notNull(),
     status: text("status").notNull().default("draft"),
     /**
-     * SHA-256 hash of the officer-facing draft access code. Never the
-     * plaintext code, and never selected into an API response — see
-     * `draftAccess.ts`. NULL for legacy drafts created before this column
-     * existed; those are handled conservatively (see `draftAccess.ts`'s
-     * `findDraftIdByAccessCodeHash`, which only matches non-null hashes).
+     * LEGACY / UNUSED. Previously a SHA-256 hash of a per-draft officer
+     * access code (see git history for `draftAccess.ts`, removed when the
+     * officer workflow moved to local-only IndexedDB working state with a
+     * direct finalize-only server write — there is no more server-side
+     * draft concept for officers to authorize into). Left as a nullable,
+     * unused column rather than dropped: this is an additive-migration-only
+     * schema, and dropping a column is a destructive operation this
+     * codebase deliberately avoids. New code must never write to it.
      */
     accessCodeHash: text("access_code_hash"),
+    /**
+     * Client-generated idempotency key set only by the direct finalize
+     * write path (`finalizeSubmission`). NULL for every row written before
+     * this column existed and for any row written by other paths — those
+     * are simply never idempotency-matched, which is safe.
+     */
+    submissionId: text("submission_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -70,6 +81,9 @@ export const housingLogs = pgTable(
     uniqueIndex(HOUSING_LOG_ACCESS_CODE_HASH_UNIQUE_INDEX)
       .on(table.accessCodeHash)
       .where(sql`${table.accessCodeHash} IS NOT NULL`),
+    uniqueIndex(HOUSING_LOG_SUBMISSION_ID_UNIQUE_INDEX)
+      .on(table.submissionId)
+      .where(sql`${table.submissionId} IS NOT NULL`),
     check(HOUSING_LOG_STATUS_CONSTRAINT, sql.raw(HOUSING_LOG_STATUS_CHECK_SQL)),
     check(
       HOUSING_LOG_FINALIZATION_CONSTRAINT,

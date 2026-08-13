@@ -1,65 +1,53 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import {
   prepareHousingLog,
   type HousingLogDraftInput,
-  type HousingLogListFilters,
-  type HousingLogSignatures,
-  type HousingLogStatus,
-  type HousingLogSummary,
   type HousingShift,
   type HousingUnit,
+  type LegacyHousingUnit,
   type StoredHousingLog,
   type ValidationIssue,
 } from "@workspace/housing-log";
 import { getHousingLogDatabase } from "./db";
 import { housingLogs } from "./schema";
+import { HOUSING_LOG_SUBMISSION_ID_UNIQUE_INDEX } from "./schemaMigrations";
 import { validateHousingLogForFinalization } from "./signatureValidation";
 
-export type FinalizeHousingLogResult =
+export type FinalizeSubmissionResult =
   | { outcome: "finalized"; record: StoredHousingLog }
-  | { outcome: "validation_failed"; issues: ValidationIssue[] }
-  | { outcome: "not_found" }
-  | { outcome: "not_editable" };
+  | { outcome: "validation_failed"; issues: ValidationIssue[] };
 
 export type FinalizedHousingLogMetadata = Pick<
   StoredHousingLog,
-  "id" | "logDate" | "shift" | "housingUnit" | "templateVersion" | "finalizedAt"
-> & { finalizedAt: string };
-
-export type DraftAccessCodeLookup = { id: string; status: HousingLogStatus };
+  "id" | "logDate" | "shift" | "templateVersion" | "finalizedAt"
+> & {
+  /** May be a `LegacyHousingUnit` for rows finalized before the A/H split. */
+  housingUnit: HousingUnit | LegacyHousingUnit;
+  finalizedAt: string;
+};
 
 export interface HousingLogRepository {
-  /**
-   * accessCodeHash is required: every new draft must be protected at
-   * creation time (see `draftAccess.ts`). Never stores the plaintext code.
-   */
-  create(
-    input: HousingLogDraftInput,
-    accessCodeHash: string,
-  ): Promise<StoredHousingLog>;
+  /** Admin-only lookup (individual archive Excel download). */
   get(id: string): Promise<StoredHousingLog | undefined>;
-  /**
-   * Locates the draft matching a hashed access code, across all statuses, so
-   * the route layer can give an actionable message for an already-finalized
-   * log rather than a bare "not found". Never matches a NULL access-code
-   * hash — legacy pre-migration drafts have no code that can ever match.
-   */
-  findDraftByAccessCodeHash(
-    hash: string,
-  ): Promise<DraftAccessCodeLookup | undefined>;
-  list(filters: HousingLogListFilters): Promise<HousingLogSummary[]>;
   listFinalizedArchive(): Promise<FinalizedHousingLogMetadata[]>;
   listFinalizedForShift(
     logDate: string,
     shift: HousingShift,
   ): Promise<StoredHousingLog[]>;
-  updateDraft(
-    id: string,
+  /**
+   * The only officer-facing write path: validates and, on success, persists
+   * a new finalized record in one atomic step — there is no server-side
+   * draft concept for officers to create, browse, or resume. `submissionId`
+   * is a client-generated idempotency key; a retried call with the same id
+   * returns the original result instead of creating a duplicate record, even
+   * under concurrent retries (enforced by a database unique constraint, not
+   * merely an application-level check).
+   */
+  finalizeSubmission(
     input: HousingLogDraftInput,
-    signaturePatch?: HousingLogSignatures,
-  ): Promise<StoredHousingLog | undefined>;
-  finalizeDraft(id: string): Promise<FinalizeHousingLogResult>;
+    submissionId: string,
+  ): Promise<FinalizeSubmissionResult>;
 }
 
 type HousingLogRow = typeof housingLogs.$inferSelect;
@@ -74,49 +62,29 @@ function toStored(row: HousingLogRow): StoredHousingLog {
     values: row.formValues,
     events: row.events,
     signatures: row.signatures,
-    status: row.status as HousingLogStatus,
+    status: row.status as StoredHousingLog["status"],
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     finalizedAt: row.finalizedAt?.toISOString() ?? null,
   };
 }
 
-function toDraft(record: StoredHousingLog): HousingLogDraftInput {
-  return {
-    logDate: record.logDate,
-    shift: record.shift,
-    housingUnit: record.housingUnit,
-    templateVersion: record.templateVersion,
-    values: record.values,
-    events: record.events,
-    signatures: record.signatures,
-  };
+/** True when a `pg` error is the unique-constraint violation for `constraintName`. */
+function isUniqueConstraintViolation(
+  error: unknown,
+  constraintName: string,
+): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "23505" &&
+    "constraint" in error &&
+    (error as { constraint?: unknown }).constraint === constraintName
+  );
 }
 
 export class PostgresHousingLogRepository implements HousingLogRepository {
-  async create(
-    rawInput: HousingLogDraftInput,
-    accessCodeHash: string,
-  ): Promise<StoredHousingLog> {
-    const input = prepareHousingLog(rawInput);
-    const [row] = await getHousingLogDatabase()
-      .insert(housingLogs)
-      .values({
-        id: randomUUID(),
-        logDate: input.logDate,
-        shift: input.shift,
-        housingUnit: input.housingUnit,
-        templateVersion: input.templateVersion,
-        formValues: input.values,
-        events: input.events,
-        signatures: input.signatures,
-        accessCodeHash,
-      })
-      .returning();
-    if (!row) throw new Error("Housing Log draft was not created.");
-    return toStored(row);
-  }
-
   async get(id: string): Promise<StoredHousingLog | undefined> {
     const [row] = await getHousingLogDatabase()
       .select()
@@ -126,52 +94,64 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
     return row ? toStored(row) : undefined;
   }
 
-  async findDraftByAccessCodeHash(
-    hash: string,
-  ): Promise<DraftAccessCodeLookup | undefined> {
-    const [row] = await getHousingLogDatabase()
-      .select({ id: housingLogs.id, status: housingLogs.status })
-      .from(housingLogs)
-      .where(eq(housingLogs.accessCodeHash, hash))
-      .limit(1);
-    return row ? { id: row.id, status: row.status as HousingLogStatus } : undefined;
+  async finalizeSubmission(
+    rawInput: HousingLogDraftInput,
+    submissionId: string,
+  ): Promise<FinalizeSubmissionResult> {
+    const existing = await this.findBySubmissionId(submissionId);
+    if (existing) return { outcome: "finalized", record: existing };
+
+    const input = prepareHousingLog(rawInput);
+    const issues = validateHousingLogForFinalization(input);
+    if (issues.length) return { outcome: "validation_failed", issues };
+
+    const now = new Date();
+    try {
+      const [row] = await getHousingLogDatabase()
+        .insert(housingLogs)
+        .values({
+          id: randomUUID(),
+          logDate: input.logDate,
+          shift: input.shift,
+          housingUnit: input.housingUnit,
+          templateVersion: input.templateVersion,
+          formValues: input.values,
+          events: input.events,
+          signatures: input.signatures,
+          status: "finalized",
+          finalizedAt: now,
+          updatedAt: now,
+          submissionId,
+        })
+        .returning();
+      if (!row) throw new Error("Housing Log was not created.");
+      return { outcome: "finalized", record: toStored(row) };
+    } catch (error) {
+      // A genuine concurrent retry (two in-flight requests for the same
+      // submissionId) can lose the pre-check race above; the unique index
+      // is the real guarantee against a duplicate finalized record.
+      if (
+        isUniqueConstraintViolation(
+          error,
+          HOUSING_LOG_SUBMISSION_ID_UNIQUE_INDEX,
+        )
+      ) {
+        const winner = await this.findBySubmissionId(submissionId);
+        if (winner) return { outcome: "finalized", record: winner };
+      }
+      throw error;
+    }
   }
 
-  async list(filters: HousingLogListFilters): Promise<HousingLogSummary[]> {
-    const conditions: SQL[] = [];
-    if (filters.status) conditions.push(eq(housingLogs.status, filters.status));
-    if (filters.housingUnit)
-      conditions.push(eq(housingLogs.housingUnit, filters.housingUnit));
-    if (filters.shift) conditions.push(eq(housingLogs.shift, filters.shift));
-    if (filters.logDate)
-      conditions.push(eq(housingLogs.logDate, filters.logDate));
-    const rows = await getHousingLogDatabase()
-      .select({
-        id: housingLogs.id,
-        logDate: housingLogs.logDate,
-        shift: housingLogs.shift,
-        housingUnit: housingLogs.housingUnit,
-        templateVersion: housingLogs.templateVersion,
-        status: housingLogs.status,
-        createdAt: housingLogs.createdAt,
-        updatedAt: housingLogs.updatedAt,
-        finalizedAt: housingLogs.finalizedAt,
-      })
+  private async findBySubmissionId(
+    submissionId: string,
+  ): Promise<StoredHousingLog | undefined> {
+    const [row] = await getHousingLogDatabase()
+      .select()
       .from(housingLogs)
-      .where(conditions.length ? and(...conditions) : undefined)
-      .orderBy(desc(housingLogs.updatedAt))
-      .limit(200);
-    return rows.map((row) => ({
-      id: row.id,
-      logDate: row.logDate,
-      shift: row.shift as HousingShift,
-      housingUnit: row.housingUnit as HousingUnit,
-      templateVersion: row.templateVersion,
-      status: row.status as HousingLogStatus,
-      createdAt: row.createdAt.toISOString(),
-      updatedAt: row.updatedAt.toISOString(),
-      finalizedAt: row.finalizedAt?.toISOString() ?? null,
-    }));
+      .where(eq(housingLogs.submissionId, submissionId))
+      .limit(1);
+    return row ? toStored(row) : undefined;
   }
 
   async listFinalizedArchive(): Promise<FinalizedHousingLogMetadata[]> {
@@ -199,7 +179,10 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
         id: row.id,
         logDate: row.logDate,
         shift: row.shift as HousingShift,
-        housingUnit: row.housingUnit as HousingUnit,
+        // May be a legacy value (e.g. "A/H") outside the current HousingUnit
+        // union for rows finalized before the A/H split — never force-cast
+        // here; callers must check `isKnownHousingUnit`/`isLegacyHousingUnit`.
+        housingUnit: row.housingUnit as HousingUnit | LegacyHousingUnit,
         templateVersion: row.templateVersion,
         finalizedAt: row.finalizedAt.toISOString(),
       };
@@ -226,63 +209,6 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
         asc(housingLogs.id),
       );
     return rows.map(toStored);
-  }
-
-  async updateDraft(
-    id: string,
-    rawInput: HousingLogDraftInput,
-    signaturePatch?: HousingLogSignatures,
-  ): Promise<StoredHousingLog | undefined> {
-    const input = prepareHousingLog(rawInput);
-    const [row] = await getHousingLogDatabase()
-      .update(housingLogs)
-      .set({
-        logDate: input.logDate,
-        shift: input.shift,
-        housingUnit: input.housingUnit,
-        templateVersion: input.templateVersion,
-        formValues: input.values,
-        events: input.events,
-        signatures: signaturePatch
-          ? sql`${housingLogs.signatures} || ${JSON.stringify(signaturePatch)}::jsonb`
-          : input.signatures,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(housingLogs.id, id), eq(housingLogs.status, "draft")))
-      .returning();
-    return row ? toStored(row) : undefined;
-  }
-
-  async finalizeDraft(id: string): Promise<FinalizeHousingLogResult> {
-    return getHousingLogDatabase().transaction(async (transaction) => {
-      const [lockedRow] = await transaction
-        .select()
-        .from(housingLogs)
-        .where(eq(housingLogs.id, id))
-        .limit(1)
-        .for("update");
-      if (!lockedRow) return { outcome: "not_found" } as const;
-      if (lockedRow.status !== "draft")
-        return { outcome: "not_editable" } as const;
-
-      const existing = toStored(lockedRow);
-      const issues = validateHousingLogForFinalization(toDraft(existing));
-      if (issues.length)
-        return { outcome: "validation_failed", issues } as const;
-
-      const now = new Date();
-      const [row] = await transaction
-        .update(housingLogs)
-        .set({
-          status: "finalized",
-          finalizedAt: now,
-          updatedAt: now,
-        })
-        .where(and(eq(housingLogs.id, id), eq(housingLogs.status, "draft")))
-        .returning();
-      if (!row) return { outcome: "not_editable" } as const;
-      return { outcome: "finalized", record: toStored(row) } as const;
-    });
   }
 }
 

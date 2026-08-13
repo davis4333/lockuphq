@@ -54,7 +54,16 @@ class AdminMemoryRepository implements HousingLogRepository {
     for (const record of records) this.records.set(record.id, record);
   }
 
-  async create(_input: HousingLogDraftInput): Promise<StoredHousingLog> {
+  async create(
+    _input: HousingLogDraftInput,
+    _accessCodeHash: string,
+  ): Promise<StoredHousingLog> {
+    throw new Error("not used");
+  }
+
+  async findDraftByAccessCodeHash(): Promise<
+    { id: string; status: StoredHousingLog["status"] } | undefined
+  > {
     throw new Error("not used");
   }
 

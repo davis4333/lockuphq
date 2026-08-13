@@ -8,6 +8,7 @@ import {
   housingLogs,
 } from "./schema";
 import {
+  HOUSING_LOG_ACCESS_CODE_HASH_UNIQUE_INDEX,
   HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CHECK_SQL,
   HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CONSTRAINT,
   HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CONSTRAINT,
@@ -129,5 +130,35 @@ test("delivery-attempt ledger schema matches the append-only lifecycle migration
   assert.doesNotMatch(
     migration.sql,
     /ALTER TABLE housing_log_delivery_settings\b/,
+  );
+});
+
+test("draft access-code migration only adds a nullable column and a partial unique index", () => {
+  const drizzleIndexes = getTableConfig(housingLogs).indexes;
+  assert.ok(
+    drizzleIndexes.some(
+      (index) => index.config.name === HOUSING_LOG_ACCESS_CODE_HASH_UNIQUE_INDEX,
+    ),
+  );
+
+  const migration = housingLogSchemaMigrations.find(
+    (item) => item.version === 4,
+  );
+  assert.ok(migration);
+  // Additive and idempotent: adds a nullable column, never touches existing
+  // columns/rows, and is safe to re-run.
+  assert.match(
+    migration.sql,
+    /ALTER TABLE housing_logs ADD COLUMN IF NOT EXISTS access_code_hash text NULL/,
+  );
+  assert.doesNotMatch(migration.sql, /DROP COLUMN/i);
+  assert.doesNotMatch(migration.sql, /DROP TABLE/i);
+  assert.doesNotMatch(migration.sql, /ALTER COLUMN/i);
+  assert.doesNotMatch(migration.sql, /\bUPDATE\b/i);
+  assert.match(
+    migration.sql,
+    new RegExp(
+      `CREATE UNIQUE INDEX IF NOT EXISTS ${HOUSING_LOG_ACCESS_CODE_HASH_UNIQUE_INDEX}[\\s\\S]*WHERE access_code_hash IS NOT NULL`,
+    ),
   );
 });

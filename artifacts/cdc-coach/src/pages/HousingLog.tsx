@@ -1,4 +1,11 @@
-import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -28,6 +35,7 @@ import {
   type HousingLogValue,
   type HousingShift,
   type HousingUnit,
+  type StoredHousingLog,
   type ValidationIssue,
 } from "@workspace/housing-log";
 import PageShell, { hudInput, hudLabel } from "@/components/PageShell";
@@ -53,6 +61,7 @@ import {
   getHousingLog,
   HousingLogApiError,
   listHousingLogDrafts,
+  unlockHousingLogDraft,
   updateHousingLogDraft,
 } from "@/lib/housingLogApi";
 
@@ -153,6 +162,17 @@ export default function HousingLog() {
   const [busy, setBusy] = useState(false);
   const [savedDrafts, setSavedDrafts] = useState<HousingLogSummary[]>([]);
   const [resumeId, setResumeId] = useState("");
+  const [accessCode, setAccessCode] = useState<string>();
+  const [unlockCodeInput, setUnlockCodeInput] = useState("");
+  const [unlockError, setUnlockError] = useState<string>();
+  const [unlocking, setUnlocking] = useState(false);
+  // Set when a PATCH/finalize call comes back 403 mid-edit (session expired
+  // or restarted) — the in-progress form values are kept exactly as-is; only
+  // re-authorization is needed before Save/Finalize will succeed again.
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [reauthCode, setReauthCode] = useState("");
+  const [reauthBusy, setReauthBusy] = useState(false);
+  const [reauthError, setReauthError] = useState<string>();
   const [activeTask, setActiveTask] = useState<HousingLogTaskId>("setup");
   const panelHeadingRefs = useRef<
     Partial<Record<HousingLogTaskId, HTMLHeadingElement | null>>
@@ -220,6 +240,7 @@ export default function HousingLog() {
     setStatus("draft");
     setNotice(undefined);
     setLastSavedAt(undefined);
+    setAccessCode(undefined);
   };
 
   const confirmDiscard = (): boolean =>
@@ -240,25 +261,30 @@ export default function HousingLog() {
     setShift(next);
   };
 
+  const applyResumedRecord = (record: StoredHousingLog) => {
+    // Never carry a value stash across logs — a slot marked present after
+    // resume must not recover another draft's staff values.
+    staffStashRef.current = {};
+    setHousingUnit(record.housingUnit);
+    setShift(record.shift);
+    setLogDate(record.logDate);
+    setValues(record.values);
+    setEvents(record.events);
+    setSignatures(record.signatures);
+    setIssues([]);
+    setDraftId(record.id);
+    setStatus(record.status);
+    setLastSavedAt(new Date(record.updatedAt));
+    setAccessCode(undefined);
+  };
+
   const resumeDraft = async () => {
     if (!resumeId || !confirmDiscard()) return;
     setBusy(true);
     setNotice(undefined);
     try {
       const record = await getHousingLog(resumeId);
-      // Never carry a value stash across logs — a slot marked present after
-      // resume must not recover another draft's staff values.
-      staffStashRef.current = {};
-      setHousingUnit(record.housingUnit);
-      setShift(record.shift);
-      setLogDate(record.logDate);
-      setValues(record.values);
-      setEvents(record.events);
-      setSignatures(record.signatures);
-      setIssues([]);
-      setDraftId(record.id);
-      setStatus(record.status);
-      setLastSavedAt(new Date(record.updatedAt));
+      applyResumedRecord(record);
       setNotice(`Draft resumed — ${record.id}`);
     } catch (error) {
       setNotice(
@@ -268,6 +294,62 @@ export default function HousingLog() {
       setBusy(false);
     }
   };
+
+  const unlockAndResume = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!confirmDiscard()) return;
+    setUnlocking(true);
+    setUnlockError(undefined);
+    setNotice(undefined);
+    try {
+      const { draftId: unlockedId } = await unlockHousingLogDraft(
+        unlockCodeInput,
+      );
+      const record = await getHousingLog(unlockedId);
+      applyResumedRecord(record);
+      setUnlockCodeInput("");
+      setNotice(`Draft unlocked — ${record.id}`);
+      await refreshSavedDrafts();
+    } catch (error) {
+      setUnlockError(
+        error instanceof Error
+          ? error.message
+          : "The draft could not be unlocked.",
+      );
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  const reauthorizeCurrentDraft = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!draftId) return;
+    setReauthBusy(true);
+    setReauthError(undefined);
+    try {
+      const { draftId: unlockedId } = await unlockHousingLogDraft(reauthCode);
+      if (unlockedId !== draftId) {
+        setReauthError(
+          "That access code unlocks a different draft. Enter this draft's own code.",
+        );
+        return;
+      }
+      setSessionExpired(false);
+      setReauthCode("");
+      setNotice(
+        "Access restored. Nothing you entered was lost — try Save again.",
+      );
+    } catch (error) {
+      setReauthError(
+        error instanceof Error ? error.message : "Could not unlock this draft.",
+      );
+    } finally {
+      setReauthBusy(false);
+    }
+  };
+
+  const isSessionExpiredError = (error: unknown): boolean =>
+    error instanceof HousingLogApiError && error.status === 403;
 
   const setValue = (key: string, value: HousingLogValue) => {
     setValues((current) => ({ ...current, [key]: value }));
@@ -355,14 +437,22 @@ export default function HousingLog() {
 
   const persistDraft = async (): Promise<{ id: string }> => {
     const input = buildInput();
-    const record = draftId
-      ? await updateHousingLogDraft(draftId, input)
-      : await createHousingLogDraft(input);
+    if (draftId) {
+      const record = await updateHousingLogDraft(draftId, input);
+      setValues(record.values);
+      setEvents(record.events);
+      setStatus(record.status);
+      setLastSavedAt(new Date());
+      return record;
+    }
+    const record = await createHousingLogDraft(input);
     setDraftId(record.id);
     setValues(record.values);
     setEvents(record.events);
     setStatus(record.status);
     setLastSavedAt(new Date());
+    setAccessCode(record.accessCode);
+    await refreshSavedDrafts();
     return record;
   };
 
@@ -375,9 +465,14 @@ export default function HousingLog() {
       setNotice(`Draft saved — ${record.id}`);
       await refreshSavedDrafts();
     } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Draft could not be saved.",
-      );
+      if (isSessionExpiredError(error)) {
+        setSessionExpired(true);
+        setNotice(undefined);
+      } else {
+        setNotice(
+          error instanceof Error ? error.message : "Draft could not be saved.",
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -425,13 +520,17 @@ export default function HousingLog() {
       setNotice(`Housing Log finalized successfully — ${finalized.id}`);
       await refreshSavedDrafts();
     } catch (error) {
-      if (error instanceof HousingLogApiError && error.issues.length)
-        setIssues(error.issues);
-      setNotice(
-        error instanceof Error
-          ? error.message
-          : "Housing Log could not be finalized.",
-      );
+      if (isSessionExpiredError(error)) {
+        setSessionExpired(true);
+      } else {
+        if (error instanceof HousingLogApiError && error.issues.length)
+          setIssues(error.issues);
+        setNotice(
+          error instanceof Error
+            ? error.message
+            : "Housing Log could not be finalized.",
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -626,6 +725,81 @@ export default function HousingLog() {
         )}
       </div>
 
+      {accessCode && (
+        <div
+          className="mt-3 rounded-xl border border-amber-400/70 bg-amber-950/70 p-4 text-amber-50"
+          role="status"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-black uppercase tracking-[0.14em] text-amber-200">
+                Draft Access Code
+              </div>
+              <div className="mt-1 font-mono text-2xl font-black tracking-[0.15em]">
+                {accessCode}
+              </div>
+              <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-amber-100/80">
+                Write this down or share it with another staff member who
+                legitimately needs to open this same log. Anyone with this
+                code can view and edit this draft for the rest of the shift —
+                this is a prototype shared-draft protection, not individual
+                officer sign-in. It will not be shown again after you leave
+                this page.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                void navigator.clipboard?.writeText(accessCode).then(
+                  () => setNotice("Access code copied."),
+                  () => undefined,
+                )
+              }
+              className="shrink-0 rounded-md border border-amber-300/60 bg-amber-900/40 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-50 hover:bg-amber-800/50"
+            >
+              Copy Code
+            </button>
+          </div>
+        </div>
+      )}
+
+      {sessionExpired && (
+        <form
+          onSubmit={reauthorizeCurrentDraft}
+          className="mt-3 rounded-xl border border-red-400/60 bg-red-950/70 p-4 text-red-50"
+        >
+          <div className="text-xs font-black uppercase tracking-[0.14em] text-red-200">
+            Access expired
+          </div>
+          <p className="mt-1 text-[11px] leading-relaxed text-red-100/85">
+            This draft's access session ended. Nothing you entered here has
+            been lost — enter the draft access code again to continue.
+          </p>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <input
+              value={reauthCode}
+              onChange={(event) => setReauthCode(event.target.value)}
+              placeholder="XXXX-XXXX"
+              autoComplete="off"
+              className={`${hudInput} sm:max-w-[220px]`}
+              aria-label="Draft access code"
+            />
+            <button
+              type="submit"
+              disabled={reauthBusy || !reauthCode.trim()}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-red-300/60 bg-red-800/40 px-4 py-2 text-xs font-black text-red-50 disabled:opacity-40"
+            >
+              {reauthBusy ? "Unlocking…" : "Unlock and Continue"}
+            </button>
+          </div>
+          {reauthError && (
+            <p className="mt-2 text-[11px] text-red-100" role="alert">
+              {reauthError}
+            </p>
+          )}
+        </form>
+      )}
+
       {/* ── Mobile / tablet task navigator ── */}
       <nav
         aria-label="Housing Log tasks"
@@ -738,8 +912,13 @@ export default function HousingLog() {
             )}
             <div className="mt-4 border-t border-blue-400/20 pt-4">
               <label className={hudLabel} htmlFor="housing-log-resume">
-                Resume a saved draft
+                Unlocked / Recent Drafts
               </label>
+              <p className="mb-2 text-[10px] leading-relaxed text-blue-200/55">
+                Only drafts this browser has already unlocked appear here.
+                Housing Logs are not listed openly — opening a draft anyone
+                else created requires its access code.
+              </p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <select
                   id="housing-log-resume"
@@ -751,11 +930,11 @@ export default function HousingLog() {
                   <option value="">
                     {savedDrafts.length
                       ? "Select a draft…"
-                      : "No saved drafts available"}
+                      : "No unlocked drafts in this browser yet"}
                   </option>
                   {savedDrafts.map((draft) => (
                     <option key={draft.id} value={draft.id}>
-                      {draft.logDate} · {draft.housingUnit} ·{" "}
+                      {draft.logDate} · {housingUnitLabels[draft.housingUnit]} ·{" "}
                       {shiftName(draft.shift)}
                     </option>
                   ))}
@@ -770,6 +949,41 @@ export default function HousingLog() {
                 </button>
               </div>
             </div>
+            <form
+              onSubmit={unlockAndResume}
+              className="mt-4 border-t border-blue-400/20 pt-4"
+            >
+              <label className={hudLabel} htmlFor="housing-log-unlock-code">
+                Enter Draft Access Code
+              </label>
+              <p className="mb-2 text-[10px] leading-relaxed text-blue-200/55">
+                Have a code from another officer or an earlier session on a
+                different device? Enter it here to unlock and resume that
+                draft.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  id="housing-log-unlock-code"
+                  value={unlockCodeInput}
+                  onChange={(event) => setUnlockCodeInput(event.target.value)}
+                  placeholder="XXXX-XXXX"
+                  autoComplete="off"
+                  className={hudInput}
+                />
+                <button
+                  type="submit"
+                  disabled={unlocking || !unlockCodeInput.trim()}
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-emerald-400/50 bg-emerald-500/15 px-4 py-2 text-xs font-bold text-emerald-100 disabled:opacity-40"
+                >
+                  {unlocking ? "Unlocking…" : "Unlock Draft"}
+                </button>
+              </div>
+              {unlockError && (
+                <p className="mt-2 text-[11px] text-red-300" role="alert">
+                  {unlockError}
+                </p>
+              )}
+            </form>
             {config ? (
               <div className="mt-4 rounded-lg border border-blue-300/30 bg-blue-500/10 p-3">
                 <p className="text-xs text-blue-100">

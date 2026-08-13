@@ -27,9 +27,27 @@ export type FinalizedHousingLogMetadata = Pick<
   "id" | "logDate" | "shift" | "housingUnit" | "templateVersion" | "finalizedAt"
 > & { finalizedAt: string };
 
+export type DraftAccessCodeLookup = { id: string; status: HousingLogStatus };
+
 export interface HousingLogRepository {
-  create(input: HousingLogDraftInput): Promise<StoredHousingLog>;
+  /**
+   * accessCodeHash is required: every new draft must be protected at
+   * creation time (see `draftAccess.ts`). Never stores the plaintext code.
+   */
+  create(
+    input: HousingLogDraftInput,
+    accessCodeHash: string,
+  ): Promise<StoredHousingLog>;
   get(id: string): Promise<StoredHousingLog | undefined>;
+  /**
+   * Locates the draft matching a hashed access code, across all statuses, so
+   * the route layer can give an actionable message for an already-finalized
+   * log rather than a bare "not found". Never matches a NULL access-code
+   * hash — legacy pre-migration drafts have no code that can ever match.
+   */
+  findDraftByAccessCodeHash(
+    hash: string,
+  ): Promise<DraftAccessCodeLookup | undefined>;
   list(filters: HousingLogListFilters): Promise<HousingLogSummary[]>;
   listFinalizedArchive(): Promise<FinalizedHousingLogMetadata[]>;
   listFinalizedForShift(
@@ -76,7 +94,10 @@ function toDraft(record: StoredHousingLog): HousingLogDraftInput {
 }
 
 export class PostgresHousingLogRepository implements HousingLogRepository {
-  async create(rawInput: HousingLogDraftInput): Promise<StoredHousingLog> {
+  async create(
+    rawInput: HousingLogDraftInput,
+    accessCodeHash: string,
+  ): Promise<StoredHousingLog> {
     const input = prepareHousingLog(rawInput);
     const [row] = await getHousingLogDatabase()
       .insert(housingLogs)
@@ -89,6 +110,7 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
         formValues: input.values,
         events: input.events,
         signatures: input.signatures,
+        accessCodeHash,
       })
       .returning();
     if (!row) throw new Error("Housing Log draft was not created.");
@@ -102,6 +124,17 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
       .where(eq(housingLogs.id, id))
       .limit(1);
     return row ? toStored(row) : undefined;
+  }
+
+  async findDraftByAccessCodeHash(
+    hash: string,
+  ): Promise<DraftAccessCodeLookup | undefined> {
+    const [row] = await getHousingLogDatabase()
+      .select({ id: housingLogs.id, status: housingLogs.status })
+      .from(housingLogs)
+      .where(eq(housingLogs.accessCodeHash, hash))
+      .limit(1);
+    return row ? { id: row.id, status: row.status as HousingLogStatus } : undefined;
   }
 
   async list(filters: HousingLogListFilters): Promise<HousingLogSummary[]> {

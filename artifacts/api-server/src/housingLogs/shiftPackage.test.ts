@@ -42,7 +42,16 @@ class PackageMemoryRepository implements HousingLogRepository {
     this.records = records.map((record) => structuredClone(record));
   }
 
-  async create(_input: HousingLogDraftInput): Promise<StoredHousingLog> {
+  async create(
+    _input: HousingLogDraftInput,
+    _accessCodeHash: string,
+  ): Promise<StoredHousingLog> {
+    throw new Error("not used");
+  }
+
+  async findDraftByAccessCodeHash(): Promise<
+    { id: string; status: StoredHousingLog["status"] } | undefined
+  > {
     throw new Error("not used");
   }
 

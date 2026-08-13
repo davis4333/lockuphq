@@ -16,6 +16,7 @@ import type {
   HousingLogValue,
 } from "@workspace/housing-log";
 import {
+  HOUSING_LOG_ACCESS_CODE_HASH_UNIQUE_INDEX,
   HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CHECK_SQL,
   HOUSING_LOG_DELIVERY_ATTEMPT_COMPLETENESS_CONSTRAINT,
   HOUSING_LOG_DELIVERY_ATTEMPT_LIFECYCLE_CHECK_SQL,
@@ -46,6 +47,14 @@ export const housingLogs = pgTable(
     events: jsonb("events").$type<HousingLogEvent[]>().notNull(),
     signatures: jsonb("signatures").$type<HousingLogSignatures>().notNull(),
     status: text("status").notNull().default("draft"),
+    /**
+     * SHA-256 hash of the officer-facing draft access code. Never the
+     * plaintext code, and never selected into an API response — see
+     * `draftAccess.ts`. NULL for legacy drafts created before this column
+     * existed; those are handled conservatively (see `draftAccess.ts`'s
+     * `findDraftIdByAccessCodeHash`, which only matches non-null hashes).
+     */
+    accessCodeHash: text("access_code_hash"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -58,6 +67,9 @@ export const housingLogs = pgTable(
     index("housing_logs_date_idx").on(table.logDate),
     index("housing_logs_status_idx").on(table.status),
     index("housing_logs_unit_shift_idx").on(table.housingUnit, table.shift),
+    uniqueIndex(HOUSING_LOG_ACCESS_CODE_HASH_UNIQUE_INDEX)
+      .on(table.accessCodeHash)
+      .where(sql`${table.accessCodeHash} IS NOT NULL`),
     check(HOUSING_LOG_STATUS_CONSTRAINT, sql.raw(HOUSING_LOG_STATUS_CHECK_SQL)),
     check(
       HOUSING_LOG_FINALIZATION_CONSTRAINT,

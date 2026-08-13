@@ -434,9 +434,29 @@ test("shift package endpoint validates inputs and returns a protected no-store Z
       shift: "2",
       generatedAt: "2026-08-13T00:00:00.000Z",
       completenessStatus: "INCOMPLETE",
-      expectedHousingUnits: ["A/H", "B", "C", "D", "E", "F", "G", "Infirmary"],
+      expectedHousingUnits: [
+        "A",
+        "H",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "Infirmary",
+      ],
       includedLogs: [],
-      missingHousingUnits: ["A/H", "B", "C", "D", "E", "F", "G", "Infirmary"],
+      missingHousingUnits: [
+        "A",
+        "H",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "Infirmary",
+      ],
       duplicateHousingUnitSlots: [],
     },
   };
@@ -544,7 +564,8 @@ test("manual-send API validates input and delivers the existing package through 
             generatedAt: "2026-08-12T22:00:00.000Z",
             completenessStatus: packageCompleteness,
             expectedHousingUnits: [
-              "A/H",
+              "A",
+              "H",
               "B",
               "C",
               "D",
@@ -842,9 +863,9 @@ test("recipient settings failures return generic controlled JSON", async () => {
 });
 
 test("archive returns finalized-only lightweight metadata and preserves duplicate slots", async () => {
-  const first = finalizedRecord("duplicate-one", "A/H", "2");
+  const first = finalizedRecord("duplicate-one", "A", "2");
   const second = {
-    ...finalizedRecord("duplicate-two", "A/H", "2"),
+    ...finalizedRecord("duplicate-two", "A", "2"),
     finalizedAt: "2026-08-12T13:00:00.000Z",
   };
   const draft = {

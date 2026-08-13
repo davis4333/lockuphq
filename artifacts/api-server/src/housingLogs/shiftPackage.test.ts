@@ -19,6 +19,10 @@ import type {
   HousingLogRepository,
 } from "./repository";
 import {
+  generateExcelHousingLog,
+  readInlineCell,
+} from "./excelTemplate/generateExcelHousingLog";
+import {
   HousingLogWorkbookRegistry,
   registerOfficialHousingLogWorkbook,
 } from "./excelTemplate/workbookRegistry";
@@ -160,7 +164,7 @@ test("missing logs are manifest-only and do not create fake workbooks", async ()
     PACKAGE_DATE,
     PACKAGE_SHIFT,
     {
-      repository: new PackageMemoryRepository([record("A/H", "only-log")]),
+      repository: new PackageMemoryRepository([record("A", "only-log")]),
       workbookRegistry: registry(),
       generateWorkbook: fakeWorkbookGenerator,
       now: () => FIXED_GENERATED_AT,
@@ -178,10 +182,10 @@ test("missing logs are manifest-only and do not create fake workbooks", async ()
 
 test("duplicate package includes every record with stable unique names and flags both problems", async () => {
   const records = [
-    record("A/H", "later", {
+    record("A", "later", {
       finalizedAt: "2026-08-12T23:30:00.000Z",
     }),
-    record("A/H", "earlier", {
+    record("A", "earlier", {
       finalizedAt: "2026-08-12T22:30:00.000Z",
     }),
     record("B", "b-record"),
@@ -201,7 +205,7 @@ test("duplicate package includes every record with stable unique names and flags
   assert.ok(manifest.missingHousingUnits.length > 0);
   assert.deepEqual(manifest.duplicateHousingUnitSlots, [
     {
-      housingUnit: "A/H",
+      housingUnit: "A",
       recordCount: 2,
       recordIds: ["earlier", "later"],
     },
@@ -209,20 +213,116 @@ test("duplicate package includes every record with stable unique names and flags
   assert.deepEqual(
     manifest.includedLogs.slice(0, 2).map((item) => item.filename),
     [
-      "Housing-Log_2026-08-12_Shift-2_A-H_DUPLICATE-1.xlsx",
-      "Housing-Log_2026-08-12_Shift-2_A-H_DUPLICATE-2.xlsx",
+      "Housing-Log_2026-08-12_Shift-2_A_DUPLICATE-1.xlsx",
+      "Housing-Log_2026-08-12_Shift-2_A_DUPLICATE-2.xlsx",
     ],
   );
+});
+
+test("A Dorm and H Dorm are independent physical units that never satisfy or duplicate each other", async () => {
+  const registry = registerOfficialHousingLogWorkbook(new HousingLogWorkbookRegistry());
+  const template = registry.resolveRecord(record("A", "a-only"));
+  assert.equal(template.sourceSheet, "2_AH");
+  assert.equal(
+    registry.resolveRecord(record("H", "h-only")).sourceSheet,
+    "2_AH",
+  );
+
+  // A finalized A Dorm log alone must not satisfy the H Dorm slot, and vice
+  // versa, even though both resolve to the shared AH template.
+  const onlyA = await buildHousingLogShiftPackage(PACKAGE_DATE, PACKAGE_SHIFT, {
+    repository: new PackageMemoryRepository([record("A", "a-only")]),
+    workbookRegistry: registry,
+    generateWorkbook: fakeWorkbookGenerator,
+    now: () => FIXED_GENERATED_AT,
+  });
+  const { manifest: onlyAManifest } = await loadPackage(onlyA.bytes);
+  assert.ok(onlyAManifest.missingHousingUnits.includes("H"));
+  assert.ok(!onlyAManifest.missingHousingUnits.includes("A"));
+  assert.deepEqual(onlyAManifest.duplicateHousingUnitSlots, []);
+
+  // Two A Dorm logs are an A duplicate, not an H duplicate, and H remains
+  // separately missing.
+  const twoA = await buildHousingLogShiftPackage(PACKAGE_DATE, PACKAGE_SHIFT, {
+    repository: new PackageMemoryRepository([
+      record("A", "a-first"),
+      record("A", "a-second", { finalizedAt: "2026-08-12T23:10:00.000Z" }),
+    ]),
+    workbookRegistry: registry,
+    generateWorkbook: fakeWorkbookGenerator,
+    now: () => FIXED_GENERATED_AT,
+  });
+  const { manifest: twoAManifest } = await loadPackage(twoA.bytes);
+  assert.deepEqual(
+    twoAManifest.duplicateHousingUnitSlots.map((slot) => slot.housingUnit),
+    ["A"],
+  );
+  assert.ok(twoAManifest.missingHousingUnits.includes("H"));
+
+  // Both present, one each: package is complete for A and H independently.
+  const both = await buildHousingLogShiftPackage(PACKAGE_DATE, PACKAGE_SHIFT, {
+    repository: new PackageMemoryRepository(
+      onePerExpectedUnit().filter(
+        (item) => item.housingUnit === "A" || item.housingUnit === "H",
+      ),
+    ),
+    workbookRegistry: registry,
+    generateWorkbook: fakeWorkbookGenerator,
+    now: () => FIXED_GENERATED_AT,
+  });
+  const { manifest: bothManifest } = await loadPackage(both.bytes);
+  assert.ok(!bothManifest.missingHousingUnits.includes("A"));
+  assert.ok(!bothManifest.missingHousingUnits.includes("H"));
+  assert.deepEqual(bothManifest.duplicateHousingUnitSlots, []);
+
+  // The generated Excel content itself must identify the correct dorm — not
+  // just the manifest metadata.
+  const aRecord = record("A", "a-excel-identity");
+  const hRecord = record("H", "h-excel-identity");
+  const aGenerated = await generateExcelHousingLog(
+    aRecord,
+    registry.resolveRecord(aRecord),
+  );
+  const hGenerated = await generateExcelHousingLog(
+    hRecord,
+    registry.resolveRecord(hRecord),
+  );
+  const aZip = await JSZip.loadAsync(aGenerated.bytes, { checkCRC32: true });
+  const hZip = await JSZip.loadAsync(hGenerated.bytes, { checkCRC32: true });
+  const officialWorksheetPath = async (zip: JSZip): Promise<string> => {
+    const workbookXml = await zip.file("xl/workbook.xml")!.async("string");
+    const relsXml = await zip
+      .file("xl/_rels/workbook.xml.rels")!
+      .async("string");
+    const relationshipId = workbookXml.match(
+      /<sheet\b[^>]*name="2_AH"[^>]*r:id="([^"]+)"/,
+    )?.[1];
+    const target = relsXml.match(
+      new RegExp(`<Relationship\\b[^>]*Id="${relationshipId}"[^>]*Target="([^"]+)"`),
+    )?.[1];
+    assert.ok(target, "1_AH worksheet relationship not found");
+    return `xl/${target}`;
+  };
+  const aSheetXml = await aZip
+    .file(await officialWorksheetPath(aZip))!
+    .async("string");
+  const hSheetXml = await hZip
+    .file(await officialWorksheetPath(hZip))!
+    .async("string");
+  assert.match(readInlineCell(aSheetXml, "A1") ?? "", /HOUSING UNIT\s+A\b/);
+  assert.match(readInlineCell(hSheetXml, "A1") ?? "", /HOUSING UNIT\s+H\b/);
+  assert.doesNotMatch(readInlineCell(aSheetXml, "A1") ?? "", /HOUSING UNIT\s+H\b/);
+  assert.doesNotMatch(readInlineCell(hSheetXml, "A1") ?? "", /HOUSING UNIT\s+A\b/);
 });
 
 test("all expected units plus duplicates preserve historical templates and valid XLSX files", async () => {
   const records = onePerExpectedUnit();
   const historicalVersion = "historical-package-v1";
-  records[0] = record("A/H", "historical-record", {
+  records[0] = record("A", "historical-record", {
     templateVersion: historicalVersion,
   });
   records.push(
-    record("A/H", "duplicate-record", {
+    record("A", "duplicate-record", {
       finalizedAt: "2026-08-13T00:00:00.000Z",
     }),
   );
@@ -338,7 +438,7 @@ test("repeated generation at different times changes only the manifest timestamp
 test("Excel generation failure aborts package creation", async () => {
   await assert.rejects(
     buildHousingLogShiftPackage(PACKAGE_DATE, PACKAGE_SHIFT, {
-      repository: new PackageMemoryRepository([record("A/H", "failure")]),
+      repository: new PackageMemoryRepository([record("A", "failure")]),
       workbookRegistry: registry(),
       generateWorkbook: async () => {
         throw new Error("synthetic generation failure");

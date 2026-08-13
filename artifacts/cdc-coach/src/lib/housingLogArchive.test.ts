@@ -24,11 +24,11 @@ const record = (
 test("archive groups by logDate year, month, date, shift, and housing unit", () => {
   const tree = buildHousingLogArchiveTree(
     [
-      record("one", "2026-08-12", "2", "A/H"),
+      record("one", "2026-08-12", "2", "A"),
       record("two", "2026-07-31", "1", "B"),
       record("three", "2025-12-01", "3", "Infirmary"),
     ],
-    ["A/H", "B", "Infirmary"],
+    ["A", "B", "Infirmary"],
   );
   assert.deepEqual(
     tree.map((year) => year.year),
@@ -49,10 +49,10 @@ test("archive groups by logDate year, month, date, shift, and housing unit", () 
 test("archive preserves duplicates and marks missing configured units without fake records", () => {
   const tree = buildHousingLogArchiveTree(
     [
-      record("duplicate-a", "2026-08-12", "2", "A/H"),
-      record("duplicate-b", "2026-08-12", "2", "A/H"),
+      record("duplicate-a", "2026-08-12", "2", "A"),
+      record("duplicate-b", "2026-08-12", "2", "A"),
     ],
-    ["A/H", "B"],
+    ["A", "B"],
   );
   const secondShift = tree[0]!.months[0]!.dates[0]!.shifts[1]!;
   assert.equal(secondShift.packageState, "missing-and-duplicates");
@@ -71,13 +71,13 @@ test("archive preserves duplicates and marks missing configured units without fa
 test("archive exposes complete and incomplete shift package states", () => {
   const tree = buildHousingLogArchiveTree(
     [
-      record("a", "2026-08-12", "1", "A/H"),
+      record("a", "2026-08-12", "1", "A"),
       record("b", "2026-08-12", "1", "B"),
-      record("duplicate-a", "2026-08-12", "2", "A/H"),
-      record("duplicate-b", "2026-08-12", "2", "A/H"),
+      record("duplicate-a", "2026-08-12", "2", "A"),
+      record("duplicate-b", "2026-08-12", "2", "A"),
       record("second-b", "2026-08-12", "2", "B"),
     ],
-    ["A/H", "B"],
+    ["A", "B"],
   );
   const shifts = tree[0]!.months[0]!.dates[0]!.shifts;
   assert.equal(shifts[0]!.packageState, "complete");

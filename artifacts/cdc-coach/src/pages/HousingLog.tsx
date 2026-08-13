@@ -16,6 +16,7 @@ import {
   getHousingLogConfig,
   hasMeaningfulHousingLogContent,
   housingShifts,
+  housingUnitLabels,
   housingUnits,
   prepareHousingLog,
   validateHousingLog,
@@ -576,7 +577,9 @@ export default function HousingLog() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-blue-100">
               <span className="uppercase tracking-[0.12em]">
-                {housingUnit ? `Unit ${housingUnit}` : "No unit selected"}
+                {housingUnit
+                  ? housingUnitLabels[housingUnit]
+                  : "No unit selected"}
               </span>
               {shift && <span>{shiftName(shift)}</span>}
               <span className="text-blue-200/70">{logDate}</span>
@@ -686,7 +689,9 @@ export default function HousingLog() {
                 >
                   <option value="">Select…</option>
                   {housingUnits.map((unit) => (
-                    <option key={unit}>{unit}</option>
+                    <option key={unit} value={unit}>
+                      {housingUnitLabels[unit]}
+                    </option>
                   ))}
                 </select>
               </div>

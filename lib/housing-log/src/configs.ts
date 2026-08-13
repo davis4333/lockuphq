@@ -305,7 +305,7 @@ const countsFor = (
   const components =
     unit === "Infirmary"
       ? ["Infirmary", "Isolation", "MTB", "Outcount"]
-      : unit === "A/H"
+      : unit === "A" || unit === "H"
         ? ["Wing One", "Wing Two"]
         : ["Wing One", "Wing Two", "Wing Three"];
   return countNames[shift].map((label, index) => {
@@ -324,7 +324,7 @@ const countsFor = (
         : {
             conductedByLabel: `Conducted by ${conductor}`,
             officialAttestation:
-              unit === "A/H"
+              unit === "A" || unit === "H"
                 ? openBayCountAttestation
                 : unit === "Infirmary"
                   ? `Security, safety, sanitation, including checks of locking systems of all open bay areas that house inmates, to include the Officer's station doors, laundry room doors, and exits during each formal count, conducted by ${conductor} ________________.`
@@ -455,7 +455,7 @@ const equipmentSection = (unit: HousingUnit): FormSection => {
 };
 
 const familyFor = (unit: HousingUnit): "AH" | "B" | "CDEFG" | "INF" => {
-  if (unit === "A/H") return "AH";
+  if (unit === "A" || unit === "H") return "AH";
   if (unit === "B") return "B";
   if (unit === "Infirmary") return "INF";
   return "CDEFG";

@@ -23,7 +23,7 @@ const signature =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
 function completeInput(): HousingLogDraftInput {
-  const config = getHousingLogConfig("A/H", "1");
+  const config = getHousingLogConfig("A", "1");
   const values: Record<string, HousingLogValue> = {};
   for (const item of fieldsForConfig(config)) {
     values[item.key] =
@@ -37,7 +37,7 @@ function completeInput(): HousingLogDraftInput {
   }
   return {
     logDate: "2026-08-11",
-    housingUnit: "A/H",
+    housingUnit: "A",
     shift: "1",
     templateVersion: config.templateVersion,
     values,
@@ -58,7 +58,7 @@ test("every canonical field key maps to exactly one task section", () => {
 });
 
 test("issue paths classify into the expected sections", () => {
-  const config = getHousingLogConfig("A/H", "1");
+  const config = getHousingLogConfig("A", "1");
   const index = buildSectionIndex(config);
   assert.equal(taskForPath("logDate", index), "setup");
   assert.equal(taskForPath("templateVersion", index), "setup");
@@ -73,7 +73,7 @@ test("issue paths classify into the expected sections", () => {
 });
 
 test("a complete log reports every section ready with zero remaining", () => {
-  const config = getHousingLogConfig("A/H", "1");
+  const config = getHousingLogConfig("A", "1");
   const status = computeWorkspaceStatus(config, completeInput());
   assert.equal(status.totalRemaining, 0);
   assert.equal(status.readySections, housingLogTaskIds.length);
@@ -84,10 +84,10 @@ test("a complete log reports every section ready with zero remaining", () => {
 });
 
 test("an empty log reports canonical remaining counts per section", () => {
-  const config = getHousingLogConfig("A/H", "1");
+  const config = getHousingLogConfig("A", "1");
   const input: HousingLogDraftInput = {
     logDate: "2026-08-11",
-    housingUnit: "A/H",
+    housingUnit: "A",
     shift: "1",
     templateVersion: config.templateVersion,
     values: {},
@@ -112,10 +112,10 @@ test("an empty log reports canonical remaining counts per section", () => {
 });
 
 test("partially filled sections report started without ready", () => {
-  const config = getHousingLogConfig("A/H", "1");
+  const config = getHousingLogConfig("A", "1");
   const input: HousingLogDraftInput = {
     logDate: "2026-08-11",
-    housingUnit: "A/H",
+    housingUnit: "A",
     shift: "1",
     templateVersion: config.templateVersion,
     values: { "securityChecks.1.time": "08:00" },
@@ -154,7 +154,7 @@ test("security-check row counts derive from the active configuration", () => {
 });
 
 test("canonicalFieldsWithPrefix mirrors fieldsForConfig for counts and checks", () => {
-  const config = getHousingLogConfig("A/H", "1");
+  const config = getHousingLogConfig("A", "1");
   const all = fieldsForConfig(config);
   const midnight = canonicalFieldsWithPrefix(config, "counts.midnight.");
   assert.ok(midnight.length > 0);
@@ -176,7 +176,7 @@ test("canonicalFieldsWithPrefix mirrors fieldsForConfig for counts and checks", 
 });
 
 test("shortFieldLabel strips the group prefix and capitalizes", () => {
-  const config = getHousingLogConfig("A/H", "1");
+  const config = getHousingLogConfig("A", "1");
   const check1 = canonicalFieldsWithPrefix(config, "securityChecks.1.");
   assert.deepEqual(check1.map(shortFieldLabel), ["Time", "Completed by", "Initials"]);
   const midnight = canonicalFieldsWithPrefix(config, "counts.midnight.");
@@ -186,7 +186,7 @@ test("shortFieldLabel strips the group prefix and capitalizes", () => {
 });
 
 test("staff slots derive from config with correct kinds and fields", () => {
-  const config = getHousingLogConfig("A/H", "1");
+  const config = getHousingLogConfig("A", "1");
   const slots = staffSlotsForConfig(config);
   assert.deepEqual(
     slots.map((slot) => [slot.prefix, slot.position, slot.kind]),
@@ -207,7 +207,7 @@ test("staff slots derive from config with correct kinds and fields", () => {
 });
 
 test("isStaffSlotNA requires every slot field to be the N/A marker", () => {
-  const config = getHousingLogConfig("A/H", "1");
+  const config = getHousingLogConfig("A", "1");
   const [sergeant] = staffSlotsForConfig(config);
   const values: Record<string, HousingLogValue> = {};
   assert.equal(isStaffSlotNA(sergeant, values), false);
@@ -218,7 +218,7 @@ test("isStaffSlotNA requires every slot field to be the N/A marker", () => {
 });
 
 test("an absent staff slot leaves the staff section ready when the rest is complete", () => {
-  const config = getHousingLogConfig("A/H", "1");
+  const config = getHousingLogConfig("A", "1");
   const input = completeInput();
   const slots = staffSlotsForConfig(config);
   const sergeant = slots[0];
@@ -230,7 +230,7 @@ test("an absent staff slot leaves the staff section ready when the rest is compl
 });
 
 test("staffFieldLabel strips the position prefix for card display", () => {
-  const config = getHousingLogConfig("A/H", "1");
+  const config = getHousingLogConfig("A", "1");
   const [sergeant] = staffSlotsForConfig(config);
   const nameField = sergeant.fields.find((f) => f.key.endsWith(".name"));
   const timeField = sergeant.fields.find((f) => f.key.endsWith(".assumedAt"));

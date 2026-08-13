@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 export const housingUnits = [
-  "A/H",
+  "A",
+  "H",
   "B",
   "C",
   "D",
@@ -17,6 +18,24 @@ export type HousingUnit = (typeof housingUnits)[number];
 export type HousingShift = (typeof housingShifts)[number];
 export type HousingLogStatus = (typeof housingLogStatuses)[number];
 export type HousingLogValue = string | number;
+
+/**
+ * Officer-facing display names for each physical housing unit. A Dorm and H
+ * Dorm are separate physical units that both use the shared AH official
+ * template family; the label map is purely presentational and never affects
+ * how a unit resolves to its Excel template (see `configs.ts`'s `familyFor`).
+ */
+export const housingUnitLabels: Record<HousingUnit, string> = {
+  A: "A Dorm",
+  H: "H Dorm",
+  B: "B Dorm",
+  C: "C Dorm",
+  D: "D Dorm",
+  E: "E Dorm",
+  F: "F Dorm",
+  G: "G Dorm",
+  Infirmary: "Infirmary",
+};
 
 export type FieldDefinition = {
   key: string;
@@ -118,6 +137,15 @@ export type HousingLogSummary = Pick<
   | "updatedAt"
   | "finalizedAt"
 >;
+
+/**
+ * Response shape returned exactly once, at creation time, so the officer can
+ * record/share the plaintext access code. It is never returned again — the
+ * server only ever stores a salted hash (see api-server `draftAccess.ts`).
+ */
+export type HousingLogDraftCreated = StoredHousingLog & {
+  accessCode: string;
+};
 
 export type HousingLogArchiveRecord = Pick<
   StoredHousingLog,
@@ -256,5 +284,11 @@ export const housingLogListFiltersSchema = z
     housingUnit: z.enum(housingUnits).optional(),
     shift: z.enum(housingShifts).optional(),
     logDate: housingLogDateSchema.optional(),
+  })
+  .strict();
+
+export const housingLogDraftUnlockSchema = z
+  .object({
+    code: z.string().trim().min(1).max(40),
   })
   .strict();

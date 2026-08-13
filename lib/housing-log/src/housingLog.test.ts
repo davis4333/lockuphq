@@ -19,7 +19,7 @@ import {
 const signature = "data:image/png;base64,dGVzdA==";
 
 function completeInput(
-  unit: HousingUnit = "A/H",
+  unit: HousingUnit = "A",
   shift: HousingShift = "1",
 ): HousingLogDraftInput {
   const config = getHousingLogConfig(unit, shift);
@@ -44,9 +44,9 @@ function completeInput(
   };
 }
 
-test("all 24 unit/shift combinations map to the 12 official worksheets", () => {
-  assert.equal(housingLogConfigs.length, 24);
-  assert.equal(new Set(housingLogConfigs.map((config) => config.key)).size, 24);
+test("all 27 unit/shift combinations map to the 12 official worksheets", () => {
+  assert.equal(housingLogConfigs.length, 27);
+  assert.equal(new Set(housingLogConfigs.map((config) => config.key)).size, 27);
   assert.deepEqual(
     [...new Set(housingLogConfigs.map((config) => config.sourceSheet))].sort(),
     [
@@ -71,6 +71,25 @@ test("all 24 unit/shift combinations map to the 12 official worksheets", () => {
         `${shift}_CDEFG`,
       );
     }
+  }
+  // A Dorm and H Dorm are separate physical housing units that share the
+  // official AH template family — same architecture already proven by C/D/E/F/G.
+  for (const shift of ["1", "2", "3"] as const) {
+    const a = getHousingLogConfig("A", shift);
+    const h = getHousingLogConfig("H", shift);
+    assert.equal(a.sourceSheet, `${shift}_AH`);
+    assert.equal(h.sourceSheet, `${shift}_AH`);
+    assert.notEqual(a.key, h.key);
+    assert.equal(a.housingUnit, "A");
+    assert.equal(h.housingUnit, "H");
+    // Both resolve to the identical template family shape (counts, security
+    // checks, activities) — only the record's own housingUnit differs.
+    assert.deepEqual(a.counts, h.counts);
+    assert.equal(a.securityCheckCount, h.securityCheckCount);
+    assert.deepEqual(
+      a.activities.map((item) => item.key),
+      h.activities.map((item) => item.key),
+    );
   }
   for (const config of housingLogConfigs) {
     assert.deepEqual(
@@ -98,7 +117,9 @@ test("official staff, count, check, and signature cardinalities are configured",
     const expectedChecks =
       config.housingUnit === "B"
         ? 17
-        : config.housingUnit === "A/H" || config.housingUnit === "Infirmary"
+        : config.housingUnit === "A" ||
+            config.housingUnit === "H" ||
+            config.housingUnit === "Infirmary"
           ? config.shift === "1"
             ? 9
             : 8
@@ -121,7 +142,7 @@ test("official staff, count, check, and signature cardinalities are configured",
 });
 
 test("official equipment slots are represented individually", () => {
-  const regular = fieldsForConfig(getHousingLogConfig("A/H", "1"));
+  const regular = fieldsForConfig(getHousingLogConfig("A", "1"));
   assert.equal(
     regular.filter((item) =>
       /^equipment\.acceptedKeyRings\.\d+$/.test(item.key),
@@ -181,7 +202,7 @@ test("formal counts carry official attestations and beginning counts do not inve
     /sliding cell doors/,
   );
   assert.match(
-    getHousingLogConfig("A/H", "1").counts[1]?.officialAttestation ?? "",
+    getHousingLogConfig("A", "1").counts[1]?.officialAttestation ?? "",
     /open bay areas that house inmates/,
   );
   assert.match(
@@ -365,8 +386,8 @@ test("meaningful-content detection distinguishes a blank draft from entered data
 });
 
 test("intentionally absent staff slots validate as N/A, including time fields", () => {
-  const input = completeInput("A/H", "1");
-  const config = getHousingLogConfig("A/H", "1");
+  const input = completeInput("A", "1");
+  const config = getHousingLogConfig("A", "1");
   for (const item of fieldsForConfig(config)) {
     if (item.key.startsWith("staff.1.")) input.values[item.key] = "N/A";
   }
@@ -378,7 +399,7 @@ test("intentionally absent staff slots validate as N/A, including time fields", 
 });
 
 test("N/A is still rejected for time fields outside allowNa staff fields", () => {
-  const input = completeInput("A/H", "1");
+  const input = completeInput("A", "1");
   input.values["securityChecks.1.time"] = "N/A";
   const issues = validateHousingLog(input);
   assert.ok(
@@ -391,7 +412,7 @@ test("N/A is still rejected for time fields outside allowNa staff fields", () =>
 });
 
 test("a present staff slot with missing fields still reports required issues", () => {
-  const input = completeInput("A/H", "1");
+  const input = completeInput("A", "1");
   delete input.values["staff.2.name"];
   input.values["staff.2.radio"] = "";
   const issues = validateHousingLog(input);
@@ -400,7 +421,7 @@ test("a present staff slot with missing fields still reports required issues", (
 });
 
 test("N/A staff times are rejected when the rest of the slot is present", () => {
-  const input = completeInput("A/H", "1");
+  const input = completeInput("A", "1");
   // staff.1 keeps a real name and equipment, but the times are set to N/A —
   // this is a present person with missing times, not an absent slot.
   input.values["staff.1.assumedAt"] = "N/A";

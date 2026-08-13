@@ -10,9 +10,9 @@ import { validateHousingLogSignatureImages } from "./signatureValidation";
 function input(signature: string): HousingLogDraftInput {
   return {
     logDate: "2026-08-11",
-    housingUnit: "A/H",
+    housingUnit: "A",
     shift: "1",
-    templateVersion: getHousingLogConfig("A/H", "1").templateVersion,
+    templateVersion: getHousingLogConfig("A", "1").templateVersion,
     values: {},
     events: [],
     signatures: { housingSupervisor: signature, housingOfficer: signature },

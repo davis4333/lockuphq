@@ -27,7 +27,7 @@ import healthRouter from "./health";
 const signature = signatureDataUrl("valid");
 
 function completeInput(
-  unit: HousingLogDraftInput["housingUnit"] = "A/H",
+  unit: HousingLogDraftInput["housingUnit"] = "A",
   shift: HousingLogDraftInput["shift"] = "1",
 ): HousingLogDraftInput {
   const config = getHousingLogConfig(unit, shift);

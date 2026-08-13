@@ -299,7 +299,7 @@ for (const config of representativeConfigs) {
 }
 
 test("2_AH replaces residual source-workbook entries instead of carrying them into a new log", async () => {
-  const record = createHousingLogStressRecord("A/H", "2", 1);
+  const record = createHousingLogStressRecord("A", "2", 1);
   const result = await generateExcelHousingLog(
     record,
     registry.resolveRecord(record),
@@ -318,7 +318,7 @@ test("2_AH replaces residual source-workbook entries instead of carrying them in
 });
 
 test("1_AH exports N/A for an intentionally absent staff slot without leaving blanks", async () => {
-  const record = createHousingLogStressRecord("A/H", "1", 1);
+  const record = createHousingLogStressRecord("A", "1", 1);
   const config = getHousingLogConfig(record.housingUnit, record.shift);
   const staffKeys = fieldsForConfig(config)
     .map((item) => item.key)

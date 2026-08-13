@@ -35,7 +35,7 @@ const packageResult = (
     shift: "2",
     generatedAt: "2026-08-12T22:00:00.000Z",
     completenessStatus: status,
-    expectedHousingUnits: ["A/H", "B", "C", "D", "E", "F", "G", "Infirmary"],
+    expectedHousingUnits: ["A", "B", "C", "D", "E", "F", "G", "Infirmary"],
     includedLogs: [
       {
         recordId: "final-log",

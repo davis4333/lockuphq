@@ -1,0 +1,602 @@
+Redesign the existing LockUpHQ officer-facing Housing Log page to make it significantly easier, cleaner, faster, and more professional for correctional officers to use.
+
+Live page:
+
+`https://lockuphq.com/housing-log`
+
+Repository:
+
+`https://github.com/davis4333/lockuphq`
+
+The current Housing Log functionality is already working and heavily tested.
+
+THIS IS A FRONTEND UX/INFORMATION-ARCHITECTURE PHASE.
+
+Do NOT rebuild the Housing Log system.
+
+Do NOT redesign the official Excel output.
+
+Do NOT change database behavior, validation rules, field definitions, required fields, Housing Log configurations, signatures, finalization rules, template resolution, Excel generation, archive functionality, ZIP packages, recipient settings, email delivery, or admin APIs unless an actual frontend integration bug requires the smallest possible correction.
+
+The existing backend/business logic is the source of truth.
+
+## FIRST — AUDIT BEFORE EDITING
+
+Before changing code:
+
+1. Inspect the current `/housing-log` implementation.
+2. Identify the components/state controlling:
+
+   * draft creation/resume
+   * unit/shift/date selection
+   * field values
+   * required-field validation
+   * events
+   * security checks
+   * signatures
+   * Save Draft
+   * Finalize Housing Log
+3. Identify the shared Phase 1 configuration/validation sources.
+4. Do NOT create parallel lists of required fields.
+5. Determine how UI sections can be reorganized without changing data ownership or API payloads.
+6. Confirm hiding/switching between sections will NOT lose React state, signature state, event data, or unsaved field values.
+
+Then implement the redesign.
+
+# PRIMARY UX GOAL
+
+A correctional officer opening the Housing Log should immediately understand:
+
+1. What log they are working on.
+2. What section they should work on.
+3. What they have already completed.
+4. What remains incomplete.
+5. How to quickly add an event.
+6. How to save.
+7. How to review and finalize.
+
+The officer should NOT be presented with the entire official form as one enormous wall of fields.
+
+The digital interface should organize the official requirements around the officer's workflow while preserving every required piece of data.
+
+# NEW PAGE ARCHITECTURE
+
+Build a task-based Housing Log workspace with these six major areas:
+
+1. Shift Setup
+2. Staff & Equipment
+3. Counts & Required Activities
+4. Security Checks
+5. Event Log
+6. Review & Signatures
+
+These are NOT locked wizard steps.
+
+Officers must be able to jump freely between them.
+
+Do not require them to finish one section before opening another.
+
+## DESKTOP LAYOUT
+
+Use:
+
+* compact Housing Log header
+* task/status navigation rail on the left
+* focused work area on the right
+
+Only one major work section should visually dominate the workspace at a time.
+
+Avoid rendering the page as one massive uninterrupted column.
+
+The navigation rail should remain visible/sticky while practical.
+
+Example concept:
+
+`✓ Shift Setup`
+
+`✓ Staff & Equipment`
+
+`! Counts & Activities — 3 remaining`
+
+`● Security Checks`
+
+`● Event Log`
+
+`○ Review & Signatures`
+
+Use text/icons in addition to color.
+
+Do not communicate status through color alone.
+
+## MOBILE / TABLET
+
+The page must remain practical on tablets and phones.
+
+At narrower widths:
+
+* remove the permanent left rail
+* replace it with a compact task navigator at the top
+* main form becomes single-column
+* avoid horizontal scrolling except for an intentionally designed compact data table where absolutely necessary
+* controls must remain comfortable to tap
+
+Do not simply shrink the desktop interface.
+
+# HEADER / CURRENT LOG SUMMARY
+
+At the top show a compact summary containing:
+
+* Housing Log
+* selected Housing Unit
+* Shift
+* Log Date
+* Draft / Finalized status where applicable
+* Save Draft
+* useful save/status feedback
+
+Where existing state supports it, show:
+
+`Last saved …`
+
+Also show an honest completion summary such as:
+
+`4 sections ready • 7 required items remaining`
+
+Prefer this over an arbitrary percentage.
+
+Completion/missing counts MUST be derived from the existing canonical Housing Log configuration and validation logic.
+
+Do NOT duplicate/hardcode required-field lists.
+
+# SHIFT SETUP
+
+Make Unit / Shift / Log Date the clear starting point.
+
+Preserve ALL existing behavior surrounding:
+
+* selecting unit
+* selecting shift
+* selecting date
+* loading the correct configuration
+* draft resumption
+* warnings/restrictions when changing unit/shift after meaningful content exists
+
+Do not weaken these protections.
+
+Before a unit/shift configuration is selected, avoid overwhelming the officer with hundreds of blank fields.
+
+Present Setup as the obvious first task.
+
+# STAFF & EQUIPMENT
+
+Reorganize the existing fields into two visually distinct subsections:
+
+## Staff on Duty
+
+Group officer/supervisor information logically.
+
+Where multiple staff members exist, visually treat each staff assignment as a coherent unit rather than scattering related fields across the page.
+
+## Equipment / Accountability
+
+Group equipment fields logically.
+
+Preserve:
+
+* every existing field
+* exact cardinalities
+* configuration differences by unit/shift
+* required status
+* underlying field keys and values
+
+Do NOT simplify by deleting fields.
+
+Do NOT invent new operational requirements.
+
+# COUNTS & REQUIRED ACTIVITIES
+
+Create strong visual hierarchy.
+
+Separate:
+
+## Counts
+
+Group formal count information together.
+
+Make count rows easy to scan.
+
+Keep all narratives, times, totals, initials, and existing required data exactly as currently modeled.
+
+## Required Activities / Inspections
+
+Group related required tasks together.
+
+Use compact row/card patterns where they make the information easier to scan.
+
+Do not change official wording or requirements.
+
+# SECURITY CHECKS
+
+Redesign this as a highly scan-friendly repeating section.
+
+Prefer a compact table/row structure conceptually like:
+
+`CHECK | TIME | OFFICER | INITIALS`
+
+or the closest representation supported by the existing fields.
+
+All existing required security-check fields must remain.
+
+Do not assume every template has the same number of checks.
+
+Derive the rows from the active Housing Log configuration.
+
+Make touch/input areas large enough to operate comfortably.
+
+# EVENT LOG — HIGH PRIORITY UX
+
+The Event Log is an active throughout-the-shift feature and should be extremely easy to access.
+
+Add a persistent prominent action:
+
+`+ Add Event`
+
+from the task navigation/header where practical.
+
+Selecting it should take the officer directly to Event Log and focus/open the new event entry area.
+
+Do not require them to manually scroll through the page.
+
+Preserve:
+
+* event entered order
+* cross-midnight ordering
+* long event text
+* TIME
+* EVENT / ACTIVITY
+* INITIALS
+* existing Add Event behavior
+* unfinished-event removal behavior
+* all existing draft persistence
+
+Existing events should look like clear log entries/rows rather than generic form clutter.
+
+Do not change backend event semantics.
+
+# REVIEW & SIGNATURES
+
+Create a deliberate end-of-shift area.
+
+Before the signature/finalization controls, show a Review section based on the EXISTING validation system.
+
+Show:
+
+* sections ready
+* sections with missing requirements
+* total required items remaining
+
+When validation identifies missing/invalid data:
+
+* show a prominent error summary
+* identify each problem in plain language
+* provide a control/link that navigates to and focuses the corresponding field
+* retain inline field highlighting
+
+Do NOT create a second validation implementation.
+
+Reuse the existing validation result and canonical configuration.
+
+Then show the existing signature pads.
+
+Preserve completely:
+
+* signature validation
+* handwritten stroke requirements
+* mouse/touch behavior
+* clear signature
+* PNG/signature state
+* Infirmary signature differences
+* finalization requirements
+
+Do not allow navigation between task panels to erase a signature.
+
+Finally present:
+
+`Save Draft`
+
+and
+
+`Finalize Housing Log`
+
+clearly.
+
+Do NOT weaken server-side finalization validation.
+
+# SECTION BEHAVIOR
+
+Do not create a rigid linear wizard.
+
+Officers must be able to move freely between tasks because the Housing Log is completed throughout a shift.
+
+Do not automatically collapse or remove a section merely because it becomes complete.
+
+Completion status should update without surprising the user.
+
+If panels are mounted/unmounted when switching sections, prove through tests that no form/signature/event state is lost.
+
+Prefer an architecture that keeps the existing form state centralized and stable.
+
+# VISUAL DESIGN
+
+Keep the existing LockUpHQ identity.
+
+Do NOT turn this into a generic white government website.
+
+Keep:
+
+* dark LockUpHQ aesthetic
+* blue accents
+* correctional-command-center identity
+
+BUT dramatically reduce visual noise inside the working form.
+
+The actual form workspace should use a more opaque, calm dark navy/charcoal surface.
+
+Reduce repeated background artwork showing through behind dense form fields.
+
+Use the artwork around the workspace instead of competing with form text.
+
+Improve:
+
+* whitespace
+* hierarchy
+* section headings
+* field grouping
+* readable contrast
+* consistent spacing
+* consistent input heights
+* button hierarchy
+* status badges
+
+Primary actions should stand out without making every control glow.
+
+The page should look like professional operational software rather than a paper form pasted onto a themed webpage.
+
+# ACCESSIBILITY / USABILITY
+
+Preserve logical DOM order.
+
+Do NOT visually reorder form controls with CSS in a way that differs from keyboard/screen-reader order.
+
+Use semantic headings.
+
+Use `fieldset` / `legend` or equivalent accessible grouping where appropriate.
+
+Every input must retain an explicit accessible label.
+
+Make status understandable without color alone.
+
+Maintain visible keyboard focus indicators.
+
+Ensure important click/touch targets are generously sized.
+
+Test keyboard navigation.
+
+Test at 200% browser zoom.
+
+# DO NOT INTRODUCE THESE CHANGES
+
+Do NOT:
+
+* change API request/response contracts
+* modify Housing Log database schema
+* change finalized-record immutability
+* change required fields
+* change workbook mappings
+* change official wording
+* change Excel generation
+* change continuation sheets
+* change admin archive
+* change ZIP generation
+* change recipient settings
+* change Resend/email delivery
+* add auto-finalization
+* add AI
+* add automatic operational assumptions
+* remove fields because they look repetitive
+* create fake/default operational values
+
+This phase is organization and usability.
+
+# TASK-FLOW SIMULATION
+
+Before considering the redesign complete, browser-test these scenarios with FAKE DATA ONLY.
+
+## Scenario A — First-time officer
+
+Open `/housing-log`.
+
+Without prior explanation, the layout should make the starting action obvious.
+
+Verify the officer is led naturally to Shift Setup and is not confronted with the entire form at once.
+
+## Scenario B — Start-of-shift setup
+
+Select unit/shift/date.
+
+Fill staff and equipment.
+
+Verify navigating away and back preserves every value.
+
+## Scenario C — Security check during shift
+
+From another section, navigate directly to Security Checks.
+
+Verify the correct rows for the chosen configuration appear.
+
+Enter a security-check row.
+
+Navigate elsewhere and return.
+
+Verify nothing is lost.
+
+## Scenario D — Urgent event
+
+While working in another section, use `+ Add Event`.
+
+Verify it takes the user directly to the new event entry workflow without searching/scrolling.
+
+Create a fake event.
+
+Verify it remains in entered order.
+
+## Scenario E — Resume draft
+
+Save a partially completed draft.
+
+Leave/reload.
+
+Resume it.
+
+Verify task statuses and all data correctly reflect the resumed record.
+
+## Scenario F — Finalize with missing information
+
+Intentionally leave several required fields blank.
+
+Attempt finalization.
+
+Verify:
+
+* prominent error summary appears
+* exact missing requirements are understandable
+* clicking/jumping to an error takes the officer to the correct task/field
+* existing server validation remains intact
+
+## Scenario G — Signatures
+
+Draw valid fake signatures.
+
+Navigate away from Review & Signatures and back.
+
+Verify signatures remain intact.
+
+## Scenario H — Mobile/tablet
+
+Test representative widths including approximately:
+
+* 390px
+* 768px
+* desktop
+
+Verify no unusable horizontal form overflow, clipped buttons, overlapping labels, or inaccessible navigation.
+
+## Scenario I — Keyboard
+
+Navigate the workflow using keyboard controls.
+
+Verify logical focus order and visible focus.
+
+## Scenario J — Regression
+
+Verify existing draft/finalize/API behavior is unchanged.
+
+# TESTING
+
+Run all existing Housing Log tests BEFORE modifications and record the baseline.
+
+After redesign run:
+
+* core Housing Log tests
+* client Housing Log tests
+* signature tests
+* API tests
+* Excel-generation tests
+* package tests
+* admin tests
+* email/delivery tests
+* full workspace typecheck
+* production build
+
+Add focused frontend tests where reasonable for:
+
+* task navigation
+* section status calculation
+* Add Event navigation
+* missing-field jump navigation
+* switching sections without value loss
+* signature persistence across navigation
+* responsive/basic rendering where practical
+
+Do not weaken or delete existing tests to make the redesign pass.
+
+# BROWSER VISUAL QA
+
+After implementation, inspect the actual rendered page.
+
+Do not rely only on unit tests.
+
+Specifically inspect:
+
+* top of page
+* every major task section
+* long labels
+* dense security-check configurations
+* event log with several events
+* signatures
+* validation errors
+* mobile/tablet layout
+* desktop layout
+
+Look for:
+
+* cramped fields
+* unclear hierarchy
+* excessive scrolling
+* background interference
+* clipped labels
+* overlapping elements
+* tiny controls
+* sections that appear equally important
+* confusing next actions
+
+Iterate if necessary.
+
+# DEPLOYMENT SAFETY
+
+Do not alter production data during testing.
+
+Use FAKE/TEST data only.
+
+Preserve the current database.
+
+Do not reset migrations.
+
+Do not remove existing drafts/finalized records unless they are explicitly identified as disposable test records.
+
+After tests, typecheck, build and browser QA all pass, update the existing Replit deployment.
+
+# FINAL REPORT
+
+Report:
+
+* files changed
+* before/after information architecture
+* final section structure
+* how section completion is calculated
+* how Add Event works
+* how validation navigation works
+* mobile/tablet behavior
+* accessibility checks performed
+* tests and exact pass counts
+* typecheck/build result
+* browser simulation results for Scenarios A–J
+* any backend files changed and exactly why
+* deployed status
+* live URL
+
+If you discover a reason this UX architecture would require changing proven Housing Log backend/business logic, STOP and explain the conflict instead of making that change automatically.
+
+End with:
+
+`HOUSING LOG OFFICER UX REDESIGN COMPLETE — READY FOR REVIEW`

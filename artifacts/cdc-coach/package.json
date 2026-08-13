@@ -7,7 +7,7 @@
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
-    "test:housing-log": "tsx --test src/components/signatureInk.test.ts src/lib/housingLogArchive.test.ts src/lib/housingLogAdminApi.test.ts src/lib/housingLogSections.test.ts src/lib/housingLogDemoSeed.test.ts src/lib/housingLogLocalStore.test.ts src/lib/housingLogTabLock.test.ts",
+    "test:housing-log": "tsx --test src/components/signatureInk.test.ts src/lib/housingLogArchive.test.ts src/lib/housingLogAdminApi.test.ts src/lib/housingLogSections.test.ts src/lib/housingLogDemoSeed.test.ts src/lib/housingLogLocalStore.test.ts src/lib/housingLogTabLock.test.ts src/lib/searchLog/searchLogRowBuilder.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

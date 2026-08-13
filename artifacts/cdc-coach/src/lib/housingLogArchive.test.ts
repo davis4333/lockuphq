@@ -4,6 +4,7 @@ import type { HousingLogArchiveRecord } from "@workspace/housing-log";
 import {
   buildHousingLogArchiveTree,
   formatArchiveDate,
+  formatLogDateForDisplay,
 } from "./housingLogArchive";
 
 const record = (
@@ -66,6 +67,20 @@ test("archive preserves duplicates and marks missing configured units without fa
   const missing = secondShift.units[1]!;
   assert.equal(missing.missing, true);
   assert.equal(missing.records.length, 0);
+});
+
+test("formatLogDateForDisplay converts canonical ISO to MM-DD-YYYY", () => {
+  assert.equal(formatLogDateForDisplay("2026-08-13"), "08-13-2026");
+});
+
+test("formatLogDateForDisplay zero-pads single-digit month and day", () => {
+  assert.equal(formatLogDateForDisplay("2026-01-05"), "01-05-2026");
+});
+
+test("formatLogDateForDisplay leaves the canonical ISO string itself unchanged", () => {
+  const logDate = "2026-08-13";
+  formatLogDateForDisplay(logDate);
+  assert.equal(logDate, "2026-08-13");
 });
 
 test("archive exposes complete and incomplete shift package states", () => {

@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import type {
-  HousingLogManualEmailResult,
-  HousingShift,
+import {
+  formatHousingLogDateForDisplay,
+  type HousingLogManualEmailResult,
+  type HousingShift,
 } from "@workspace/housing-log";
 import {
   getHousingLogDeliverySettings,
@@ -96,7 +97,7 @@ function emailBody(packageResult: HousingLogShiftPackage): string {
   return [
     "Housing Unit Logs shift package",
     "",
-    `Housing Log date: ${manifest.packageDate}`,
+    `Housing Log date: ${formatHousingLogDateForDisplay(manifest.packageDate)}`,
     `Shift: ${shiftLabels[manifest.shift]}`,
     `Package status: ${manifest.completenessStatus}`,
     `Housing Logs included: ${manifest.includedLogs.length}`,
@@ -187,7 +188,7 @@ export async function sendHousingLogShiftPackageEmail(
   try {
     sendResult = await provider.sendHousingLogPackage({
       recipients,
-      subject: `Housing Unit Logs — ${logDate} — ${shiftLabels[shift]}`,
+      subject: `Housing Unit Logs — ${formatHousingLogDateForDisplay(logDate)} — ${shiftLabels[shift]}`,
       text: emailBody(packageResult),
       attachment: {
         filename: packageResult.filename,

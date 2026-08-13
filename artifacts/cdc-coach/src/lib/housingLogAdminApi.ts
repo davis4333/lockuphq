@@ -81,6 +81,24 @@ export async function downloadHousingLogExcel(id: string): Promise<void> {
   );
 }
 
+/**
+ * Admin-only soft delete for an accidentally finalized duplicate — see
+ * `removeFinalizedLog` in the api-server repository. The record itself is
+ * never destroyed; this only removes it from the archive listing and
+ * everything derived from it.
+ */
+export async function removeHousingLogRecord(id: string): Promise<void> {
+  const response = await fetch(
+    `/api/admin/housing-logs/${encodeURIComponent(id)}/remove`,
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { accept: "application/json" },
+    },
+  );
+  if (!response.ok) await errorFromResponse(response);
+}
+
 export async function downloadHousingLogShiftPackage(
   logDate: string,
   shift: HousingShift,

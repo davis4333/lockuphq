@@ -14,6 +14,7 @@ import type {
   FinalizeSubmissionResult,
   FinalizedHousingLogMetadata,
   HousingLogRepository,
+  RemoveFinalizedHousingLogResult,
 } from "./repository";
 import {
   generateExcelHousingLog,
@@ -44,6 +45,10 @@ class PackageMemoryRepository implements HousingLogRepository {
   }
 
   async listFinalizedArchive(): Promise<FinalizedHousingLogMetadata[]> {
+    throw new Error("not used");
+  }
+
+  async removeFinalizedLog(): Promise<RemoveFinalizedHousingLogResult> {
     throw new Error("not used");
   }
 

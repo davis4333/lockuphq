@@ -1,14 +1,18 @@
 import { z } from "zod";
 
+// Normal operational housing-unit order (A Dorm and H Dorm are separate
+// physical units that happen to share the AH official template family —
+// see `configs.ts`'s `familyFor` — so H sorts with the rest of the
+// alphabet here, not next to A).
 export const housingUnits = [
   "A",
-  "H",
   "B",
   "C",
   "D",
   "E",
   "F",
   "G",
+  "H",
   "Infirmary",
 ] as const;
 export const housingShifts = ["1", "2", "3"] as const;
@@ -66,6 +70,14 @@ export type CountDefinition = {
   isBeginning?: boolean;
   requiresConductedBy: boolean;
   conductedByLabel?: string;
+  /**
+   * The role(s) the official form's "Sergeant / Officer" (or single-role,
+   * e.g. Infirmary sanitation checks) wording actually allows for this
+   * count, in selection order. A single-entry array means the form does
+   * not leave real ambiguity for this count — the officer still sees an
+   * explicit Role control, it just has one valid answer.
+   */
+  conductorOptions: string[];
   officialAttestation?: string;
 };
 
@@ -93,6 +105,9 @@ export type HousingLogConfig = {
   activities: RequiredActivityDefinition[];
   securityCheckCount: number;
   securityCheckLabel: string;
+  /** The role(s) the official security/sanitation check wording allows for
+   * this configuration — see `CountDefinition.conductorOptions`. */
+  securityCheckRoleOptions: string[];
   signatures: SignatureDefinition[];
 };
 
@@ -219,6 +234,21 @@ export function isValidHousingLogDate(value: string): boolean {
     date.getUTCMonth() === month - 1 &&
     date.getUTCDate() === day
   );
+}
+
+/**
+ * User-facing display format for a canonical YYYY-MM-DD Housing Log date —
+ * MM-DD-YYYY, e.g. "2026-08-13" -> "08-13-2026". Display only: the
+ * canonical ISO string stays the wire/storage format everywhere else
+ * (`logDate` fields, API payloads, sort keys, equality checks, and the
+ * official worksheet's own printed DATE cell prints this only as text,
+ * never as a stored value) — only what's rendered to a person changes.
+ */
+export function formatHousingLogDateForDisplay(logDate: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(logDate);
+  if (!match) return logDate;
+  const [, year, month, day] = match;
+  return `${month}-${day}-${year}`;
 }
 
 export function getEasternCalendarDate(date = new Date()): string {

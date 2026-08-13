@@ -1,4 +1,5 @@
 import {
+  formatHousingLogDateForDisplay,
   housingShifts,
   type HousingLogArchiveRecord,
   type HousingShift,
@@ -58,6 +59,14 @@ export function formatArchiveDate(logDate: string): string {
     timeZone: "UTC",
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
+
+/**
+ * User-facing display format for a canonical YYYY-MM-DD Housing Log date —
+ * MM-DD-YYYY. Re-exported under this page's established name; the actual
+ * conversion lives in `@workspace/housing-log` so the web app, the Excel
+ * DATE cell, and the delivery email all render the same format.
+ */
+export const formatLogDateForDisplay = formatHousingLogDateForDisplay;
 
 export function buildHousingLogArchiveTree(
   records: readonly HousingLogArchiveRecord[],

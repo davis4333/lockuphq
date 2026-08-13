@@ -6,6 +6,7 @@ import {
   FileSpreadsheet,
   MailCheck,
   LogOut,
+  Trash2,
 } from "lucide-react";
 import type {
   HousingLogArchiveResponse,
@@ -26,10 +27,12 @@ import {
   HousingLogAdminApiError,
   loginHousingLogAdmin,
   logoutHousingLogAdmin,
+  removeHousingLogRecord,
 } from "@/lib/housingLogAdminApi";
 import {
   buildHousingLogArchiveTree,
   formatArchiveDate,
+  formatLogDateForDisplay,
 } from "@/lib/housingLogArchive";
 
 const shiftLabel: Record<HousingShift, string> = {
@@ -65,6 +68,15 @@ export default function HousingLogAdmin() {
     key: string;
     message: string;
   } | null>(null);
+  const [removeConfirm, setRemoveConfirm] = useState<{
+    id: string;
+    logDate: string;
+    shift: HousingShift;
+    housingUnit: string;
+    finalizedAt: string;
+  } | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState("");
 
   const loadArchive = async () => {
     setLoading(true);
@@ -193,6 +205,34 @@ export default function HousingLogAdmin() {
       );
     } finally {
       setDownloadingPackage(null);
+    }
+  };
+
+  const confirmRemove = async () => {
+    if (!removeConfirm) return;
+    setRemoving(true);
+    setRemoveError("");
+    try {
+      await removeHousingLogRecord(removeConfirm.id);
+      setRemoveConfirm(null);
+      await loadArchive();
+    } catch (requestError) {
+      if (
+        requestError instanceof HousingLogAdminApiError &&
+        requestError.status === 401
+      ) {
+        setAuthenticated(false);
+        setArchive(null);
+        setRemoveConfirm(null);
+      } else {
+        setRemoveError(
+          requestError instanceof Error
+            ? requestError.message
+            : "The Housing Log could not be removed.",
+        );
+      }
+    } finally {
+      setRemoving(false);
     }
   };
 
@@ -359,7 +399,7 @@ export default function HousingLogAdmin() {
                                 <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-slate-100 marker:text-blue-400">
                                   {formatArchiveDate(date.logDate)}
                                   <span className="ml-2 font-mono text-[10px] text-blue-300/55">
-                                    {date.logDate}
+                                    {formatLogDateForDisplay(date.logDate)}
                                   </span>
                                 </summary>
                                 <div className="space-y-3 px-3 pb-3">
@@ -395,7 +435,7 @@ export default function HousingLogAdmin() {
                                             }
                                           </div>
                                           <div className="mt-1 text-[10px] text-blue-200/60">
-                                            {date.logDate} ·{" "}
+                                            {formatLogDateForDisplay(date.logDate)} ·{" "}
                                             {shiftLabel[shift.shift]} ·{" "}
                                             {recipientCount} active recipient
                                             {recipientCount === 1 ? "" : "s"}
@@ -541,6 +581,24 @@ export default function HousingLogAdmin() {
                                                     )}
                                                     Download Editable Excel Log
                                                   </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      setRemoveConfirm({
+                                                        id: record.id,
+                                                        logDate: date.logDate,
+                                                        shift: shift.shift,
+                                                        housingUnit:
+                                                          slot.housingUnit,
+                                                        finalizedAt:
+                                                          record.finalizedAt,
+                                                      })
+                                                    }
+                                                    className="mt-1.5 inline-flex w-full items-center justify-center gap-2 rounded border border-red-400/35 bg-red-950/20 px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-red-300/80 hover:border-red-300/60 hover:bg-red-900/30 hover:text-red-100"
+                                                  >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                    Remove Duplicate / Bad Log
+                                                  </button>
                                                 </div>
                                               ),
                                             )}
@@ -563,6 +621,66 @@ export default function HousingLogAdmin() {
           </section>
         </>
       ) : null}
+
+      {removeConfirm && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="housing-log-remove-title"
+        >
+          <div className="w-full max-w-md rounded-xl border border-red-400/40 bg-[#0a1330] p-5">
+            <h2
+              id="housing-log-remove-title"
+              className="text-sm font-black uppercase tracking-[0.1em] text-red-200"
+            >
+              Remove this finalized Housing Log?
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-blue-200/75">
+              This removes the record from the archive, missing/duplicate
+              calculations, shift packages, and manual email — it does not
+              delete it. The original stays available if it's ever needed
+              for audit.
+            </p>
+            <div className="mt-3 rounded-md border border-blue-400/25 bg-blue-950/30 p-3 text-xs text-blue-100">
+              <div>{removeConfirm.housingUnit}</div>
+              <div>
+                {formatLogDateForDisplay(removeConfirm.logDate)} ·{" "}
+                {shiftLabel[removeConfirm.shift]}
+              </div>
+              <div className="mt-1 text-blue-200/65">
+                Finalized {new Date(removeConfirm.finalizedAt).toLocaleString()}
+              </div>
+            </div>
+            {removeError && (
+              <p className="mt-3 text-[11px] text-red-300" role="alert">
+                {removeError}
+              </p>
+            )}
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row-reverse">
+              <button
+                type="button"
+                onClick={() => void confirmRemove()}
+                disabled={removing}
+                className="inline-flex items-center justify-center rounded-md border border-red-400/60 bg-red-600/25 px-4 py-2 text-xs font-black uppercase tracking-[0.06em] text-red-100 hover:bg-red-500/35 disabled:opacity-50"
+              >
+                {removing ? "Removing…" : "Remove This Log"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRemoveConfirm(null);
+                  setRemoveError("");
+                }}
+                disabled={removing}
+                className="inline-flex items-center justify-center rounded-md border border-blue-300/50 bg-blue-500/15 px-4 py-2 text-xs font-bold text-blue-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }

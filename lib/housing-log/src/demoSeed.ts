@@ -267,8 +267,10 @@ function fallbackFieldValue(
   field: FieldDefinition,
   rng: DemoRng,
   roster: DemoPerson[],
+  shift: HousingShift,
 ): HousingLogValue {
-  if (field.inputType === "time") return formatShiftMinute("2", randInt(rng, 0, 479));
+  if (field.inputType === "time")
+    return formatShiftMinute(shift, randInt(rng, 0, SHIFT_WINDOWS[shift].lengthMinutes - 1));
   if (field.inputType === "number") return randInt(rng, 0, 4);
   if (field.inputType === "choice") return pick(rng, field.options ?? ["Yes"]);
   const key = field.key;
@@ -329,13 +331,7 @@ export function generateCompleteDemoValues(
     const prefix = `staff.${index + 1}`;
     set(`${prefix}.name`, person.name);
     set(`${prefix}.assumedAt`, formatShiftMinute(shift, -randInt(rng, 0, 10)));
-    set(
-      `${prefix}.relievedAt`,
-      formatShiftMinute(
-        shift,
-        SHIFT_WINDOWS[shift].lengthMinutes + randInt(rng, 0, 10),
-      ),
-    );
+    set(`${prefix}.initials`, person.initials);
     set(`${prefix}.keyRing`, nextKeyRing());
     set(`${prefix}.radio`, `R${randInt(rng, 10, 99)}`);
     set(`${prefix}.chemicalAgent`, `CAP-${randInt(rng, 1, 20)}`);
@@ -349,6 +345,30 @@ export function generateCompleteDemoValues(
     config.sections.find((section) => section.key === "equipment")?.fields ?? [];
   const equipmentKeys = new Set(equipmentFields.map((item) => item.key));
   const hasKey = (key: string) => equipmentKeys.has(key);
+
+  // Equipment accountability actions (accepting keys, radios, first aid,
+  // etc.) happen near shift start as staff take over the unit. Each gets
+  // its own completion time/initials, scheduled in a short early-shift
+  // sequence rather than scattered across the whole shift.
+  const completionOrder = [
+    "keysAccepted",
+    "radiosAccountedFor",
+    ...(hasKey("equipment.radioChargingStationTime")
+      ? ["radioChargingStation"]
+      : []),
+    "firstAidInventory",
+    "equipmentInventory",
+    ...(hasKey("equipment.medicationInventoryTime")
+      ? ["medicationInventory"]
+      : []),
+  ];
+  const completionSlots = shiftSlots(shift, completionOrder.length);
+  completionOrder.forEach((name, index) => {
+    const slot = completionSlots[index]!;
+    const actor = pick(rng, roster);
+    set(`equipment.${name}Time`, timeWithinSlot(rng, shift, slot));
+    set(`equipment.${name}Initials`, actor.initials);
+  });
 
   if (config.housingUnit === "Infirmary") {
     set("equipment.infirmaryKeyRing", nextKeyRing());
@@ -420,6 +440,7 @@ export function generateCompleteDemoValues(
       set(`${prefix}.recallTime`, formatShiftMinute(shift, recallRel));
       set(`${prefix}.countTime`, formatShiftMinute(shift, countRel));
       set(`${prefix}.clearTime`, formatShiftMinute(shift, clearRel));
+      set(`${prefix}.conductedByRole`, pick(rng, count.conductorOptions));
       set(`${prefix}.conductedBy`, actor.name);
     }
     set(`${prefix}.initials`, actor.initials);
@@ -438,6 +459,10 @@ export function generateCompleteDemoValues(
     const prefix = `securityChecks.${index + 1}`;
     const actor = pick(rng, roster);
     set(`${prefix}.time`, timeWithinSlot(rng, shift, slot));
+    set(
+      `${prefix}.performedByRole`,
+      pick(rng, config.securityCheckRoleOptions),
+    );
     set(`${prefix}.performedBy`, actor.name);
     set(`${prefix}.initials`, actor.initials);
   });
@@ -458,6 +483,9 @@ export function generateCompleteDemoValues(
         set(detail.key, actor.initials);
       } else if (detail.inputType === "textarea") {
         set(detail.key, itemsDistributedText(rng));
+      } else if (detail.inputType === "choice") {
+        // e.g. the shift-supervisor rank select — a role, not a name.
+        set(detail.key, pick(rng, detail.options ?? ["Yes"]));
       } else {
         set(detail.key, actor.name);
       }
@@ -466,7 +494,8 @@ export function generateCompleteDemoValues(
 
   // --- Safety net: fill anything the scenario above didn't cover ---------
   for (const field of fieldsForConfig(config)) {
-    if (!(field.key in values)) set(field.key, fallbackFieldValue(field, rng, roster));
+    if (!(field.key in values))
+      set(field.key, fallbackFieldValue(field, rng, roster, shift));
   }
 
   // --- Event log --------------------------------------------------------

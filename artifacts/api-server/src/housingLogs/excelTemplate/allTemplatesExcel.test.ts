@@ -100,7 +100,7 @@ function coverageAssertions(
   assert.deepEqual([...written].sort(), [...expected].sort());
   assert.equal(
     written.filter((key) => key.startsWith("securityChecks.")).length,
-    config.securityCheckCount * 3,
+    config.securityCheckCount * 4,
   );
   assert.deepEqual(
     written.filter((key) => key.startsWith("activities.")).sort(),
@@ -241,6 +241,48 @@ for (const config of representativeConfigs) {
       embeddedPictures,
       first.diagnostics.embeddedSignatureImageCount,
     );
+
+    // Every embedded signature must anchor to column B (index 1) — the blank
+    // signature line — never column A (index 0), which is only wide enough
+    // to hold the printed "Signature:" label and would bury it under ink.
+    // Only the <xdr:oneCellAnchor>...<xdr:pic> blocks are our signature
+    // images; a source worksheet's drawing part can also carry unrelated
+    // pre-existing <xdr:twoCellAnchor><xdr:sp> shapes (e.g. hidden
+    // comment-indicator markers), which this must not flag.
+    let signatureAnchorsSeen = 0;
+    for (const path of drawingPaths) {
+      const drawingXml = await text(outputZip, path);
+      const anchoredColumns = [
+        ...drawingXml.matchAll(
+          /<xdr:oneCellAnchor><xdr:from><xdr:col>(\d+)<\/xdr:col>[\s\S]*?<xdr:pic>/g,
+        ),
+      ].map((match) => match[1]);
+      signatureAnchorsSeen += anchoredColumns.length;
+      for (const column of anchoredColumns)
+        assert.equal(
+          column,
+          "1",
+          `${config.sourceSheet} signature in ${path} anchored to column ${column}, not column B`,
+        );
+    }
+    assert.equal(signatureAnchorsSeen, first.diagnostics.embeddedSignatureImageCount);
+
+    // Every Event Log activity cell (column B) must use the shared style
+    // index reused for consistent left-aligned, non-bold text — the source
+    // workbook mixes centered/bold styles row to row, which the audit found
+    // reads as sloppy formatting once real event text fills the column.
+    for (const sheet of eventSheets)
+      for (const row of sheet.rows) {
+        const cell = sheet.xml.match(
+          new RegExp(`<c\\b[^>]*\\br="B${row}"[^>]*>[\\s\\S]*?</c>`),
+        )?.[0];
+        if (!cell || !/<t(?:\s[^>]*)?>/.test(cell)) continue; // blank row
+        assert.match(
+          cell,
+          /\bs="90"/,
+          `${config.sourceSheet} event row ${row} activity cell is not using the consistent style`,
+        );
+      }
     const signatureMultiplier = config.signatures.length;
     assert.equal(
       first.diagnostics.embeddedSignatureImageCount,
@@ -312,9 +354,16 @@ test("2_AH replaces residual source-workbook entries instead of carrying them in
   const sheetXml = await text(outputZip, targets.get("2_AH")!);
   assert.equal(
     readInlineCell(sheetXml, "B51"),
-    "Security check conducted in all areas of the housing unit by Sergeant / Officer J. Rutherford.",
+    "Security check conducted in all areas of the housing unit by Sergeant J. Rutherford.",
   );
   assert.equal(readInlineCell(sheetXml, "D41"), "");
+  // 2_AH's source workbook has a leftover sample officer's name ("T.Burrell
+  // Foster") sitting in column C on rows unrelated to any field this app
+  // writes — a residual from whoever built the official template. Column C
+  // is never a real blank in the event body, so every generated log must
+  // come out with it cleared, not carrying someone else's name forward.
+  for (const cell of ["C40", "C53", "C54", "C55"])
+    assert.equal(readInlineCell(sheetXml, cell), "");
 });
 
 test("1_AH exports N/A for an intentionally absent staff slot without leaving blanks", async () => {

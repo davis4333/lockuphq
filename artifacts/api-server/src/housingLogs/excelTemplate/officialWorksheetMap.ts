@@ -1,4 +1,7 @@
-import type { HousingLogConfig } from "@workspace/housing-log";
+import {
+  formatHousingLogDateForDisplay,
+  type HousingLogConfig,
+} from "@workspace/housing-log";
 import type { HousingLogDocumentRecord } from "../documentSpike/types.ts";
 
 export type ExcelCellWrite = {
@@ -269,11 +272,9 @@ function activityWrites(
             case "mail":
               return `Mail distributed by Sergeant / Officer ${detail}.`;
             case "healthComfort":
-              return `Health/comfort items issued by Sergeant / Officer ${detail}.`;
-            case "itemsDistributed":
-              return `Items distributed ${detail}`;
+              return `Health/comfort items issued to inmates by Sergeant / Officer ${detail}.`;
             case "unannouncedInspection":
-              return `Shift Supervisor ${detail} conducts an unannounced security inspection of the housing unit.`;
+              return `Shift Supervisor ${stored(record, "activities.unannouncedInspection.supervisorRole")} ${stored(record, "activities.unannouncedInspection.supervisor")} conducts an unannounced security inspection of the housing unit.`;
             default:
               return blankValues(source, [detail]);
           }
@@ -320,12 +321,8 @@ function staffWrites(
         /^(Sergeant(?:\s*\/\s*Officer)?|Officer(?:\s+\d+)?)/i,
       )?.[1] ?? (number === 1 ? "Sergeant" : "Officer");
     return [
-      write(
-        `A${row.row}`,
-        [`${prefix}.assumedAt`, `${prefix}.relievedAt`],
-        (record) =>
-          `${stored(record, `${prefix}.assumedAt`)} / ${stored(record, `${prefix}.relievedAt`)}`,
-      ),
+      direct(`A${row.row}`, `${prefix}.assumedAt`),
+      direct(`D${row.row}`, `${prefix}.initials`),
       write(
         `B${row.row}`,
         [`${prefix}.name`, `${prefix}.keyRing`, `${prefix}.radio`],
@@ -360,9 +357,17 @@ function equipmentWrites(
     pattern: RegExp,
     keys: string[],
     value: (record: HousingLogDocumentRecord) => string,
+    /** When set, also writes this action's completion time/initials to the
+     * A/D columns of the same row — the pair of canonical fields added
+     * during the Staff & Equipment time/initials audit. */
+    completionKey?: string,
   ) => {
     const row = findRow(rows, pattern, `equipment row ${pattern}`);
     result.push(write(`B${row.row}`, keys, value));
+    if (completionKey) {
+      result.push(direct(`A${row.row}`, `equipment.${completionKey}Time`));
+      result.push(direct(`D${row.row}`, `equipment.${completionKey}Initials`));
+    }
   };
   if (config.housingUnit === "Infirmary") {
     add(
@@ -378,12 +383,14 @@ function equipmentWrites(
         `Body alarm ${stored(record, "equipment.infirmaryBodyAlarm")}, ` +
         `Cuff ${stored(record, "equipment.infirmaryCuff")}, ` +
         `Cuff case ${stored(record, "equipment.infirmaryCuffCase")} are accounted for and in serviceable condition.`,
+      "keysAccepted",
     );
     add(
       /Radio accounted for and tested/i,
       ["equipment.infirmaryRadio"],
       (record) =>
         `Radio accounted for and tested to ensure they are operational ${stored(record, "equipment.infirmaryRadio")} and the status has been reported to the`,
+      "radiosAccountedFor",
     );
     add(
       /main control room by/i,
@@ -401,6 +408,7 @@ function equipmentWrites(
       keyRingKeys,
       (record) =>
         `Accepting the following key ring numbers: ${keyRingKeys.map((key) => stored(record, key)).join(" ")}`,
+      "keysAccepted",
     );
     const radioKeys = Array.from(
       { length: 3 },
@@ -411,6 +419,7 @@ function equipmentWrites(
       radioKeys,
       (record) =>
         `Radios accounted for and tested to ensure they are operational ${radioKeys.map((key) => stored(record, key)).join(" ")} and their status has been`,
+      "radiosAccountedFor",
     );
     add(
       /reported to the main control room by/i,
@@ -436,6 +445,7 @@ function equipmentWrites(
       (record) =>
         `Radio charging station ${stored(record, "equipment.radioChargingStation")} with ${stored(record, "equipment.extraBatteries")} extra batteries, ` +
         `Inspection mirror ${stored(record, "equipment.inspectionMirror")}, ${stored(record, "equipment.cellUnlockingBars")} Cell unlocking bars,`,
+      "radioChargingStation",
     );
     const alarmKeys = Array.from(
       { length: 3 },
@@ -483,6 +493,7 @@ function equipmentWrites(
     (record) =>
       `First Aid Kit accounted for and secured with seal ${stored(record, "equipment.firstAidSeal")}, ` +
       `PPE kit present ${stored(record, "equipment.ppeKit")}, One-way breathing mask`,
+    "firstAidInventory",
   );
   add(
     /in first aid kit/i,
@@ -501,6 +512,7 @@ function equipmentWrites(
     ["equipment.inventoryComplete"],
     (record) =>
       `Equipment inventory conducted, all assigned equipment accounted for and in serviceable condition ${stored(record, "equipment.inventoryComplete")}`,
+    "equipmentInventory",
   );
   add(
     /Post orders read and signed/i,
@@ -514,6 +526,7 @@ function equipmentWrites(
       ["medication.inventoriedBy"],
       (record) =>
         `Over the counter medication inventoried by Sergeant / Officer ${stored(record, "medication.inventoriedBy")} (Count number of packs)`,
+      "medicationInventory",
     );
     add(
       /Acetaminophen/i,
@@ -548,7 +561,9 @@ function countWrites(
     );
     if (count.isBeginning)
       return [
-        direct(`A${row.row}`, `${prefix}.countTime`),
+        // Beginning Inmate Count records the population the shift starts
+        // with, not a formal conducted count — the official form has no
+        // time blank here, so column A is intentionally left unwritten.
         write(
           `B${row.row}`,
           componentKeys,
@@ -588,9 +603,6 @@ function countWrites(
     const sourceConducted = rowText(conductedRow);
     const conductedPrefix =
       sourceConducted.match(/^(.*?conducted by)/i)?.[1] ?? "conducted by";
-    const conductor =
-      count.conductedByLabel?.replace(/^Conducted by\s*/i, "") ??
-      "Sergeant / Officer";
     return [
       direct(`A${row.row}`, `${prefix}.countTime`),
       write(
@@ -614,9 +626,9 @@ function countWrites(
       ),
       write(
         `B${conductedRow.row}`,
-        [`${prefix}.conductedBy`],
+        [`${prefix}.conductedByRole`, `${prefix}.conductedBy`],
         (record) =>
-          `${conductedPrefix} ${conductor} ${stored(record, `${prefix}.conductedBy`)}.`,
+          `${conductedPrefix} ${stored(record, `${prefix}.conductedByRole`)} ${stored(record, `${prefix}.conductedBy`)}.`,
       ),
       direct(`D${conductedRow.row}`, `${prefix}.initials`),
     ];
@@ -638,15 +650,18 @@ function securityWrites(
     const prefix = `securityChecks.${index + 1}`;
     const source = rowText(row);
     const narrativePrefix = source.match(/^(.*?\bby\s+)/i)?.[1];
-    const officialRole = source.match(
-      /\b(Sergeant\s*\/\s*Officer|Officer\s*\/\s*Sergeant|Sergeant|Officer)\b/i,
-    )?.[1];
+    const hasOfficialRole = /\b(Sergeant\s*\/\s*Officer|Officer\s*\/\s*Sergeant|Sergeant|Officer)\b/i.test(
+      source,
+    );
     return [
       direct(`A${row.row}`, `${prefix}.time`),
-      write(`B${row.row}`, [`${prefix}.performedBy`], (record) =>
-        narrativePrefix && officialRole
-          ? `${narrativePrefix}${officialRole} ${stored(record, `${prefix}.performedBy`)}.`
-          : blankValues(source, [stored(record, `${prefix}.performedBy`)]),
+      write(
+        `B${row.row}`,
+        [`${prefix}.performedByRole`, `${prefix}.performedBy`],
+        (record) =>
+          narrativePrefix && hasOfficialRole
+            ? `${narrativePrefix}${stored(record, `${prefix}.performedByRole`)} ${stored(record, `${prefix}.performedBy`)}.`
+            : blankValues(source, [stored(record, `${prefix}.performedBy`)]),
       ),
       direct(`D${row.row}`, `${prefix}.initials`),
     ];
@@ -736,7 +751,14 @@ export function buildOfficialWorksheetLayout(
     ).flatMap((rowNumber): ExcelCellWrite[] => {
       const row = rowsByNumber.get(rowNumber);
       if (!row) return [];
-      return ["A", "D"].flatMap((column): ExcelCellWrite[] =>
+      // Column C is never a real fill-in blank anywhere in the event body —
+      // only A (time), B (narrative, always fully overwritten by its own
+      // activity/count/security-check write), and D (initials) are. 2_AH's
+      // source workbook has a leftover sample officer's name sitting in C on
+      // a few otherwise-unrelated rows (residual demo data from whoever
+      // built the official template); clearing C here alongside A and D
+      // prevents any such stray text from surviving into a generated log.
+      return ["A", "C", "D"].flatMap((column): ExcelCellWrite[] =>
         row.cells.has(`${column}${rowNumber}`)
           ? [write(`${column}${rowNumber}`, [], () => "")]
           : [],
@@ -763,7 +785,11 @@ export function buildOfficialWorksheetLayout(
           `HOUSING UNIT  ${record.housingUnit}`,
         );
       }),
-      write(`C${row}`, [], (record) => `DATE ${record.logDate}`),
+      write(
+        `C${row}`,
+        [],
+        (record) => `DATE ${formatHousingLogDateForDisplay(record.logDate)}`,
+      ),
     ]),
     ...staffWrites(rows, config),
     ...equipmentWrites(rows, config),

@@ -11,6 +11,8 @@ import {
   Plus,
   X,
   PencilLine,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import PageShell, { hudPanel, hudInput, hudLabel } from "@/components/PageShell";
 import {
@@ -44,6 +46,7 @@ import {
   normalizeTimingCellKey,
   randomTablet,
   tabletValuesForMode,
+  setIncludeAll,
 } from "@/lib/searchLog/searchLogRowBuilder";
 import {
   fillSearchLogDocx,
@@ -418,6 +421,13 @@ export default function SearchLogAutofill() {
 
   function updateRow(id: string, patch: Partial<ReviewRow>) {
     setActive((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+    setConfirmed(false);
+  }
+  // Applies to the whole roster, not just the currently filtered/visible
+  // rows — after Deselect All, the officer manually re-checks only the
+  // specific cells/inmates involved in a targeted operation (e.g. haircuts).
+  function setAllIncluded(include: boolean) {
+    setActive((prev) => setIncludeAll(prev, include));
     setConfirmed(false);
   }
   function removeRow(id: string) {
@@ -1060,6 +1070,21 @@ export default function SearchLogAutofill() {
             {flaggedCount > 0 && (
               <SummaryChip label="Flagged" value={flaggedCount} tone="amber" />
             )}
+            <span className="mx-1 h-4 w-px bg-blue-400/25" aria-hidden />
+            <button
+              type="button"
+              onClick={() => setAllIncluded(true)}
+              className={btnGhost}
+            >
+              <CheckSquare className="h-3.5 w-3.5" /> Select All
+            </button>
+            <button
+              type="button"
+              onClick={() => setAllIncluded(false)}
+              className={btnGhost}
+            >
+              <Square className="h-3.5 w-3.5" /> Deselect All
+            </button>
           </div>
 
           <div className="max-h-[62vh] overflow-y-auto overflow-x-hidden rounded-lg border border-blue-400/25">

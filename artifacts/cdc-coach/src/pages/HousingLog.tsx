@@ -51,6 +51,7 @@ import {
   housingLogTaskIds,
   housingLogTaskLabels,
   isStaffSlotNA,
+  keyRingSuggestions,
   shortFieldLabel,
   STAFF_NA_VALUE,
   staffFieldLabel,
@@ -59,6 +60,7 @@ import {
   type HousingLogTaskId,
   type StaffSlot,
 } from "@/lib/housingLogSections";
+import { formatLogDateForDisplay } from "@/lib/housingLogArchive";
 import { finalizeHousingLog, HousingLogApiError } from "@/lib/housingLogApi";
 import {
   clearHousingLogLocalState,
@@ -118,18 +120,19 @@ function isCompactField(definition: FieldDefinition): boolean {
 }
 
 /**
- * Optional, editable suggestions for short known key-ring style codes (e.g.
- * a unit's key ring commonly runs {UNIT}, {UNIT}1 … {UNIT}6). These are
- * hints only — rendered via <datalist> so any legitimate value that doesn't
- * match the pattern remains freely enterable.
+ * A fixed, per-type max width so every time field is the same width as
+ * every other time field, every initials field the same as every other
+ * initials field, and so on — instead of every compact control stretching
+ * to fill whatever grid track it happens to land in (`hudInput` is
+ * `w-full`, so it fills its wrapping div; capping that div's width is what
+ * actually makes the control narrow).
  */
-function keyRingSuggestions(
-  definition: FieldDefinition,
-  housingUnit: HousingUnit | "",
-): string[] | undefined {
-  if (!housingUnit) return undefined;
-  if (!/keyring|acceptedkeyrings/i.test(definition.key)) return undefined;
-  return [housingUnit, ...Array.from({ length: 6 }, (_, i) => `${housingUnit}${i + 1}`)];
+function compactWidthClass(definition: FieldDefinition): string {
+  if (definition.inputType === "time") return "sm:max-w-[130px]";
+  if (definition.inputType === "number") return "sm:max-w-[90px]";
+  if (definition.inputType === "choice") return "sm:max-w-[160px]";
+  if (/initials$/i.test(definition.key)) return "sm:max-w-[100px]";
+  return "sm:max-w-[140px]";
 }
 
 type FieldControlProps = {
@@ -159,12 +162,17 @@ function FieldControl({
     className,
   };
   const listId = suggestions ? `${common.id}-list` : undefined;
+  // Flex row, not a grid: a compact control (time/role/initials/short code)
+  // shrinks to its fixed width and never grows past it; a name/text field
+  // grows to fill whatever space is left in the row. This is what keeps a
+  // row of "Time / Role / Name / Initials" reading as one aligned line
+  // instead of every control stretching to an equal-width grid track.
   const spanClass =
     definition.inputType === "textarea"
-      ? "col-span-full"
+      ? "w-full basis-full"
       : compact
-        ? ""
-        : "sm:col-span-2";
+        ? `w-full shrink-0 ${compactWidthClass(definition)}`
+        : "min-w-[160px] flex-1 basis-[160px]";
   return (
     <div className={spanClass}>
       <label className={hudLabel} htmlFor={common.id}>
@@ -999,7 +1007,7 @@ export default function HousingLog() {
             <div>
               <p className="text-xs font-black uppercase tracking-[0.1em] text-emerald-200">
                 {housingUnitLabels[housingUnit]} • {shiftName(shift)} •{" "}
-                {logDate}
+                {formatLogDateForDisplay(logDate)}
               </p>
               <p className="mt-1 text-[11px] text-emerald-100/80">
                 Working Housing Log restored from this device. Continue where
@@ -1077,7 +1085,9 @@ export default function HousingLog() {
                   : "No unit selected"}
               </span>
               {shift && <span>{shiftName(shift)}</span>}
-              <span className="text-blue-200/70">{logDate}</span>
+              <span className="text-blue-200/70">
+                {formatLogDateForDisplay(logDate)}
+              </span>
               <span
                 className={`rounded border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${
                   status === "finalized"
@@ -1467,7 +1477,7 @@ export default function HousingLog() {
                         <legend className="px-2 text-xs font-black uppercase tracking-[0.12em] text-blue-100">
                           {heading}
                         </legend>
-                        <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="mt-2 flex flex-wrap items-end gap-3">
                           {slot.fields.map((definition) => (
                             <FieldControl
                               key={definition.key}
@@ -1513,7 +1523,7 @@ export default function HousingLog() {
                             ? ` — ${section.description}`
                             : ""}
                         </p>
-                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="mt-3 flex flex-wrap items-end gap-3">
                           {section.fields.map((definition) => (
                             <FieldControl
                               key={definition.key}
@@ -1588,7 +1598,7 @@ export default function HousingLog() {
                             attest to this requirement.
                           </p>
                         )}
-                        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="mt-3 flex flex-wrap items-end gap-3">
                           {definitions.map((definition) => (
                             <FieldControl
                               key={definition.key}
@@ -1627,7 +1637,7 @@ export default function HousingLog() {
                           Source-form discrepancy: {item.sourceNote}
                         </p>
                       )}
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="mt-3 flex flex-wrap items-end gap-3">
                         {item.detailFields.map((definition) => (
                           <FieldControl
                             key={definition.key}
@@ -1666,11 +1676,12 @@ export default function HousingLog() {
                 </p>
                 <div
                   aria-hidden
-                  className="mt-4 hidden grid-cols-[64px_1fr_1fr_110px] gap-3 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-blue-300/60 sm:grid"
+                  className="mt-4 hidden grid-cols-[56px_128px_120px_1fr_90px] gap-3 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-blue-300/60 sm:grid"
                 >
                   <span>Check</span>
                   <span>Time</span>
-                  <span>Completed by</span>
+                  <span>Role</span>
+                  <span>Name</span>
                   <span>Initials</span>
                 </div>
                 <ul className="mt-2 space-y-2">
@@ -1693,7 +1704,7 @@ export default function HousingLog() {
                       return (
                         <li
                           key={prefix}
-                          className={`${subCard} grid gap-3 sm:grid-cols-[64px_1fr_1fr_110px] sm:items-center`}
+                          className={`${subCard} grid gap-3 sm:grid-cols-[56px_128px_120px_1fr_90px] sm:items-center`}
                         >
                           <div className="flex items-center gap-1.5 text-xs font-bold text-blue-100">
                             {rowDone ? (
@@ -1720,23 +1731,45 @@ export default function HousingLog() {
                               >
                                 Check {index + 1} — {definition.label}
                               </label>
-                              <input
-                                id={targetId(`values.${definition.key}`)}
-                                type={
-                                  definition.inputType === "time"
-                                    ? "time"
-                                    : "text"
-                                }
-                                value={String(values[definition.key] ?? "")}
-                                disabled={disabled}
-                                aria-invalid={errorPaths.has(
-                                  `values.${definition.key}`,
-                                )}
-                                onChange={(event) =>
-                                  setValue(definition.key, event.target.value)
-                                }
-                                className={`${hudInput} ${errorPaths.has(`values.${definition.key}`) ? "border-red-400 ring-2 ring-red-400/25" : ""}`}
-                              />
+                              {definition.inputType === "choice" ? (
+                                <select
+                                  id={targetId(`values.${definition.key}`)}
+                                  value={String(values[definition.key] ?? "")}
+                                  disabled={disabled}
+                                  aria-invalid={errorPaths.has(
+                                    `values.${definition.key}`,
+                                  )}
+                                  onChange={(event) =>
+                                    setValue(definition.key, event.target.value)
+                                  }
+                                  className={`${hudInput} ${errorPaths.has(`values.${definition.key}`) ? "border-red-400 ring-2 ring-red-400/25" : ""}`}
+                                >
+                                  <option value="">Select…</option>
+                                  {definition.options?.map((option) => (
+                                    <option key={option} value={option}>
+                                      {option}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  id={targetId(`values.${definition.key}`)}
+                                  type={
+                                    definition.inputType === "time"
+                                      ? "time"
+                                      : "text"
+                                  }
+                                  value={String(values[definition.key] ?? "")}
+                                  disabled={disabled}
+                                  aria-invalid={errorPaths.has(
+                                    `values.${definition.key}`,
+                                  )}
+                                  onChange={(event) =>
+                                    setValue(definition.key, event.target.value)
+                                  }
+                                  className={`${hudInput} ${errorPaths.has(`values.${definition.key}`) ? "border-red-400 ring-2 ring-red-400/25" : ""}`}
+                                />
+                              )}
                             </div>
                           ))}
                         </li>
@@ -1768,7 +1801,7 @@ export default function HousingLog() {
                   role="group"
                   aria-label="Quick event entry"
                 >
-                  <div className="grid gap-2 sm:grid-cols-[110px_1fr_80px_auto] sm:items-end">
+                  <div className="grid gap-2 sm:grid-cols-[150px_1fr_90px_auto] sm:items-end">
                     <div>
                       <label
                         className={hudLabel}
@@ -1787,7 +1820,7 @@ export default function HousingLog() {
                             setComposerTime(event.target.value);
                             setComposerError(undefined);
                           }}
-                          className={`${hudInput} min-w-0 flex-1`}
+                          className={`${hudInput} min-w-[104px] flex-1`}
                         />
                         <button
                           type="button"

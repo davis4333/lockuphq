@@ -38,10 +38,7 @@ const staffFields = (positions: string[]): FieldDefinition[] =>
         ...field(`${prefix}.assumedAt`, `${position} time assumed duties`, "time"),
         allowNa: true,
       },
-      {
-        ...field(`${prefix}.relievedAt`, `${position} time relieved`, "time"),
-        allowNa: true,
-      },
+      field(`${prefix}.initials`, `${position} initials`),
       field(`${prefix}.keyRing`, `${position} key ring`),
       field(`${prefix}.radio`, `${position} radio`),
       field(`${prefix}.chemicalAgent`, `${position} chemical-agent pouch`),
@@ -68,6 +65,14 @@ const activity = (
 });
 
 const performedBy = (key: string, label = "Completed by") => field(key, label);
+
+const SUPERVISOR_RANKS = ["Lieutenant", "Captain"] as const;
+
+const roleField = (
+  key: string,
+  label: string,
+  options: readonly string[],
+): FieldDefinition => field(key, label, "choice", options);
 
 const commonActivities = (): RequiredActivityDefinition[] => [
   activity("preaAnnouncement", "PREA female-staff announcement", [
@@ -97,9 +102,14 @@ const supervisorActivity = activity(
   "unannouncedInspection",
   "Shift supervisor unannounced security inspection",
   [
+    roleField(
+      "activities.unannouncedInspection.supervisorRole",
+      "Shift supervisor rank",
+      SUPERVISOR_RANKS,
+    ),
     performedBy(
       "activities.unannouncedInspection.supervisor",
-      "Shift supervisor",
+      "Shift supervisor name",
     ),
   ],
 );
@@ -178,26 +188,20 @@ const shiftActivities: Record<
       activity("healthComfort", "Health/comfort items issued", [
         performedBy("activities.healthComfort.performedBy", "Issued by"),
       ]),
-      activity("itemsDistributed", "Health/comfort items documented", [
-        field(
-          "activities.itemsDistributed.items",
-          "Items distributed",
-          "textarea",
-        ),
-      ]),
+      // Official worksheet's "Items distributed" row is a printed label
+      // only — there is no fill-in blank for a description, so this
+      // activity records just the completion time and initials.
+      activity("itemsDistributed", "Health/comfort items documented"),
     ],
     B: [
       activity("intercom", "Intercom placed in active listening mode"),
       activity("healthComfort", "Health/comfort items issued", [
         performedBy("activities.healthComfort.performedBy", "Issued by"),
       ]),
-      activity("itemsDistributed", "Health/comfort items documented", [
-        field(
-          "activities.itemsDistributed.items",
-          "Items distributed",
-          "textarea",
-        ),
-      ]),
+      // Official worksheet's "Items distributed" row is a printed label
+      // only — there is no fill-in blank for a description, so this
+      // activity records just the completion time and initials.
+      activity("itemsDistributed", "Health/comfort items documented"),
       activity(
         "adminRecStart",
         "Administrative confinement recreation begins",
@@ -249,25 +253,19 @@ const shiftActivities: Record<
       activity("healthComfort", "Health/comfort items issued", [
         performedBy("activities.healthComfort.performedBy", "Issued by"),
       ]),
-      activity("itemsDistributed", "Health/comfort items documented", [
-        field(
-          "activities.itemsDistributed.items",
-          "Items distributed",
-          "textarea",
-        ),
-      ]),
+      // Official worksheet's "Items distributed" row is a printed label
+      // only — there is no fill-in blank for a description, so this
+      // activity records just the completion time and initials.
+      activity("itemsDistributed", "Health/comfort items documented"),
     ],
     INF: [
       activity("healthComfort", "Health/comfort items issued", [
         performedBy("activities.healthComfort.performedBy", "Issued by"),
       ]),
-      activity("itemsDistributed", "Health/comfort items documented", [
-        field(
-          "activities.itemsDistributed.items",
-          "Items distributed",
-          "textarea",
-        ),
-      ]),
+      // Official worksheet's "Items distributed" row is a printed label
+      // only — there is no fill-in blank for a description, so this
+      // activity records just the completion time and initials.
+      activity("itemsDistributed", "Health/comfort items documented"),
       activity("laundryReturned", "Laundry returned to inmates"),
       activity("caustics", "Caustics distributed and containers retrieved"),
     ],
@@ -298,6 +296,11 @@ const infirmaryConductor = (
   );
 };
 
+/** "Sergeant / Officer" -> ["Sergeant", "Officer"]; a single-role wording
+ * (e.g. Infirmary sanitation checks' bare "Sergeant") -> that one role. */
+const conductorOptionsFor = (conductor: string): string[] =>
+  conductor.split("/").map((role) => role.trim());
+
 const countsFor = (
   unit: HousingUnit,
   shift: HousingShift,
@@ -319,6 +322,7 @@ const countsFor = (
       components,
       isBeginning: index === 0,
       requiresConductedBy: index !== 0,
+      conductorOptions: conductorOptionsFor(conductor),
       ...(index === 0
         ? {}
         : {
@@ -341,7 +345,19 @@ const staffFor = (unit: HousingUnit, shift: HousingShift): string[] => {
   return ["Sergeant", "Officer 1", "Officer 2"];
 };
 
-const safetyEquipmentFields = (): FieldDefinition[] => [
+/** Time + initials pair for an equipment/accountability action that the
+ * official form records as completed but the canonical field list
+ * previously left without either — see the Staff & Equipment audit. */
+const completionFields = (key: string, label: string): FieldDefinition[] => [
+  field(`equipment.${key}Time`, `${label} — time`, "time"),
+  field(`equipment.${key}Initials`, `${label} — initials`),
+];
+
+const firstAidInventoryFields = (): FieldDefinition[] => [
+  ...completionFields(
+    "firstAidInventory",
+    "First aid/safety equipment inventory",
+  ),
   field("equipment.firstAidSeal", "First-aid kit seal"),
   field("equipment.ppeKit", "PPE kit present", "choice", yesNo),
   field(
@@ -357,6 +373,10 @@ const safetyEquipmentFields = (): FieldDefinition[] => [
     yesNo,
   ),
   field("equipment.fireAlarm", "Fire alarm operational", "choice", yesNo),
+];
+
+const equipmentInventoryFields = (): FieldDefinition[] => [
+  ...completionFields("equipmentInventory", "Assigned-equipment inventory"),
   field(
     "equipment.inventoryComplete",
     "Assigned-equipment inventory complete and serviceable",
@@ -370,10 +390,15 @@ const equipmentSection = (unit: HousingUnit): FormSection => {
   const infirmary = unit === "Infirmary";
   const fields: FieldDefinition[] = infirmary
     ? [
+        ...completionFields("keysAccepted", "Accepting keys"),
         field("equipment.infirmaryKeyRing", "Infirmary unit key ring"),
         field("equipment.infirmaryBodyAlarm", "Infirmary unit body alarm"),
         field("equipment.infirmaryCuff", "Infirmary unit handcuffs"),
         field("equipment.infirmaryCuffCase", "Infirmary unit handcuff case"),
+        ...completionFields(
+          "radiosAccountedFor",
+          "Radios accounted for and tested",
+        ),
         field(
           "equipment.infirmaryRadio",
           "Infirmary unit radio accounted for and tested",
@@ -382,13 +407,19 @@ const equipmentSection = (unit: HousingUnit): FormSection => {
           "equipment.radioStatusReportedBy",
           "Radio status reported to main control by",
         ),
-        ...safetyEquipmentFields(),
+        ...firstAidInventoryFields(),
+        ...equipmentInventoryFields(),
       ]
     : [
+        ...completionFields("keysAccepted", "Accepting keys"),
         ...numberedFields(
           "equipment.acceptedKeyRings",
           "Accepted key-ring number",
           8,
+        ),
+        ...completionFields(
+          "radiosAccountedFor",
+          "Radios accounted for and tested",
         ),
         ...numberedFields(
           "equipment.radios",
@@ -407,6 +438,7 @@ const equipmentSection = (unit: HousingUnit): FormSection => {
               ),
             ]
           : []),
+        ...completionFields("radioChargingStation", "Radio charging station"),
         field(
           "equipment.radioChargingStation",
           "Radio charging station status",
@@ -436,7 +468,12 @@ const equipmentSection = (unit: HousingUnit): FormSection => {
           "choice",
           yesNoNa,
         ),
-        ...safetyEquipmentFields(),
+        ...firstAidInventoryFields(),
+        ...equipmentInventoryFields(),
+        ...completionFields(
+          "medicationInventory",
+          "Over-the-counter medication inventory",
+        ),
         field(
           "medication.inventoriedBy",
           "Over-the-counter medication inventoried by",
@@ -508,6 +545,13 @@ const buildConfig = (
       housingUnit === "Infirmary" && shift === "1"
         ? "Sanitation check in all areas of the Infirmary"
         : "Security check in all areas of the housing unit",
+    // Every template prints "Sergeant / Officer" (or the reverse order) for
+    // this line except 1_INF's sanitation check, whose official wording is
+    // a bare, non-ambiguous "Sergeant".
+    securityCheckRoleOptions:
+      housingUnit === "Infirmary" && shift === "1"
+        ? ["Sergeant"]
+        : ["Sergeant", "Officer"],
     signatures:
       housingUnit === "Infirmary" && shift === "1"
         ? [{ key: "housingSupervisor", label: "Housing Supervisor Signature" }]
@@ -540,22 +584,29 @@ export function getHousingLogConfig(
 export function fieldsForConfig(config: HousingLogConfig): FieldDefinition[] {
   const countFields = config.counts.flatMap((count) => {
     const prefix = `counts.${count.key}`;
+    // Beginning Inmate Count records the population the shift starts with —
+    // it is not a formal conducted count, so it has no count time and no
+    // conducted-by role/name, matching the official form.
+    if (count.isBeginning) {
+      return [
+        ...count.components.map((component) =>
+          field(
+            `${prefix}.components.${component}`,
+            `${count.label} — ${component}`,
+            "number",
+          ),
+        ),
+        field(`${prefix}.initials`, `${count.label} — initials`),
+      ];
+    }
     return [
-      ...(!count.isBeginning
-        ? [
-            field(
-              `${prefix}.recallTime`,
-              `${count.label} — recall time`,
-              "time",
-            ),
-            field(
-              `${prefix}.clearTime`,
-              `${count.label} — count clear time`,
-              "time",
-            ),
-          ]
-        : []),
+      field(`${prefix}.recallTime`, `${count.label} — recall time`, "time"),
       field(`${prefix}.countTime`, `${count.label} — count time`, "time"),
+      field(
+        `${prefix}.clearTime`,
+        `${count.label} — count clear time`,
+        "time",
+      ),
       ...count.components.map((component) =>
         field(
           `${prefix}.components.${component}`,
@@ -565,10 +616,12 @@ export function fieldsForConfig(config: HousingLogConfig): FieldDefinition[] {
       ),
       ...(count.requiresConductedBy
         ? [
-            field(
-              `${prefix}.conductedBy`,
-              `${count.label} — ${count.conductedByLabel ?? "Conducted by"}`,
+            roleField(
+              `${prefix}.conductedByRole`,
+              `${count.label} — role`,
+              count.conductorOptions,
             ),
+            field(`${prefix}.conductedBy`, `${count.label} — name`),
           ]
         : []),
       field(`${prefix}.initials`, `${count.label} — initials`),
@@ -584,9 +637,14 @@ export function fieldsForConfig(config: HousingLogConfig): FieldDefinition[] {
           `${config.securityCheckLabel} ${index + 1} — time`,
           "time",
         ),
+        roleField(
+          `${prefix}.performedByRole`,
+          `${config.securityCheckLabel} ${index + 1} — role`,
+          config.securityCheckRoleOptions,
+        ),
         field(
           `${prefix}.performedBy`,
-          `${config.securityCheckLabel} ${index + 1} — completed by`,
+          `${config.securityCheckLabel} ${index + 1} — name`,
         ),
         field(
           `${prefix}.initials`,

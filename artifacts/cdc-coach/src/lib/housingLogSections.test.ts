@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   fieldsForConfig,
   getHousingLogConfig,
+  type FieldDefinition,
   type HousingLogDraftInput,
   type HousingLogValue,
 } from "@workspace/housing-log";
@@ -10,6 +11,7 @@ import {
   buildSectionIndex,
   canonicalFieldsWithPrefix,
   isStaffSlotNA,
+  keyRingSuggestions,
   STAFF_NA_VALUE,
   staffFieldLabel,
   staffSlotsForConfig,
@@ -104,7 +106,7 @@ test("an empty log reports canonical remaining counts per section", () => {
   assert.equal(status.totalRemaining, status.issues.length);
   assert.ok(status.tasks.staff.remaining > 0);
   assert.ok(status.tasks.counts.remaining > 0);
-  assert.equal(status.tasks.checks.remaining, config.securityCheckCount * 3);
+  assert.equal(status.tasks.checks.remaining, config.securityCheckCount * 4);
   assert.equal(status.tasks.review.remaining, config.signatures.length);
   assert.equal(status.tasks.events.remaining, 0); // events are optional
   assert.equal(status.tasks.events.ready, true);
@@ -145,11 +147,11 @@ test("security-check row counts derive from the active configuration", () => {
   });
   assert.equal(
     computeWorkspaceStatus(bConfig, empty(bConfig)).tasks.checks.remaining,
-    bConfig.securityCheckCount * 3,
+    bConfig.securityCheckCount * 4,
   );
   assert.equal(
     computeWorkspaceStatus(infConfig, empty(infConfig)).tasks.checks.remaining,
-    infConfig.securityCheckCount * 3,
+    infConfig.securityCheckCount * 4,
   );
 });
 
@@ -165,9 +167,14 @@ test("canonicalFieldsWithPrefix mirrors fieldsForConfig for counts and checks", 
   const check1 = canonicalFieldsWithPrefix(config, "securityChecks.1.");
   assert.deepEqual(
     check1.map((f) => f.key),
-    ["securityChecks.1.time", "securityChecks.1.performedBy", "securityChecks.1.initials"],
+    [
+      "securityChecks.1.time",
+      "securityChecks.1.performedByRole",
+      "securityChecks.1.performedBy",
+      "securityChecks.1.initials",
+    ],
   );
-  // Trailing dot must not match securityChecks.10.* etc. — only three fields per row.
+  // Trailing dot must not match securityChecks.10.* etc. — only four fields per row.
   assert.ok(check1.every((f) => f.required));
   const check10Leak = canonicalFieldsWithPrefix(config, "securityChecks.1.").some(
     (f) => f.key.startsWith("securityChecks.10."),
@@ -178,7 +185,12 @@ test("canonicalFieldsWithPrefix mirrors fieldsForConfig for counts and checks", 
 test("shortFieldLabel strips the group prefix and capitalizes", () => {
   const config = getHousingLogConfig("A", "1");
   const check1 = canonicalFieldsWithPrefix(config, "securityChecks.1.");
-  assert.deepEqual(check1.map(shortFieldLabel), ["Time", "Completed by", "Initials"]);
+  assert.deepEqual(check1.map(shortFieldLabel), [
+    "Time",
+    "Role",
+    "Name",
+    "Initials",
+  ]);
   const midnight = canonicalFieldsWithPrefix(config, "counts.midnight.");
   const timeField = midnight.find((f) => f.key.endsWith(".countTime"));
   assert.ok(timeField);
@@ -237,4 +249,37 @@ test("staffFieldLabel strips the position prefix for card display", () => {
   assert.ok(nameField && timeField);
   assert.equal(staffFieldLabel(sergeant, nameField), "Name");
   assert.equal(staffFieldLabel(sergeant, timeField), "Time assumed duties");
+});
+
+function keyRingField(): FieldDefinition {
+  return {
+    key: "equipment.acceptedKeyRings.1",
+    label: "Key ring accepted",
+    inputType: "text",
+    required: true,
+  };
+}
+
+test("keyRingSuggestions offers the unit's own code, six numbered variants, and N/A", () => {
+  const suggestions = keyRingSuggestions(keyRingField(), "C");
+  assert.deepEqual(suggestions, ["C", "C1", "C2", "C3", "C4", "C5", "C6", "N/A"]);
+});
+
+test("keyRingSuggestions returns undefined with no housing unit selected yet", () => {
+  assert.equal(keyRingSuggestions(keyRingField(), ""), undefined);
+});
+
+test("keyRingSuggestions returns undefined for a field that isn't a key-ring field", () => {
+  const nonKeyField: FieldDefinition = {
+    key: "equipment.radiosAccountedFor.1",
+    label: "Radios accounted for",
+    inputType: "text",
+    required: true,
+  };
+  assert.equal(keyRingSuggestions(nonKeyField, "C"), undefined);
+});
+
+test("keyRingSuggestions always includes N/A as a legitimate selectable option", () => {
+  const suggestions = keyRingSuggestions(keyRingField(), "Infirmary");
+  assert.ok(suggestions?.includes("N/A"));
 });

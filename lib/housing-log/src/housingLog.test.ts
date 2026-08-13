@@ -3,12 +3,14 @@ import test from "node:test";
 import {
   calculateCountTotal,
   fieldsForConfig,
+  formatHousingLogDateForDisplay,
   getEasternCalendarDate,
   getHousingLogConfig,
   hasMeaningfulHousingLogContent,
   housingLogCanonicalFingerprint,
   housingLogConfigs,
   housingLogDraftInputSchema,
+  housingUnits,
   prepareHousingLog,
   validateHousingLog,
   type HousingLogDraftInput,
@@ -421,12 +423,11 @@ test("a present staff slot with missing fields still reports required issues", (
   assert.ok(issues.some((issue) => issue.path === "values.staff.2.radio"));
 });
 
-test("N/A staff times are rejected when the rest of the slot is present", () => {
+test("N/A staff time is rejected when the rest of the slot is present", () => {
   const input = completeInput("A", "1");
-  // staff.1 keeps a real name and equipment, but the times are set to N/A —
-  // this is a present person with missing times, not an absent slot.
+  // staff.1 keeps a real name and equipment, but the time is set to N/A —
+  // this is a present person with a missing time, not an absent slot.
   input.values["staff.1.assumedAt"] = "N/A";
-  input.values["staff.1.relievedAt"] = "N/A";
   const issues = validateHousingLog(input);
   assert.ok(
     issues.some(
@@ -434,9 +435,6 @@ test("N/A staff times are rejected when the rest of the slot is present", () => 
         issue.path === "values.staff.1.assumedAt" &&
         issue.message.includes("valid time"),
     ),
-  );
-  assert.ok(
-    issues.some((issue) => issue.path === "values.staff.1.relievedAt"),
   );
 });
 
@@ -504,4 +502,109 @@ test("housingLogCanonicalFingerprint ignores persistence metadata not part of it
     housingLogCanonicalFingerprint(input),
     housingLogCanonicalFingerprint(stored),
   );
+});
+
+test("every formal count exposes a role dropdown matching its official conductor label", () => {
+  for (const config of housingLogConfigs) {
+    for (const count of config.counts.slice(1)) {
+      assert.ok(count.conductorOptions.length > 0);
+      const roleField = fieldsForConfig(config).find(
+        (item) => item.key === `counts.${count.key}.conductedByRole`,
+      );
+      assert.ok(roleField, `${config.sourceSheet} missing role field for ${count.key}`);
+      assert.equal(roleField.inputType, "choice");
+      assert.deepEqual(roleField.options, count.conductorOptions);
+      const nameField = fieldsForConfig(config).find(
+        (item) => item.key === `counts.${count.key}.conductedBy`,
+      );
+      assert.match(nameField?.label ?? "", /— name$/);
+    }
+    // The beginning count is not a formal conducted count — it never gets a
+    // role dropdown, matching its earlier "no invented conductor" guarantee.
+    assert.ok(
+      !fieldsForConfig(config).some(
+        (item) => item.key === "counts.beginning.conductedByRole",
+      ),
+    );
+  }
+});
+
+test("every security check exposes a role dropdown from the config's securityCheckRoleOptions", () => {
+  for (const config of housingLogConfigs) {
+    assert.ok(config.securityCheckRoleOptions.length > 0);
+    const roleFields = fieldsForConfig(config).filter((item) =>
+      item.key.endsWith(".performedByRole"),
+    );
+    assert.equal(roleFields.length, config.securityCheckCount);
+    for (const roleField of roleFields) {
+      assert.equal(roleField.inputType, "choice");
+      assert.deepEqual(roleField.options, config.securityCheckRoleOptions);
+    }
+  }
+});
+
+test("1_INF security checks only offer Sergeant, matching the official form's unambiguous printed role", () => {
+  assert.deepEqual(
+    getHousingLogConfig("Infirmary", "1").securityCheckRoleOptions,
+    ["Sergeant"],
+  );
+});
+
+test("every other config's security checks offer both Sergeant and Officer", () => {
+  for (const config of housingLogConfigs) {
+    if (config.housingUnit === "Infirmary" && config.shift === "1") continue;
+    assert.deepEqual(config.securityCheckRoleOptions, ["Sergeant", "Officer"]);
+  }
+});
+
+test("the shift-supervisor unannounced inspection carries a rank dropdown limited to Lieutenant and Captain", () => {
+  for (const config of housingLogConfigs) {
+    const rankField = fieldsForConfig(config).find(
+      (item) => item.key === "activities.unannouncedInspection.supervisorRole",
+    );
+    assert.ok(rankField, `${config.sourceSheet} missing supervisor rank field`);
+    assert.equal(rankField.inputType, "choice");
+    assert.deepEqual(rankField.options, ["Lieutenant", "Captain"]);
+    const nameField = fieldsForConfig(config).find(
+      (item) => item.key === "activities.unannouncedInspection.supervisor",
+    );
+    assert.equal(nameField?.label, "Shift supervisor name");
+  }
+});
+
+test("formatHousingLogDateForDisplay converts canonical ISO to MM-DD-YYYY for every display surface (web, Excel DATE cell, email)", () => {
+  assert.equal(formatHousingLogDateForDisplay("2026-08-13"), "08-13-2026");
+  assert.equal(formatHousingLogDateForDisplay("2026-01-05"), "01-05-2026");
+});
+
+test("housingUnits is ordered A,B,C,D,E,F,G,H,Infirmary for display, with A and H kept as separate physical units", () => {
+  assert.deepEqual(housingUnits, [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "Infirmary",
+  ]);
+});
+
+test("Health & Comfort items documented only requires time and initials, with no items-distributed description field", () => {
+  for (const config of housingLogConfigs) {
+    const activity = config.activities.find(
+      (item) => item.key === "itemsDistributed",
+    );
+    if (!activity) continue;
+    assert.deepEqual(
+      activity.detailFields.map((field) => field.key.split(".").pop()),
+      ["time", "initials"],
+    );
+    assert.ok(
+      !fieldsForConfig(config).some((item) =>
+        item.key.startsWith("activities.itemsDistributed.items"),
+      ),
+    );
+  }
 });

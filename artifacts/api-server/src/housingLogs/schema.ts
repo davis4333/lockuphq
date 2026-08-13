@@ -27,6 +27,8 @@ import {
   HOUSING_LOG_DELIVERY_ATTEMPT_TRIGGER_CONSTRAINT,
   HOUSING_LOG_FINALIZATION_CHECK_SQL,
   HOUSING_LOG_FINALIZATION_CONSTRAINT,
+  HOUSING_LOG_REMOVAL_CHECK_SQL,
+  HOUSING_LOG_REMOVAL_CONSTRAINT,
   HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CHECK_SQL,
   HOUSING_LOG_DELIVERY_SETTINGS_SINGLETON_CONSTRAINT,
   HOUSING_LOG_STATUS_CHECK_SQL,
@@ -73,6 +75,15 @@ export const housingLogs = pgTable(
       .notNull()
       .defaultNow(),
     finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+    /**
+     * Admin-only soft-delete marker for an accidentally-finalized duplicate
+     * (e.g. an officer finalizing the same shift log twice). NULL means
+     * active. A removed row is never deleted or overwritten — it is simply
+     * excluded from the archive listing and everything derived from it
+     * (missing/duplicate calculations, shift packages, manual email) so
+     * the original record remains available for audit via direct lookup.
+     */
+    removedAt: timestamp("removed_at", { withTimezone: true }),
   },
   (table) => [
     index("housing_logs_date_idx").on(table.logDate),
@@ -88,6 +99,10 @@ export const housingLogs = pgTable(
     check(
       HOUSING_LOG_FINALIZATION_CONSTRAINT,
       sql.raw(HOUSING_LOG_FINALIZATION_CHECK_SQL),
+    ),
+    check(
+      HOUSING_LOG_REMOVAL_CONSTRAINT,
+      sql.raw(HOUSING_LOG_REMOVAL_CHECK_SQL),
     ),
   ],
 );

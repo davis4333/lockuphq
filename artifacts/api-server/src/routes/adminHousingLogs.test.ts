@@ -20,6 +20,7 @@ import {
   type FinalizedHousingLogMetadata,
   type FinalizeSubmissionResult,
   type HousingLogRepository,
+  type RemoveFinalizedHousingLogResult,
 } from "../housingLogs/repository";
 import {
   HousingLogWorkbookRegistry,
@@ -46,6 +47,7 @@ import { createAdminHousingLogsRouter } from "./adminHousingLogs";
 
 class AdminMemoryRepository implements HousingLogRepository {
   readonly records = new Map<string, StoredHousingLog>();
+  readonly removedIds = new Set<string>();
 
   constructor(records: readonly StoredHousingLog[] = []) {
     for (const record of records) this.records.set(record.id, record);
@@ -55,11 +57,24 @@ class AdminMemoryRepository implements HousingLogRepository {
     return this.records.get(id);
   }
 
+  async removeFinalizedLog(
+    id: string,
+  ): Promise<RemoveFinalizedHousingLogResult> {
+    const record = this.records.get(id);
+    if (!record) return "not_found";
+    if (record.status !== "finalized") return "not_finalized";
+    if (this.removedIds.has(id)) return "already_removed";
+    this.removedIds.add(id);
+    return "removed";
+  }
+
   async listFinalizedArchive(): Promise<FinalizedHousingLogMetadata[]> {
     return [...this.records.values()]
       .filter(
         (record): record is StoredHousingLog & { finalizedAt: string } =>
-          record.status === "finalized" && record.finalizedAt !== null,
+          record.status === "finalized" &&
+          record.finalizedAt !== null &&
+          !this.removedIds.has(record.id),
       )
       .map(
         ({
@@ -88,7 +103,8 @@ class AdminMemoryRepository implements HousingLogRepository {
       (record) =>
         record.status === "finalized" &&
         record.logDate === logDate &&
-        record.shift === shift,
+        record.shift === shift &&
+        !this.removedIds.has(record.id),
     );
   }
 
@@ -894,6 +910,94 @@ test("archive returns finalized-only lightweight metadata and preserves duplicat
         assert.equal("signatures" in record, false);
         assert.equal("events" in record, false);
       }
+    },
+  );
+});
+
+test("removing a finalized log excludes it from the archive but keeps it available by direct id, and is idempotent", async () => {
+  const keep = finalizedRecord("keep-me", "A", "2");
+  const bad = finalizedRecord("duplicate-bad-copy", "A", "2");
+  const repository = new AdminMemoryRepository([keep, bad]);
+  await withServer(
+    { repository, passwordProvider: () => "correct horse" },
+    async (baseUrl) => {
+      const cookie = await login(baseUrl);
+
+      const before = await fetch(`${baseUrl}/api/admin/housing-logs/archive`, {
+        headers: { cookie },
+      });
+      const beforeBody = (await before.json()) as HousingLogArchiveResponse;
+      assert.equal(beforeBody.records.length, 2);
+
+      const remove = await fetch(
+        `${baseUrl}/api/admin/housing-logs/${bad.id}/remove`,
+        { method: "POST", headers: { cookie } },
+      );
+      assert.equal(remove.status, 204);
+
+      const after = await fetch(`${baseUrl}/api/admin/housing-logs/archive`, {
+        headers: { cookie },
+      });
+      const afterBody = (await after.json()) as HousingLogArchiveResponse;
+      assert.deepEqual(
+        afterBody.records.map((record: { id: string }) => record.id),
+        ["keep-me"],
+      );
+
+      // The original record is never destroyed — still fetchable by id for
+      // audit/download, and a second removal is a harmless no-op.
+      assert.ok(await repository.get(bad.id));
+      const secondRemove = await fetch(
+        `${baseUrl}/api/admin/housing-logs/${bad.id}/remove`,
+        { method: "POST", headers: { cookie } },
+      );
+      assert.equal(secondRemove.status, 204);
+    },
+  );
+});
+
+test("a removed record drops out of listFinalizedForShift, so packages and manual email stop including it", async () => {
+  const keep = finalizedRecord("keep-in-package", "A", "2");
+  const bad = {
+    ...finalizedRecord("bad-in-package", "H", "2"),
+    logDate: keep.logDate,
+  };
+  const repository = new AdminMemoryRepository([keep, bad]);
+  const before = await repository.listFinalizedForShift(keep.logDate, "2");
+  assert.equal(before.length, 2);
+
+  assert.equal(await repository.removeFinalizedLog(bad.id), "removed");
+
+  const after = await repository.listFinalizedForShift(keep.logDate, "2");
+  assert.deepEqual(
+    after.map((record) => record.id),
+    ["keep-in-package"],
+  );
+});
+
+test("removal rejects an unknown id and a non-finalized record", async () => {
+  const draft = {
+    ...finalizedRecord("draft-cannot-be-removed", "A", "1"),
+    status: "draft" as const,
+    finalizedAt: null,
+  };
+  const repository = new AdminMemoryRepository([draft]);
+  await withServer(
+    { repository, passwordProvider: () => "correct horse" },
+    async (baseUrl) => {
+      const cookie = await login(baseUrl);
+
+      const missing = await fetch(
+        `${baseUrl}/api/admin/housing-logs/does-not-exist/remove`,
+        { method: "POST", headers: { cookie } },
+      );
+      assert.equal(missing.status, 404);
+
+      const notFinalized = await fetch(
+        `${baseUrl}/api/admin/housing-logs/${draft.id}/remove`,
+        { method: "POST", headers: { cookie } },
+      );
+      assert.equal(notFinalized.status, 409);
     },
   );
 });

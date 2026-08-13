@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import {
   housingLogCanonicalFingerprint,
   prepareHousingLog,
@@ -36,6 +36,12 @@ export type FinalizedHousingLogMetadata = Pick<
   finalizedAt: string;
 };
 
+export type RemoveFinalizedHousingLogResult =
+  | "removed"
+  | "not_found"
+  | "not_finalized"
+  | "already_removed";
+
 export interface HousingLogRepository {
   /** Admin-only lookup (individual archive Excel download). */
   get(id: string): Promise<StoredHousingLog | undefined>;
@@ -57,6 +63,14 @@ export interface HousingLogRepository {
     input: HousingLogDraftInput,
     submissionId: string,
   ): Promise<FinalizeSubmissionResult>;
+  /**
+   * Admin-only soft delete for an accidentally finalized duplicate. The row
+   * is never overwritten or hard-deleted — only marked removed — so it
+   * stays available for direct-id lookup (`get`) and audit, but drops out
+   * of `listFinalizedArchive` / `listFinalizedForShift` and therefore out
+   * of missing/duplicate calculations, shift packages, and manual email.
+   */
+  removeFinalizedLog(id: string): Promise<RemoveFinalizedHousingLogResult>;
 }
 
 type HousingLogRow = typeof housingLogs.$inferSelect;
@@ -184,6 +198,27 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
     return row ? toStored(row) : undefined;
   }
 
+  async removeFinalizedLog(
+    id: string,
+  ): Promise<RemoveFinalizedHousingLogResult> {
+    const [row] = await getHousingLogDatabase()
+      .select({
+        status: housingLogs.status,
+        removedAt: housingLogs.removedAt,
+      })
+      .from(housingLogs)
+      .where(eq(housingLogs.id, id))
+      .limit(1);
+    if (!row) return "not_found";
+    if (row.status !== "finalized") return "not_finalized";
+    if (row.removedAt) return "already_removed";
+    await getHousingLogDatabase()
+      .update(housingLogs)
+      .set({ removedAt: new Date(), updatedAt: new Date() })
+      .where(eq(housingLogs.id, id));
+    return "removed";
+  }
+
   async listFinalizedArchive(): Promise<FinalizedHousingLogMetadata[]> {
     const rows = await getHousingLogDatabase()
       .select({
@@ -195,7 +230,9 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
         finalizedAt: housingLogs.finalizedAt,
       })
       .from(housingLogs)
-      .where(eq(housingLogs.status, "finalized"))
+      .where(
+        and(eq(housingLogs.status, "finalized"), isNull(housingLogs.removedAt)),
+      )
       .orderBy(
         desc(housingLogs.logDate),
         desc(housingLogs.shift),
@@ -229,6 +266,7 @@ export class PostgresHousingLogRepository implements HousingLogRepository {
       .where(
         and(
           eq(housingLogs.status, "finalized"),
+          isNull(housingLogs.removedAt),
           eq(housingLogs.logDate, logDate),
           eq(housingLogs.shift, shift),
         ),

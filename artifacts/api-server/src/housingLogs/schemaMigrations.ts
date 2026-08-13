@@ -28,6 +28,9 @@ export const HOUSING_LOG_ACCESS_CODE_HASH_UNIQUE_INDEX =
   "housing_logs_access_code_hash_unique_idx";
 export const HOUSING_LOG_SUBMISSION_ID_UNIQUE_INDEX =
   "housing_logs_submission_id_unique_idx";
+export const HOUSING_LOG_REMOVAL_CONSTRAINT = "housing_logs_removal_check";
+export const HOUSING_LOG_REMOVAL_CHECK_SQL =
+  "removed_at IS NULL OR status = 'finalized'";
 
 export type HousingLogSchemaMigration = {
   version: number;
@@ -168,6 +171,20 @@ export const housingLogSchemaMigrations: HousingLogSchemaMigration[] = [
 
       CREATE UNIQUE INDEX IF NOT EXISTS ${HOUSING_LOG_SUBMISSION_ID_UNIQUE_INDEX}
         ON housing_logs (submission_id) WHERE submission_id IS NOT NULL;
+    `,
+  },
+  {
+    version: 6,
+    description:
+      "Add admin-only soft-delete marker for an accidentally finalized duplicate Housing Log",
+    sql: `
+      ALTER TABLE housing_logs ADD COLUMN IF NOT EXISTS removed_at timestamptz NULL;
+
+      ALTER TABLE housing_logs
+        DROP CONSTRAINT IF EXISTS ${HOUSING_LOG_REMOVAL_CONSTRAINT};
+      ALTER TABLE housing_logs
+        ADD CONSTRAINT ${HOUSING_LOG_REMOVAL_CONSTRAINT}
+        CHECK (${HOUSING_LOG_REMOVAL_CHECK_SQL});
     `,
   },
 ];

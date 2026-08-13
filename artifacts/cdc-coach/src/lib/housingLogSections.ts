@@ -6,6 +6,7 @@ import {
   type HousingLogConfig,
   type HousingLogDraftInput,
   type HousingLogValue,
+  type HousingUnit,
   type ValidationIssue,
 } from "@workspace/housing-log";
 
@@ -269,4 +270,26 @@ export function computeWorkspaceStatus(
     readySections,
     issues,
   };
+}
+
+/**
+ * Optional, editable suggestions for short known key-ring style codes (e.g.
+ * a unit's key ring commonly runs {UNIT}, {UNIT}1 … {UNIT}6). These are
+ * hints only — rendered via <datalist> so any legitimate value that doesn't
+ * match the pattern remains freely enterable.
+ */
+export function keyRingSuggestions(
+  definition: FieldDefinition,
+  housingUnit: HousingUnit | "",
+): string[] | undefined {
+  if (!housingUnit) return undefined;
+  if (!/keyring|acceptedkeyrings/i.test(definition.key)) return undefined;
+  // N/A is a legitimate answer for a key-ring slot the official form prints
+  // but this dorm doesn't actually use — not a validation bypass, since the
+  // officer still has to choose it deliberately for that specific slot.
+  return [
+    housingUnit,
+    ...Array.from({ length: 6 }, (_, i) => `${housingUnit}${i + 1}`),
+    "N/A",
+  ];
 }

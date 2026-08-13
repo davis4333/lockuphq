@@ -195,7 +195,8 @@ test("manual delivery uses only the approved resolved recipients and builds the 
     "active-one@example.com",
     "active-two@example.com",
   ]);
-  assert.equal(sent.subject, "Housing Unit Logs — 2026-08-12 — Second Shift");
+  assert.equal(sent.subject, "Housing Unit Logs — 08-12-2026 — Second Shift");
+  assert.match(sent.text, /Housing Log date: 08-12-2026/);
   assert.match(sent.text, /Package status: COMPLETE/);
   assert.match(sent.text, /Housing Logs included: 1/);
   assert.doesNotMatch(sent.text, /signature|officer notes|inmate/i);

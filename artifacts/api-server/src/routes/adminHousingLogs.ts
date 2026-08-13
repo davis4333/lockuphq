@@ -368,6 +368,33 @@ export function createAdminHousingLogsRouter(
     },
   );
 
+  router.post(
+    "/admin/housing-logs/:id/remove",
+    async (request, response) => {
+      const id = String(request.params["id"]);
+      const outcome = await records.removeFinalizedLog(id);
+      switch (outcome) {
+        case "removed":
+          response.status(204).end();
+          return;
+        case "already_removed":
+          // Idempotent: a second admin tab or a double-click should not
+          // surface as an error once the record is already gone from the
+          // archive.
+          response.status(204).end();
+          return;
+        case "not_found":
+          response.status(404).json({ error: "Housing Log not found." });
+          return;
+        case "not_finalized":
+          response.status(409).json({
+            error: "Only a finalized Housing Log can be removed.",
+          });
+          return;
+      }
+    },
+  );
+
   router.get("/admin/housing-logs/:id/excel", async (request, response) => {
     const record = await records.get(String(request.params["id"]));
     if (!record) {

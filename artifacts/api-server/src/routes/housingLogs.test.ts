@@ -16,6 +16,7 @@ import { signatureDataUrl } from "../housingLogs/signatureTestUtils";
 import {
   type FinalizeSubmissionResult,
   type HousingLogRepository,
+  type RemoveFinalizedHousingLogResult,
 } from "../housingLogs/repository";
 import { validateHousingLogForFinalization } from "../housingLogs/signatureValidation";
 import { createHousingLogsRouter } from "./housingLogs";
@@ -84,6 +85,10 @@ class MemoryRepository implements HousingLogRepository {
 
   async listFinalizedArchive() {
     return [];
+  }
+
+  async removeFinalizedLog(): Promise<RemoveFinalizedHousingLogResult> {
+    throw new Error("not used");
   }
 
   async listFinalizedForShift(): Promise<StoredHousingLog[]> {
@@ -444,6 +449,13 @@ test("an officer with no admin session cannot reach any admin-only Housing Log r
       `${baseUrl}/api/admin/housing-logs/delivery-settings`,
     );
     assert.equal(deliverySettings.status, 401);
+
+    // Removal (soft delete) is admin-only, same as every other archive action.
+    const remove = await fetch(
+      `${baseUrl}/api/admin/housing-logs/${finalizedId}/remove`,
+      { method: "POST" },
+    );
+    assert.equal(remove.status, 401);
 
     // The officer-facing finalized record itself is never reachable by id.
     const officerGet = await fetch(`${baseUrl}/api/housing-logs/${finalizedId}`);

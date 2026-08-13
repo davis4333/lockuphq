@@ -229,6 +229,9 @@ function countPlacements(options: {
         c.y,
         c.rowBottom,
         c.rowTop,
+        {
+          coverageKeys: [`${prefix}.conductedByRole`, `${prefix}.conductedBy`],
+        },
       ),
     );
   }
@@ -260,9 +263,8 @@ const placements: BUnitPlacement[] = [
     const issuedTop = top - 16.44;
     return [
       timeCell(`staff.${staff}.dutyWindow`, 0, y, bottom, top, {
-        coverageKeys: [`staff.${staff}.assumedAt`, `staff.${staff}.relievedAt`],
-        value: (record) =>
-          `${record.values[`staff.${staff}.assumedAt`] ?? ""}/${record.values[`staff.${staff}.relievedAt`] ?? ""}`,
+        coverageKeys: [`staff.${staff}.assumedAt`, `staff.${staff}.initials`],
+        value: storedValue(`staff.${staff}.assumedAt`),
       }),
       region(
         `staff.${staff}.name`,
@@ -409,8 +411,47 @@ const placements: BUnitPlacement[] = [
       676.3,
     ),
   ),
-  region("equipment.radioStatusReportedBy", 0, 280, 353, 644.9, 643.3, 659.86),
-  region("equipment.cellExtraction", 0, 361.1, 479, 628.5, 626.86, 643.42),
+  region(
+    "equipment.radioStatusReportedBy",
+    0,
+    280,
+    353,
+    644.9,
+    643.3,
+    659.86,
+    {
+      coverageKeys: [
+        "equipment.radioStatusReportedBy",
+        "equipment.firstAidInventoryTime",
+        "equipment.firstAidInventoryInitials",
+      ],
+    },
+  ),
+  // This wide box (built for one printed name) is reused as a combined home
+  // for the two equipment-acceptance completion time/initials pairs added
+  // during the Staff & Equipment audit — this legacy PDF-overlay spike
+  // (superseded by the live XLSX export path) was never wired to model
+  // per-line completion time/initials, and giving each its own narrow box
+  // here isn't worth new hand-measured PDF coordinates for an unreachable
+  // prototype format.
+  region(
+    "equipment.cellExtraction",
+    0,
+    361.1,
+    479,
+    628.5,
+    626.86,
+    643.42,
+    {
+      coverageKeys: [
+        "equipment.cellExtraction",
+        "equipment.keysAcceptedTime",
+        "equipment.keysAcceptedInitials",
+        "equipment.radiosAccountedForTime",
+        "equipment.radiosAccountedForInitials",
+      ],
+    },
+  ),
   region("equipment.radioChargingStation", 0, 161.2, 184, 612, 610.42, 626.98),
   region("equipment.extraBatteries", 0, 204.6, 218.2, 612, 610.42, 626.98),
   region("equipment.inspectionMirror", 0, 341.8, 366.8, 612, 610.42, 626.98),
@@ -461,15 +502,62 @@ const placements: BUnitPlacement[] = [
   region("equipment.backboards", 0, 287.6, 301.3, 579.1, 577.54, 594.1),
   region("equipment.passesAccounted", 0, 286.3, 321, 562.7, 561.1, 577.66),
   region("equipment.unaccountedPasses", 0, 425.4, 464.2, 562.7, 561.1, 577.66),
-  region("equipment.incidentReport", 0, 291, 343.7, 546.3, 544.66, 561.22),
+  // See the equipment.cellExtraction comment above — this wide box also
+  // hosts the radio-charging-station completion time/initials pair.
+  region(
+    "equipment.incidentReport",
+    0,
+    291,
+    343.7,
+    546.3,
+    544.66,
+    561.22,
+    {
+      coverageKeys: [
+        "equipment.incidentReport",
+        "equipment.radioChargingStationTime",
+        "equipment.radioChargingStationInitials",
+      ],
+    },
+  ),
   region("equipment.firstAidSeal", 0, 257.8, 296.5, 529.8, 528.22, 544.78),
   region("equipment.ppeKit", 0, 357.5, 392.1, 529.8, 528.22, 544.78),
   region("equipment.breathingMask", 0, 128.3, 160.8, 513.4, 511.78, 528.34),
   region("equipment.fireExtinguishers", 0, 314.6, 347.1, 513.4, 511.78, 528.34),
   region("equipment.fireAlarm", 0, 432.2, 464.7, 513.4, 511.78, 528.34),
-  region("equipment.inventoryComplete", 0, 439.9, 472.4, 496.9, 495.34, 511.9),
+  region(
+    "equipment.inventoryComplete",
+    0,
+    439.9,
+    472.4,
+    496.9,
+    495.34,
+    511.9,
+    {
+      coverageKeys: [
+        "equipment.inventoryComplete",
+        "equipment.equipmentInventoryTime",
+        "equipment.equipmentInventoryInitials",
+      ],
+    },
+  ),
   region("equipment.postOrders", 0, 267.8, 300.3, 480.5, 478.9, 495.46),
-  region("medication.inventoriedBy", 0, 305, 377.9, 464, 462.46, 479.02),
+  region(
+    "medication.inventoriedBy",
+    0,
+    305,
+    377.9,
+    464,
+    462.46,
+    479.02,
+    {
+      coverageKeys: [
+        "medication.inventoriedBy",
+        "equipment.medicationInventoryTime",
+        "equipment.medicationInventoryInitials",
+      ],
+    },
+  ),
   region("medication.acetaminophen", 0, 136.4, 159.2, 447.6, 446.02, 462.58),
   region("medication.alamag", 0, 192.6, 215.4, 447.6, 446.02, 462.58),
   region("medication.ibuprofen", 0, 255.8, 278.6, 447.6, 446.02, 462.58),
@@ -665,6 +753,12 @@ const placements: BUnitPlacement[] = [
         y,
         bottom,
         top,
+        {
+          coverageKeys: [
+            `securityChecks.${number}.performedByRole`,
+            `securityChecks.${number}.performedBy`,
+          ],
+        },
       ),
       initialsCell(`securityChecks.${number}.initials`, 1, y, bottom, top),
     ];
@@ -678,6 +772,12 @@ const placements: BUnitPlacement[] = [
     290.7,
     288.77,
     305.45,
+    {
+      coverageKeys: [
+        "activities.unannouncedInspection.supervisorRole",
+        "activities.unannouncedInspection.supervisor",
+      ],
+    },
   ),
   initialsCell(
     "activities.unannouncedInspection.initials",

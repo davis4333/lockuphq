@@ -321,6 +321,15 @@ export function validateRow(row: ReviewRow): ValidationFlag[] {
   return flags;
 }
 
+/**
+ * Set `include` on every row (the master Select All / Deselect All control).
+ * Applies to the full roster passed in, regardless of any search-box filter
+ * the caller may be displaying — the master control always acts on every row.
+ */
+export function setIncludeAll(rows: ReviewRow[], include: boolean): ReviewRow[] {
+  return rows.map((row) => ({ ...row, include }));
+}
+
 /** Flag BED-IDs that appear on more than one row (duplicate grouping warning). */
 export function findDuplicateBedIds(rows: ReviewRow[]): Set<string> {
   const counts = new Map<string, number>();

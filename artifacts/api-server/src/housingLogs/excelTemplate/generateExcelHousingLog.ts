@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import JSZip from "jszip";
-import { fieldsForConfig, getHousingLogConfig } from "@workspace/housing-log";
+import {
+  fieldsForConfig,
+  formatHousingLogDateForDisplay,
+  getHousingLogConfig,
+} from "@workspace/housing-log";
 import {
   buildOfficialWorksheetLayout,
   resolveAmPmPlaceholders,
@@ -111,7 +115,26 @@ async function semanticFingerprint(zip: JSZip): Promise<string> {
   return digest.digest("hex");
 }
 
-function setInlineCell(xml: string, address: string, value: string): string {
+/**
+ * Style index 90 in the official workbook's shared styles.xml — left
+ * aligned, vertically centered, wrapped, non-bold Times New Roman — is the
+ * one existing style already used for some Event Log narrative cells. The
+ * source template applies it inconsistently: some blank "LOG OF EVENTS"
+ * rows carry it, others carry a bold and/or centered style instead (see
+ * the Event Log formatting audit). Forcing every Event/Activity cell we
+ * write to this one existing index gives the column consistent
+ * left-aligned, non-bold text without adding or editing anything in
+ * styles.xml — which the "preserves structure" test suite locks to the
+ * source file's exact bytes.
+ */
+const EVENT_ACTIVITY_STYLE = "90";
+
+function setInlineCell(
+  xml: string,
+  address: string,
+  value: string,
+  styleOverride?: string,
+): string {
   const pattern = new RegExp(
     `<c\\b([^>]*\\br="${escapeRegExp(address)}"[^>]*?)(?:\\s*/>|>[\\s\\S]*?</c>)`,
   );
@@ -128,7 +151,8 @@ function setInlineCell(xml: string, address: string, value: string): string {
     const nearbyStyle = xml.match(
       new RegExp(`<c\\b[^>]*\\br="${column}\\d+"[^>]*\\bs="([^"]+)"`),
     )?.[1];
-    const style = nearbyStyle ? ` s="${nearbyStyle}"` : "";
+    const resolvedStyle = styleOverride ?? nearbyStyle;
+    const style = resolvedStyle ? ` s="${resolvedStyle}"` : "";
     return xml.replace(
       rowPattern,
       (_match, attributes: string, cells: string) =>
@@ -136,7 +160,14 @@ function setInlineCell(xml: string, address: string, value: string): string {
     );
   }
   return xml.replace(pattern, (_match, rawAttributes: string) => {
-    const attributes = rawAttributes.replace(/\s+t="[^"]*"/g, "").trim();
+    const attributes = (
+      styleOverride
+        ? rawAttributes
+            .replace(/\s+t="[^"]*"/g, "")
+            .replace(/\s+s="[^"]*"/g, "")
+            .trim() + ` s="${styleOverride}"`
+        : rawAttributes.replace(/\s+t="[^"]*"/g, "").trim()
+    );
     return `<c ${attributes} t="inlineStr"><is><t xml:space="preserve">${escapeXml(value)}</t></is></c>`;
   });
 }
@@ -193,7 +224,12 @@ function fillEventRows(
     const row = rows[index]!;
     const line = lines[index];
     output = setInlineCell(output, `A${row}`, line?.time ?? "");
-    output = setInlineCell(output, `B${row}`, line?.activity ?? "");
+    output = setInlineCell(
+      output,
+      `B${row}`,
+      line?.activity ?? "",
+      EVENT_ACTIVITY_STYLE,
+    );
     output = setInlineCell(output, `D${row}`, line?.initials ?? "");
   }
   return output;
@@ -320,7 +356,15 @@ function pictureAnchor(options: {
   const heightPx = 18;
   const widthPx = (heightPx * options.imageWidth) / options.imageHeight;
   const emu = 9525;
-  return `<xdr:oneCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>${230 * emu}</xdr:colOff><xdr:row>${options.rowIndex}</xdr:row><xdr:rowOff>${2 * emu}</xdr:rowOff></xdr:from><xdr:ext cx="${Math.round(widthPx * emu)}" cy="${heightPx * emu}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${options.id}" name="${escapeXml(options.name)}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="${options.relationshipId}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`;
+  // Column A (index 0) holds the printed "Housing Supervisor/Officer
+  // Signature:" label and is only ~80px wide on every official worksheet;
+  // the blank signature line itself is column B, which is intentionally
+  // cleared of any text (see clearSignatureCellValues) and is roomy
+  // (~430px). Anchoring here — instead of the old col 0 + 230px offset,
+  // which placed the image at an offset larger than column A's own width —
+  // keeps the ink on the signature line and off the printed label, on
+  // every worksheet size the ink can appear on.
+  return `<xdr:oneCellAnchor><xdr:from><xdr:col>1</xdr:col><xdr:colOff>${6 * emu}</xdr:colOff><xdr:row>${options.rowIndex}</xdr:row><xdr:rowOff>${2 * emu}</xdr:rowOff></xdr:from><xdr:ext cx="${Math.round(widthPx * emu)}" cy="${heightPx * emu}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${options.id}" name="${escapeXml(options.name)}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="${options.relationshipId}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`;
 }
 
 function drawingXml(
@@ -781,7 +825,7 @@ export async function generateExcelHousingLog(
     continuationXml = setInlineCell(
       continuationXml,
       "C1",
-      `DATE ${record.logDate}`,
+      `DATE ${formatHousingLogDateForDisplay(record.logDate)}`,
     );
     continuationXml = fillEventRows(
       continuationXml,

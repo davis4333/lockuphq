@@ -1,0 +1,207 @@
+Update the existing **LockUpHQ** Replit deployment to the completed Phase 2F code that is already pushed to GitHub.
+
+Repository:
+
+`https://github.com/davis4333/lockuphq`
+
+Use this exact branch:
+
+`housing-log-phase2f-manual-email`
+
+Expected commit:
+
+`6d4beb5a103ab3fc75f4a3012e803749da1f1934`
+
+## IMPORTANT
+
+Do NOT rebuild the project from scratch.
+
+Do NOT rewrite working Housing Log functionality.
+
+Do NOT merge branches unless that is absolutely required by Replit's deployment mechanism.
+
+The GitHub branch/commit above is the source of truth.
+
+First verify that the checked-out code matches commit:
+
+`6d4beb5a103ab3fc75f4a3012e803749da1f1934`
+
+Then update the existing Replit project/deployment to run that version.
+
+## Preserve Existing Data
+
+This project has PostgreSQL-backed Housing Log data.
+
+Do NOT:
+
+* delete the database
+* reset the database
+* recreate the database from scratch
+* wipe existing tables
+* delete existing Housing Logs
+* delete recipient settings
+
+Run only the application's existing safe/append-only Housing Log schema migrations required by the current code.
+
+## Required Environment Secrets
+
+Check whether these secrets exist:
+
+* `DATABASE_URL`
+* `HOUSING_LOG_ADMIN_PASSWORD`
+* `RESEND_API_KEY`
+* `HOUSING_LOG_EMAIL_FROM`
+
+Do NOT print secret values.
+
+If `RESEND_API_KEY` or `HOUSING_LOG_EMAIL_FROM` are missing, **do not block deployment**.
+
+The website should still deploy and all non-email Housing Log functionality should continue working. Manual email delivery should simply show its existing controlled provider-configuration error until I add those secrets later.
+
+Do not invent placeholder production credentials.
+
+## Verify Existing Features
+
+Confirm the deployed application includes and still supports:
+
+### Officer Housing Log
+
+* Housing Log form
+* all unit/shift configurations
+* required-field validation
+* signatures
+* draft/finalized workflow
+* finalized-record immutability
+
+### Editable Excel Generation
+
+* all 12 official Excel templates
+* all 24 unit/shift mappings
+* editable `.xlsx` downloads
+* historical `templateVersion + sourceSheet` resolution
+
+### Admin Housing Log Dashboard
+
+* admin password login
+* Year → Month → Date → Shift → Housing Unit archive
+* missing-log indicators
+* duplicate-log indicators
+* individual editable Excel downloads
+* Retry Archive behavior
+
+### Shift Packages
+
+* Download Shift Package
+* editable XLSX files
+* `manifest.json`
+* COMPLETE / INCOMPLETE status
+* missing logs
+* duplicate logs
+* deterministic filenames/checksums
+
+### Delivery Recipients
+
+* Primary Recipient
+* Additional Recipients
+* active/inactive controls
+* add/remove/update
+* all active recipients treated as delivery recipients
+
+### Phase 2F Manual Email
+
+* `Email Shift Package`
+* existing protected admin send endpoint
+* COMPLETE and INCOMPLETE packages
+* Resend provider adapter
+* Primary recipient in To
+* active Additional recipients in BCC
+* delivery-attempt ledger
+* success/failure UI
+* retry after failure
+* no automatic scheduling
+
+## Build / Validation
+
+Install dependencies using the project's existing package manager and lockfile.
+
+Run the appropriate existing commands for:
+
+* full workspace typecheck
+* server/API tests
+* client Housing Log tests
+* production build
+
+Do not make unrelated code changes just to silence an environment-specific test/build issue.
+
+If Replit requires a small deployment-specific configuration correction, make the smallest possible change and explain exactly what was changed.
+
+## Start / Deployment
+
+Use the project's existing production start/build configuration.
+
+Make sure:
+
+* frontend loads
+* API starts
+* PostgreSQL connects
+* Housing Log schema initialization succeeds
+* unrelated LockUpHQ features still load
+* admin page loads
+* Housing Log page loads
+
+Then deploy/update the existing live Replit website.
+
+## Browser Smoke Test
+
+After deployment, test the live application using FAKE/TEST data only.
+
+Verify:
+
+1. Main LockUpHQ page loads.
+2. Housing Log page opens.
+3. A test draft can be created.
+4. Admin login page works.
+5. Housing Log archive loads.
+6. Recipient settings panel loads.
+7. Shift-package Download button appears.
+8. Email Shift Package button appears.
+9. If Resend secrets are absent, clicking email produces the expected controlled configuration error instead of crashing the site.
+10. No unrelated LockUpHQ feature was broken.
+
+Do NOT send a real email unless valid Resend credentials and a verified sender are already configured.
+
+Do NOT enter real inmate or sensitive institutional information during testing.
+
+## Git Safety
+
+Do not push unrelated modifications.
+
+If no code changes are required for deployment, do not create a pointless commit.
+
+If a Replit-specific fix is genuinely required:
+
+* make only that fix
+* run validation again
+* commit it clearly
+* push it to `housing-log-phase2f-manual-email`
+* report the new commit SHA
+
+Do NOT merge into `main`.
+
+## Final Report
+
+Tell me:
+
+* exact deployed Git commit
+* deployment/build status
+* database migration status
+* tests/typecheck results
+* whether the live site loaded successfully
+* whether Housing Log/admin pages were browser-verified
+* whether Resend secrets are configured
+* whether a real email was sent
+* any deployment-specific changes made
+
+End with:
+
+`LOCKUPHQ PHASE 2F DEPLOYED — LIVE SITE READY FOR TESTING`

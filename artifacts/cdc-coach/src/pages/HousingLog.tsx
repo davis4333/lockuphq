@@ -536,24 +536,57 @@ export default function HousingLog() {
     }
   };
 
-  const addEvent = (): string => {
-    const id = crypto.randomUUID();
-    setEvents((current) => [
-      ...current,
-      { id, time: "", activity: "", initials: "" },
-    ]);
-    return id;
+  // ── Quick Event Entry composer ──
+  // Replaces the old "Add Event then scroll back and fill it in" flow: the
+  // composer stays visible while the history grows, and submitting appends
+  // directly to the existing event model (see logComposedEvent below) — no
+  // blank row is ever created just by navigating to this panel.
+  const [composerTime, setComposerTime] = useState("");
+  const [composerActivity, setComposerActivity] = useState("");
+  const [composerInitials, setComposerInitials] = useState("");
+  const [composerError, setComposerError] = useState<string>();
+  const composerTimeRef = useRef<HTMLInputElement>(null);
+
+  const nowTime = (): string => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, "0")}:${String(
+      now.getMinutes(),
+    ).padStart(2, "0")}`;
   };
 
-  const addEventAndFocus = () => {
+  const focusEventComposer = () => {
     if (disabled) return;
-    const id = addEvent();
     setActiveTask("events");
     requestAnimationFrame(() => {
-      const input = document.getElementById(targetId(`events.${id}.time`));
-      input?.scrollIntoView({ behavior: "smooth", block: "center" });
-      if (input instanceof HTMLElement) input.focus({ preventScroll: true });
+      composerTimeRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      composerTimeRef.current?.focus({ preventScroll: true });
     });
+  };
+
+  const logComposedEvent = () => {
+    if (disabled) return;
+    const time = composerTime.trim();
+    const activity = composerActivity.trim();
+    const initials = composerInitials.trim();
+    if (!time || !activity || !initials) {
+      setComposerError(
+        "Enter a time, event/activity, and initials before logging.",
+      );
+      return;
+    }
+    setComposerError(undefined);
+    setEvents((current) => [
+      ...current,
+      { id: crypto.randomUUID(), time, activity, initials },
+    ]);
+    // Clear time and activity for the next entry; keep initials — the same
+    // officer typically logs several events in a row.
+    setComposerTime("");
+    setComposerActivity("");
+    requestAnimationFrame(() => composerTimeRef.current?.focus());
   };
 
   const updateEvent = (
@@ -701,11 +734,11 @@ export default function HousingLog() {
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
-              onClick={addEventAndFocus}
+              onClick={focusEventComposer}
               disabled={disabled || !config}
               className="inline-flex items-center gap-1.5 rounded-md border border-blue-300/50 bg-blue-500/15 px-3 py-2 text-xs font-bold text-blue-100 hover:border-blue-200/70 disabled:opacity-40"
             >
-              <Plus className="h-4 w-4" aria-hidden /> Add Event
+              <Plus className="h-4 w-4" aria-hidden /> Log Event
             </button>
             <button
               type="button"
@@ -1418,27 +1451,127 @@ export default function HousingLog() {
                 aria-labelledby="housing-log-panel-events"
                 className={`${workPanel} p-4 sm:p-5`}
               >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div id="housing-log-panel-events">
-                    {panelHeading("events", "Event Log")}
-                    <p className="mt-1 text-xs text-blue-200/60">
-                      If any part of a row is entered, time, activity, and
-                      initials are all required.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={addEventAndFocus}
-                    disabled={disabled}
-                    className="inline-flex items-center gap-2 rounded-md border border-blue-300/50 bg-blue-500/15 px-3 py-2 text-xs font-bold text-blue-100 disabled:opacity-40"
-                  >
-                    <Plus className="h-4 w-4" aria-hidden /> Add Event
-                  </button>
+                <div id="housing-log-panel-events">
+                  {panelHeading("events", "Event Log")}
+                  <p className="mt-1 text-xs text-blue-200/60">
+                    Log each event as it happens. Entered order is preserved
+                    exactly — events are never re-sorted by time.
+                  </p>
                 </div>
-                <ol className="mt-4 space-y-3">
+
+                {/* Quick Event Entry composer — stays visible while the
+                    history below grows, so logging event N+1 never requires
+                    scrolling back to an "Add Event" action. */}
+                <div
+                  className="sticky top-20 z-20 mt-4 rounded-lg border border-blue-300/40 bg-[#0a1330] p-3 shadow-lg shadow-black/40 sm:top-24"
+                  role="group"
+                  aria-label="Quick event entry"
+                >
+                  <div className="grid gap-2 sm:grid-cols-[110px_1fr_80px_auto] sm:items-end">
+                    <div>
+                      <label
+                        className={hudLabel}
+                        htmlFor="housing-log-composer-time"
+                      >
+                        Time
+                      </label>
+                      <div className="flex gap-1">
+                        <input
+                          id="housing-log-composer-time"
+                          ref={composerTimeRef}
+                          type="time"
+                          value={composerTime}
+                          disabled={disabled}
+                          onChange={(event) => {
+                            setComposerTime(event.target.value);
+                            setComposerError(undefined);
+                          }}
+                          className={hudInput}
+                        />
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => {
+                            setComposerTime(nowTime());
+                            setComposerError(undefined);
+                          }}
+                          title="Fill the current time — you can still change it"
+                          className="shrink-0 rounded-md border border-blue-300/50 bg-blue-500/15 px-2 text-[10px] font-black uppercase text-blue-100 hover:bg-blue-500/25"
+                        >
+                          Now
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label
+                        className={hudLabel}
+                        htmlFor="housing-log-composer-activity"
+                      >
+                        Event / Activity
+                      </label>
+                      <textarea
+                        id="housing-log-composer-activity"
+                        rows={1}
+                        value={composerActivity}
+                        disabled={disabled}
+                        placeholder="What happened…"
+                        onChange={(event) => {
+                          setComposerActivity(event.target.value);
+                          setComposerError(undefined);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && event.ctrlKey) {
+                            event.preventDefault();
+                            logComposedEvent();
+                          }
+                        }}
+                        className={`${hudInput} resize-y`}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={hudLabel}
+                        htmlFor="housing-log-composer-initials"
+                      >
+                        Initials
+                      </label>
+                      <input
+                        id="housing-log-composer-initials"
+                        value={composerInitials}
+                        disabled={disabled}
+                        onChange={(event) => {
+                          setComposerInitials(event.target.value);
+                          setComposerError(undefined);
+                        }}
+                        className={hudInput}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={logComposedEvent}
+                      disabled={disabled}
+                      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-emerald-400/60 bg-emerald-600/25 px-4 py-2 text-xs font-black uppercase tracking-[0.08em] text-emerald-100 hover:bg-emerald-500/35 disabled:opacity-40"
+                    >
+                      <Plus className="h-4 w-4" aria-hidden /> Log Event
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-blue-200/50">
+                    Ctrl+Enter in the event field also logs it. Nothing is
+                    added until you submit — no need to click Add Event first.
+                  </p>
+                  {composerError && (
+                    <p className="mt-1 text-[11px] text-red-300" role="alert">
+                      {composerError}
+                    </p>
+                  )}
+                </div>
+
+                {/* Compact operational log — scrolls below the composer.
+                    Each row remains directly editable and removable. */}
+                <ol className="mt-4 space-y-1.5">
                   {events.length === 0 && (
                     <li className="list-none rounded-lg border border-dashed border-blue-400/25 p-4 text-center text-xs text-blue-200/50">
-                      No additional events entered.
+                      No events logged yet.
                     </li>
                   )}
                   {events.map((event, index) => {
@@ -1450,76 +1583,55 @@ export default function HousingLog() {
                     return (
                       <li
                         key={event.id}
-                        className={`${subCard} grid gap-3 sm:grid-cols-[36px_120px_1fr_100px_auto] sm:items-start`}
+                        className="grid grid-cols-[28px_86px_1fr_60px_auto] items-start gap-2 rounded-md border border-blue-400/15 bg-[#0a1330]/70 px-2 py-1.5 sm:items-center"
                       >
                         <span
-                          className="pt-2 text-xs font-black text-blue-300/70"
+                          className="pt-1.5 text-[10px] font-black text-blue-300/60 sm:pt-0"
                           aria-hidden
                         >
                           {index + 1}.
                         </span>
-                        <div>
-                          <label
-                            className={hudLabel}
-                            htmlFor={targetId(`events.${event.id}.time`)}
-                          >
-                            Time
-                          </label>
-                          <input
-                            id={targetId(`events.${event.id}.time`)}
-                            type="time"
-                            value={event.time}
-                            disabled={disabled}
-                            aria-invalid={errorPaths.has(
-                              `events.${event.id}.time`,
-                            )}
-                            onChange={(e) =>
-                              updateEvent(event.id, "time", e.target.value)
-                            }
-                            className={`${hudInput} ${errorPaths.has(`events.${event.id}.time`) ? "border-red-400 ring-2 ring-red-400/25" : ""}`}
-                          />
-                        </div>
-                        <div>
-                          <label
-                            className={hudLabel}
-                            htmlFor={targetId(`events.${event.id}.activity`)}
-                          >
-                            Event / Activity
-                          </label>
-                          <textarea
-                            id={targetId(`events.${event.id}.activity`)}
-                            rows={2}
-                            value={event.activity}
-                            disabled={disabled}
-                            aria-invalid={errorPaths.has(
-                              `events.${event.id}.activity`,
-                            )}
-                            onChange={(e) =>
-                              updateEvent(event.id, "activity", e.target.value)
-                            }
-                            className={`${hudInput} ${errorPaths.has(`events.${event.id}.activity`) ? "border-red-400 ring-2 ring-red-400/25" : ""}`}
-                          />
-                        </div>
-                        <div>
-                          <label
-                            className={hudLabel}
-                            htmlFor={targetId(`events.${event.id}.initials`)}
-                          >
-                            Initials
-                          </label>
-                          <input
-                            id={targetId(`events.${event.id}.initials`)}
-                            value={event.initials}
-                            disabled={disabled}
-                            aria-invalid={errorPaths.has(
-                              `events.${event.id}.initials`,
-                            )}
-                            onChange={(e) =>
-                              updateEvent(event.id, "initials", e.target.value)
-                            }
-                            className={`${hudInput} ${errorPaths.has(`events.${event.id}.initials`) ? "border-red-400 ring-2 ring-red-400/25" : ""}`}
-                          />
-                        </div>
+                        <input
+                          aria-label={`Event ${index + 1} time`}
+                          id={targetId(`events.${event.id}.time`)}
+                          type="time"
+                          value={event.time}
+                          disabled={disabled}
+                          aria-invalid={errorPaths.has(
+                            `events.${event.id}.time`,
+                          )}
+                          onChange={(e) =>
+                            updateEvent(event.id, "time", e.target.value)
+                          }
+                          className={`${hudInput} px-1.5 py-1 text-xs ${errorPaths.has(`events.${event.id}.time`) ? "border-red-400 ring-2 ring-red-400/25" : ""}`}
+                        />
+                        <textarea
+                          aria-label={`Event ${index + 1} activity`}
+                          id={targetId(`events.${event.id}.activity`)}
+                          rows={1}
+                          value={event.activity}
+                          disabled={disabled}
+                          aria-invalid={errorPaths.has(
+                            `events.${event.id}.activity`,
+                          )}
+                          onChange={(e) =>
+                            updateEvent(event.id, "activity", e.target.value)
+                          }
+                          className={`${hudInput} resize-y px-2 py-1 text-xs ${errorPaths.has(`events.${event.id}.activity`) ? "border-red-400 ring-2 ring-red-400/25" : ""}`}
+                        />
+                        <input
+                          aria-label={`Event ${index + 1} initials`}
+                          id={targetId(`events.${event.id}.initials`)}
+                          value={event.initials}
+                          disabled={disabled}
+                          aria-invalid={errorPaths.has(
+                            `events.${event.id}.initials`,
+                          )}
+                          onChange={(e) =>
+                            updateEvent(event.id, "initials", e.target.value)
+                          }
+                          className={`${hudInput} px-1.5 py-1 text-xs ${errorPaths.has(`events.${event.id}.initials`) ? "border-red-400 ring-2 ring-red-400/25" : ""}`}
+                        />
                         <button
                           type="button"
                           title={
@@ -1529,9 +1641,9 @@ export default function HousingLog() {
                           }
                           disabled={disabled || !unfinished}
                           onClick={() => removeEvent(event.id)}
-                          className="mt-6 rounded-md border border-red-400/35 p-2.5 text-red-200 disabled:opacity-30"
+                          className="rounded-md border border-red-400/35 p-1.5 text-red-200 disabled:opacity-30"
                         >
-                          <Trash2 className="h-4 w-4" aria-hidden />
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden />
                           <span className="sr-only">
                             Remove event {index + 1}
                           </span>

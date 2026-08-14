@@ -209,6 +209,18 @@ for (const config of housingLogConfigs) {
     let previousEnd = -1;
     for (const count of config.counts) {
       const prefix = `counts.${count.key}`;
+      if (count.isBeginning) {
+        const time = shiftRelativeMinutes(
+          config.shift,
+          String(values[`${prefix}.time`]),
+        );
+        assert.ok(
+          time > previousEnd,
+          `${config.key}: ${prefix}.time is not after the previous count`,
+        );
+        previousEnd = time;
+        continue;
+      }
       const countTime = shiftRelativeMinutes(
         config.shift,
         String(values[`${prefix}.countTime`]),
@@ -217,10 +229,6 @@ for (const config of housingLogConfigs) {
         countTime > previousEnd,
         `${config.key}: ${prefix}.countTime is not after the previous count`,
       );
-      if (count.isBeginning) {
-        previousEnd = countTime;
-        continue;
-      }
       const recall = shiftRelativeMinutes(
         config.shift,
         String(values[`${prefix}.recallTime`]),
@@ -342,15 +350,20 @@ test("3_CDEFG (D Dorm, Third shift): the reported bad export cannot recur", asyn
     let previousEnd = -1;
     for (const count of config.counts) {
       const prefix = `counts.${count.key}`;
+      if (count.isBeginning) {
+        const time = shiftRelativeMinutes(
+          config.shift,
+          String(values[`${prefix}.time`]),
+        );
+        assert.ok(time > previousEnd, `${prefix}.time seed ${seed}`);
+        previousEnd = time;
+        continue;
+      }
       const countTime = shiftRelativeMinutes(
         config.shift,
         String(values[`${prefix}.countTime`]),
       );
       assert.ok(countTime > previousEnd, `${prefix}.countTime seed ${seed}`);
-      if (count.isBeginning) {
-        previousEnd = countTime;
-        continue;
-      }
       const recall = shiftRelativeMinutes(config.shift, String(values[`${prefix}.recallTime`]));
       const clear = shiftRelativeMinutes(config.shift, String(values[`${prefix}.clearTime`]));
       assert.ok(recall < countTime, `${prefix} recall/count seed ${seed}`);

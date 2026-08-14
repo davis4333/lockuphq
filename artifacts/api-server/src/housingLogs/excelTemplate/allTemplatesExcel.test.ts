@@ -242,13 +242,17 @@ for (const config of representativeConfigs) {
       first.diagnostics.embeddedSignatureImageCount,
     );
 
-    // Every embedded signature must anchor to column B (index 1) — the blank
-    // signature line — never column A (index 0), which is only wide enough
-    // to hold the printed "Signature:" label and would bury it under ink.
-    // Only the <xdr:oneCellAnchor>...<xdr:pic> blocks are our signature
-    // images; a source worksheet's drawing part can also carry unrelated
-    // pre-existing <xdr:twoCellAnchor><xdr:sp> shapes (e.g. hidden
-    // comment-indicator markers), which this must not flag.
+    // Every embedded signature must anchor to column C (index 2) — clear of
+    // the printed "Housing Supervisor/Officer Signature:" label, which is
+    // bold 12pt Times New Roman and visually spills roughly 140-150px past
+    // column A's own ~82px width into column B (Excel's standard overflow
+    // behavior for left-aligned text in a too-narrow column with an empty
+    // neighbor). Anchoring at column B's own edge — the previous fix —
+    // still placed ink on top of that spillover text; column C starts well
+    // past it. Only the <xdr:oneCellAnchor>...<xdr:pic> blocks are our
+    // signature images; a source worksheet's drawing part can also carry
+    // unrelated pre-existing <xdr:twoCellAnchor><xdr:sp> shapes (e.g.
+    // hidden comment-indicator markers), which this must not flag.
     let signatureAnchorsSeen = 0;
     for (const path of drawingPaths) {
       const drawingXml = await text(outputZip, path);
@@ -261,8 +265,8 @@ for (const config of representativeConfigs) {
       for (const column of anchoredColumns)
         assert.equal(
           column,
-          "1",
-          `${config.sourceSheet} signature in ${path} anchored to column ${column}, not column B`,
+          "2",
+          `${config.sourceSheet} signature in ${path} anchored to column ${column}, not column C`,
         );
     }
     assert.equal(signatureAnchorsSeen, first.diagnostics.embeddedSignatureImageCount);

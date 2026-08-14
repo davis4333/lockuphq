@@ -71,6 +71,10 @@ import {
 } from "@/lib/housingLogApi";
 import HousingLogPreview from "@/components/HousingLogPreview";
 import {
+  parseOfficialTemplateWorkbook,
+  type TemplateGridSheet,
+} from "@/lib/officialTemplateGrid";
+import {
   clearHousingLogLocalState,
   createSubmissionId,
   emptyHousingLogLocalWorkingState,
@@ -255,16 +259,18 @@ export default function HousingLog() {
   const [busy, setBusy] = useState(false);
 
   // ── Preview Official Log (pre-finalize review) ──
-  // `previewInput` is the exact canonical payload validation passed for —
-  // it drives both the read-only preview screen and every "Download Current
-  // Log" click from inside it, so what the officer reviews always matches
-  // what a download or Finalize would submit.
+  // The preview renders the ACTUAL generated official worksheet(s) — see
+  // officialTemplateGrid.ts — parsed from the exact .xlsx bytes the server
+  // returned for this payload. `previewBytes` are also what "Download
+  // Current Log" saves, so what the officer reviews and what they download
+  // are byte-identical; no second network call, no chance of staleness.
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewInput, setPreviewInput] = useState<HousingLogDraftInput>();
+  const [previewSheets, setPreviewSheets] = useState<TemplateGridSheet[]>();
+  const [previewBytes, setPreviewBytes] = useState<ArrayBuffer>();
+  const [previewFileName, setPreviewFileName] = useState<string>();
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewError, setPreviewError] = useState<string>();
-  const [downloadBusy, setDownloadBusy] = useState(false);
-  const [downloadError, setDownloadError] = useState<string>();
   const [activeTask, setActiveTask] = useState<HousingLogTaskId>("setup");
   const panelHeadingRefs = useRef<
     Partial<Record<HousingLogTaskId, HTMLHeadingElement | null>>
@@ -546,8 +552,10 @@ export default function HousingLog() {
     setFinalizedAt(undefined);
     setPreviewOpen(false);
     setPreviewInput(undefined);
+    setPreviewSheets(undefined);
+    setPreviewBytes(undefined);
+    setPreviewFileName(undefined);
     setPreviewError(undefined);
-    setDownloadError(undefined);
     setIsDemoData(false);
     setComposerTime("");
     setComposerActivity("");
@@ -843,9 +851,11 @@ export default function HousingLog() {
   // same canonical validation finalize uses (client pre-check here, full
   // server-side check — including signature ink-plausibility, which cannot
   // run in the browser — in previewHousingLogXlsx) before showing anything.
-  // On success the fetched document is discarded immediately; the read-only
-  // screen renders from `preparedInput` itself, and Download re-fetches a
-  // fresh copy of that same payload on demand.
+  // On success the fetched .xlsx bytes are parsed into the actual official
+  // worksheet grid (officialTemplateGrid.ts) and kept in memory: the
+  // preview screen has no editable fields, so those same bytes are exactly
+  // what "Download Current Log" saves — there is no second fetch and no
+  // way for the two to disagree.
   const openPreview = async () => {
     if (!config || !housingUnit || !shift || !preparedInput || readOnlyTab)
       return;
@@ -863,8 +873,13 @@ export default function HousingLog() {
     }
     setPreviewBusy(true);
     try {
-      await previewHousingLogXlsx(preparedInput);
+      const { blob, fileName } = await previewHousingLogXlsx(preparedInput);
+      const bytes = await blob.arrayBuffer();
+      const sheets = parseOfficialTemplateWorkbook(bytes, config.sourceSheet);
       setPreviewInput(preparedInput);
+      setPreviewSheets(sheets);
+      setPreviewBytes(bytes);
+      setPreviewFileName(fileName);
       setPreviewOpen(true);
     } catch (error) {
       if (error instanceof HousingLogApiError && error.issues.length)
@@ -881,29 +896,19 @@ export default function HousingLog() {
 
   const closePreview = () => {
     setPreviewOpen(false);
-    setDownloadError(undefined);
   };
 
-  // Always re-fetches the current snapshot rather than reusing any earlier
-  // response — safe and cheap, since the preview screen has no editable
-  // fields (nothing can change while it's open), and it means a download
-  // can never silently serve stale content.
-  const downloadCurrentLog = async () => {
-    if (!previewInput) return;
-    setDownloadBusy(true);
-    setDownloadError(undefined);
-    try {
-      const { blob, fileName } = await previewHousingLogXlsx(previewInput);
-      saveHousingLogBlob(blob, fileName);
-    } catch (error) {
-      setDownloadError(
-        error instanceof Error
-          ? error.message
-          : "The Housing Log could not be downloaded. Nothing was lost. Try again.",
-      );
-    } finally {
-      setDownloadBusy(false);
-    }
+  // No network call: saves the exact bytes already parsed for the preview
+  // screen currently on display, so what the officer just reviewed is
+  // byte-for-byte what gets saved. Can be clicked any number of times.
+  const downloadCurrentLog = () => {
+    if (!previewBytes || !previewFileName) return;
+    saveHousingLogBlob(
+      new Blob([previewBytes], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      previewFileName,
+    );
   };
 
   const startNextLog = () => {
@@ -1072,15 +1077,15 @@ export default function HousingLog() {
     return "Not yet saved on this device";
   })();
 
-  if (previewOpen && config && previewInput) {
+  if (previewOpen && config && previewInput && previewSheets) {
     return (
       <HousingLogPreview
         config={config}
-        input={previewInput}
+        logDate={previewInput.logDate}
+        signatures={previewInput.signatures}
+        sheets={previewSheets}
         onBackToEdit={closePreview}
         onDownload={downloadCurrentLog}
-        downloading={downloadBusy}
-        downloadError={downloadError}
         onFinalize={finalize}
         finalizing={busy}
         finalizeError={finalizeError}

@@ -357,14 +357,22 @@ function pictureAnchor(options: {
   const widthPx = (heightPx * options.imageWidth) / options.imageHeight;
   const emu = 9525;
   // Column A (index 0) holds the printed "Housing Supervisor/Officer
-  // Signature:" label and is only ~80px wide on every official worksheet;
-  // the blank signature line itself is column B, which is intentionally
-  // cleared of any text (see clearSignatureCellValues) and is roomy
-  // (~430px). Anchoring here — instead of the old col 0 + 230px offset,
-  // which placed the image at an offset larger than column A's own width —
-  // keeps the ink on the signature line and off the printed label, on
-  // every worksheet size the ink can appear on.
-  return `<xdr:oneCellAnchor><xdr:from><xdr:col>1</xdr:col><xdr:colOff>${6 * emu}</xdr:colOff><xdr:row>${options.rowIndex}</xdr:row><xdr:rowOff>${2 * emu}</xdr:rowOff></xdr:from><xdr:ext cx="${Math.round(widthPx * emu)}" cy="${heightPx * emu}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${options.id}" name="${escapeXml(options.name)}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="${options.relationshipId}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`;
+  // Signature:" label. That label is set in bold 12pt Times New Roman
+  // (confirmed from the source styles.xml) — roughly 220-230px of rendered
+  // text at that size/weight — while column A itself is only ~82px wide on
+  // every official worksheet. Excel renders left-aligned text that's wider
+  // than its own column by spilling it visually into the next column when
+  // that column's cell is empty, which column B's signature-line cell is
+  // (see clearSignatureCellValues). So the printed label doesn't stop at
+  // column A's boundary — it visually continues roughly 140-150px into
+  // column B. Anchoring the signature at column B's own left edge (the
+  // previous fix) placed the ink directly on top of that spillover text.
+  // Column B, C, and D are ALL cleared of any value on signature rows, so
+  // anchoring at column C (index 2) instead — well past the label's actual
+  // spillover — keeps the ink clear of the printed text with a wide safety
+  // margin, while still leaving column B's full ~430px plus column C's own
+  // width for the signature itself.
+  return `<xdr:oneCellAnchor><xdr:from><xdr:col>2</xdr:col><xdr:colOff>${6 * emu}</xdr:colOff><xdr:row>${options.rowIndex}</xdr:row><xdr:rowOff>${2 * emu}</xdr:rowOff></xdr:from><xdr:ext cx="${Math.round(widthPx * emu)}" cy="${heightPx * emu}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${options.id}" name="${escapeXml(options.name)}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="${options.relationshipId}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`;
 }
 
 function drawingXml(

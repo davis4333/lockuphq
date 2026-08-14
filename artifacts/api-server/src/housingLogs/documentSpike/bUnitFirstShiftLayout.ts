@@ -359,7 +359,7 @@ const placements: BUnitPlacement[] = [
     709.06,
     725.62,
   ),
-  timeCell("counts.beginning.countTime", 0, 694.3, 692.62, 709.18),
+  timeCell("counts.beginning.time", 0, 694.3, 692.62, 709.18),
   region(
     "counts.beginning.components.Wing One",
     0,

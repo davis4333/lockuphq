@@ -228,15 +228,20 @@ test("recall, count, and clear times are chronologically valid and counts progre
     let previousEnd = -1;
     for (const count of config.counts) {
       const prefix = `counts.${count.key}`;
+      if (count.isBeginning) {
+        const time = shiftRelativeMinutes(
+          config.shift,
+          String(seed.values[`${prefix}.time`]),
+        );
+        assert.ok(time > previousEnd, `${config.key}: ${prefix}.time out of order`);
+        previousEnd = time;
+        continue;
+      }
       const countTime = shiftRelativeMinutes(
         config.shift,
         String(seed.values[`${prefix}.countTime`]),
       );
       assert.ok(countTime > previousEnd, `${config.key}: ${prefix}.countTime out of order`);
-      if (count.isBeginning) {
-        previousEnd = countTime;
-        continue;
-      }
       const recall = shiftRelativeMinutes(
         config.shift,
         String(seed.values[`${prefix}.recallTime`]),

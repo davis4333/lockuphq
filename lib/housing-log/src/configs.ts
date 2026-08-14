@@ -585,10 +585,12 @@ export function fieldsForConfig(config: HousingLogConfig): FieldDefinition[] {
   const countFields = config.counts.flatMap((count) => {
     const prefix = `counts.${count.key}`;
     // Beginning Inmate Count records the population the shift starts with —
-    // it is not a formal conducted count, so it has no count time and no
-    // conducted-by role/name, matching the official form.
+    // it is not a formal conducted count, so it has no recall/clear time and
+    // no conducted-by role/name, matching the official form. It does need a
+    // time the count was taken, alongside the initials attesting to it.
     if (count.isBeginning) {
       return [
+        field(`${prefix}.time`, `${count.label} — time`, "time"),
         ...count.components.map((component) =>
           field(
             `${prefix}.components.${component}`,

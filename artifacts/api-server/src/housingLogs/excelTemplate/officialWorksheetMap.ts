@@ -562,8 +562,10 @@ function countWrites(
     if (count.isBeginning)
       return [
         // Beginning Inmate Count records the population the shift starts
-        // with, not a formal conducted count — the official form has no
-        // time blank here, so column A is intentionally left unwritten.
+        // with, not a formal conducted count — no recall/clear time and no
+        // conducted-by role/name — but it does get the same running TIME
+        // column every other event-log-style row on this form uses.
+        direct(`A${row.row}`, `${prefix}.time`),
         write(
           `B${row.row}`,
           componentKeys,

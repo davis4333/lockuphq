@@ -430,7 +430,7 @@ export function generateCompleteDemoValues(
     const actor = pick(rng, roster);
 
     if (count.isBeginning) {
-      set(`${prefix}.countTime`, timeWithinSlot(rng, shift, slot));
+      set(`${prefix}.time`, timeWithinSlot(rng, shift, slot));
     } else {
       const usable = Math.max(9, slot.size - 2);
       const step = Math.max(2, Math.floor(usable / 3));

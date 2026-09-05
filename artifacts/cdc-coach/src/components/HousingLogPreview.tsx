@@ -118,23 +118,28 @@ function TemplateSheetTable({
                       }
                     >
                       {cell.text}
+                      {/* The overlay lives inside the label cell (not as a
+                          direct <tr> child — invalid HTML that triggers React
+                          hydration errors). The cell starts at the row's left
+                          edge and has overflow: visible, so the same absolute
+                          pixel offsets position the image identically. */}
+                      {isSignatureLabelCell && isSupervisorRow && (
+                        <SignatureOverlay
+                          columnWidthsPx={sheet.columnWidthsPx}
+                          src={signatures.housingSupervisor}
+                          label={supervisorLabel}
+                        />
+                      )}
+                      {isSignatureLabelCell && isOfficerRow && (
+                        <SignatureOverlay
+                          columnWidthsPx={sheet.columnWidthsPx}
+                          src={signatures.housingOfficer}
+                          label={officerLabel}
+                        />
+                      )}
                     </td>
                   );
                 })}
-                {isSupervisorRow && (
-                  <SignatureOverlay
-                    columnWidthsPx={sheet.columnWidthsPx}
-                    src={signatures.housingSupervisor}
-                    label={supervisorLabel}
-                  />
-                )}
-                {isOfficerRow && (
-                  <SignatureOverlay
-                    columnWidthsPx={sheet.columnWidthsPx}
-                    src={signatures.housingOfficer}
-                    label={officerLabel}
-                  />
-                )}
               </tr>
             );
           })}

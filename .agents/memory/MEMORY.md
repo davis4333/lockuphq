@@ -3,3 +3,4 @@
 - [DR Writer roster + ephemeral hosting](dr-writer-hosting-roster.md) — persons come only from a bundled test fixture re-seeded each boot; add-inmate is client wiring to POST /api/persons, not an engine change; autoscale tmpfs = reports don't persist/share.
 - [Hand-authored artifact](hand-authored-artifact.md) — register a non-scaffoldable API artifact by seeding artifact.toml via shell, then verifyAndReplaceArtifactToml (auto-creates the workflow).
 - [LOCKUPHQ standalone handoff](lockuphq-standalone-handoff.md) — full standalone app: zero npm deps, local file store (Reserved VM only), admin bootstrap on fresh data dir; scan ALL files for committed keys, not just .env.
+- [GitHub push authentication](github-push-auth.md) — when Git transport rejects the installed connection, commit through GitHub’s API, then verify and align the local branch.
